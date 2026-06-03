@@ -11,7 +11,7 @@
   --ink:#1a1714;--ink2:#5a5450;--ink3:#9a908a;
   --accent:#c84b2f;--accent2:#e8a020;--green:#2d7a4f;--blue:#2a5f8f;
   --border:#d4cfc8;--shadow:rgba(26,23,20,.10);
-  --ni:#2a5f8f;--ho:#2d7a4f;--go:#c84b2f;--roku:#7a4a2d;
+  --ni:#2a5f8f;--ho:#2d7a4f;--go:#c84b2f;--roku:#7a4a2d;--jisha:#6a4a8f;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px;}
@@ -25,7 +25,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 /* SUMMARY */
 .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
 .summary-card{background:var(--surface);border-radius:10px;padding:12px;border-left:3px solid var(--ni);box-shadow:0 1px 4px var(--shadow);}
-.summary-card.ho{border-color:var(--ho);}.summary-card.go{border-color:var(--go);}.summary-card.roku{border-color:var(--roku);}
+.summary-card.ho{border-color:var(--ho);}.summary-card.go{border-color:var(--go);}.summary-card.roku{border-color:var(--roku);}.summary-card.jisha{border-color:var(--jisha);}
 .summary-card-label{font-size:11px;color:var(--ink3);font-weight:500;}
 .summary-card-num{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--ink);margin-top:2px;}
 .summary-card-unit{font-size:12px;color:var(--ink3);}
@@ -48,6 +48,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 .wh-badge{display:flex;align-items:center;gap:3px;padding:3px 8px;border-radius:20px;font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:600;}
 .wh-badge.ni{background:#e8f0f8;color:var(--ni);}.wh-badge.ho{background:#e8f4ec;color:var(--ho);}
 .wh-badge.go{background:#fdf0ec;color:var(--go);}.wh-badge.roku{background:#f4ede8;color:var(--roku);}
+.wh-badge.jisha{background:#f0ecf8;color:var(--jisha);}
 .wh-badge .wh-dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
 .maker-badge{display:inline-flex;align-items:center;padding:2px 8px;background:var(--surface2);color:var(--ink2);border-radius:4px;font-size:11px;font-weight:700;margin-bottom:4px;}
 .reserve-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;background:#fff8e8;color:var(--accent2);border-radius:20px;font-size:10px;font-weight:700;margin-top:4px;}
@@ -76,7 +77,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 .wh-qty-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .wh-qty-item label{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;margin-bottom:4px;}
 .wh-dot-lg{width:10px;height:10px;border-radius:50%;}
-.ni-dot{background:var(--ni);}.ho-dot{background:var(--ho);}.go-dot{background:var(--go);}.roku-dot{background:var(--roku);}
+.ni-dot{background:var(--ni);}.ho-dot{background:var(--ho);}.go-dot{background:var(--go);}.roku-dot{background:var(--roku);}.jisha-dot{background:var(--jisha);}
 .price-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 /* BUTTONS */
 .btn-row{display:flex;gap:8px;margin-top:4px;}
@@ -110,6 +111,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 .wh-chip.active.ho{background:var(--ho);color:#fff;border-color:var(--ho);}
 .wh-chip.active.go{background:var(--go);color:#fff;border-color:var(--go);}
 .wh-chip.active.roku{background:var(--roku);color:#fff;border-color:var(--roku);}
+.wh-chip.active.jisha{background:var(--jisha);color:#fff;border-color:var(--jisha);}
 .wh-chip.active.all{background:var(--ink);color:#fff;border-color:var(--ink);}
 .pdf-options{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;}
 .pdf-option{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .15s;}
@@ -214,13 +216,14 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
     <div class="summary-card ho"><div class="summary-card-label">🟢 ほ倉庫</div><div class="summary-card-num" id="sum-ho">0<span class="summary-card-unit"> 台</span></div></div>
     <div class="summary-card go"><div class="summary-card-label">🔴 5番倉庫</div><div class="summary-card-num" id="sum-go">0<span class="summary-card-unit"> 台</span></div></div>
     <div class="summary-card roku"><div class="summary-card-label">🟤 6番倉庫</div><div class="summary-card-num" id="sum-roku">0<span class="summary-card-unit"> 台</span></div></div>
+    <div class="summary-card jisha"><div class="summary-card-label">🏢 自社倉庫</div><div class="summary-card-num" id="sum-jisha">0<span class="summary-card-unit"> 台</span></div></div>
   </div>
   <div class="section-hd"><h2>商品一覧</h2><span id="product-count" style="font-size:12px;color:var(--ink3)"></span></div>
   <div class="search-row">
     <input type="text" class="search-input" placeholder="型番・メーカーで検索…" id="searchInput" oninput="renderList()">
     <select class="filter-select" id="filterWh" onchange="renderList()">
       <option value="all">全倉庫</option>
-      <option value="ni">に</option><option value="ho">ほ</option><option value="go">5番</option><option value="roku">6番</option>
+      <option value="ni">に</option><option value="ho">ほ</option><option value="go">5番</option><option value="roku">6番</option><option value="jisha">自社</option>
     </select>
   </div>
   <div class="search-row">
@@ -262,7 +265,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
       <label class="form-label">③ 入荷先倉庫</label>
       <select class="form-select" id="nyuko-wh-select">
         <option value="ni">に倉庫</option><option value="ho">ほ倉庫</option>
-        <option value="go">5番倉庫</option><option value="roku">6番倉庫</option>
+        <option value="go">5番倉庫</option><option value="roku">6番倉庫</option><option value="jisha">自社倉庫</option>
       </select>
     </div>
     <div class="form-group">
@@ -295,7 +298,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
       <label class="form-label">入荷先倉庫</label>
       <select class="form-select" id="nyuko-free-wh">
         <option value="ni">に倉庫</option><option value="ho">ほ倉庫</option>
-        <option value="go">5番倉庫</option><option value="roku">6番倉庫</option>
+        <option value="go">5番倉庫</option><option value="roku">6番倉庫</option><option value="jisha">自社倉庫</option>
       </select>
     </div>
     <div class="form-group">
@@ -362,7 +365,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
     <label class="form-label">③ 出荷元倉庫</label>
     <select class="form-select" id="shukka-wh">
       <option value="ni">に倉庫</option><option value="ho">ほ倉庫</option>
-      <option value="go">5番倉庫</option><option value="roku">6番倉庫</option>
+      <option value="go">5番倉庫</option><option value="roku">6番倉庫</option><option value="jisha">自社倉庫</option>
     </select>
   </div>
   <div class="form-group">
@@ -422,6 +425,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
       <div class="wh-chip ho" data-wh="ho" onclick="togglePdfWh(this)">ほ倉庫</div>
       <div class="wh-chip go" data-wh="go" onclick="togglePdfWh(this)">5番倉庫</div>
       <div class="wh-chip roku" data-wh="roku" onclick="togglePdfWh(this)">6番倉庫</div>
+      <div class="wh-chip jisha" data-wh="jisha" onclick="togglePdfWh(this)">自社倉庫</div>
     </div>
   </div>
   <div class="pdf-options">
@@ -483,6 +487,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
         <div class="wh-qty-item"><label><span class="wh-dot-lg ho-dot"></span>ほ倉庫</label><input type="number" class="form-input" id="inp-ho" value="0" min="0"></div>
         <div class="wh-qty-item"><label><span class="wh-dot-lg go-dot"></span>5番倉庫</label><input type="number" class="form-input" id="inp-go" value="0" min="0"></div>
         <div class="wh-qty-item"><label><span class="wh-dot-lg roku-dot"></span>6番倉庫</label><input type="number" class="form-input" id="inp-roku" value="0" min="0"></div>
+        <div class="wh-qty-item"><label><span class="wh-dot-lg jisha-dot"></span>自社倉庫</label><input type="number" class="form-input" id="inp-jisha" value="0" min="0"></div>
       </div>
     </div>
     <div class="form-group">
@@ -579,8 +584,8 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 const SUPA_URL='https://bvggviqafftbxafdkbg.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2Z2d2aXFhZmZ0dGJ4YWZka2JnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0ODM1NTcsImV4cCI6MjA5NjA1OTU1N30.jTJM7htcIJxibeOJ-xn2_7Ymxuo-5lesEllSgZslQW4';
 const PK='zaiko_pw_v1';
-const WH_LABELS={ni:'\u306b\u5009\u5eab',ho:'\u307b\u5009\u5eab',go:'5\u756a\u5009\u5eab',roku:'6\u756a\u5009\u5eab'};
-const WH_KEYS=['ni','ho','go','roku'];
+const WH_LABELS={ni:'\u306b\u5009\u5eab',ho:'\u307b\u5009\u5eab',go:'5\u756a\u5009\u5eab',roku:'6\u756a\u5009\u5eab',jisha:'\u81ea\u793e\u5009\u5eab'};
+const WH_KEYS=['ni','ho','go','roku','jisha'];
 
 // ─── Supabase REST helper ─────────────────────────────────────────
 function supaFetch(path, method, body, extra){
@@ -624,7 +629,7 @@ async function loadProducts(){
 async function upsertProduct(p){
   var row = {
     id:p.id, maker:p.maker||'', name:p.name,
-    ni:p.ni||0, ho:p.ho||0, go:p.go||0, roku:p.roku||0,
+    ni:p.ni||0, ho:p.ho||0, go:p.go||0, roku:p.roku||0, jisha:p.jisha||0,
     teika:p.teika||0, cost:p.cost||0, sell:p.sell||0,
     note:p.note||'', reserves:p.reserves||[]
   };
@@ -661,21 +666,21 @@ async function seedIfEmpty(){
   var rows = await supaFetch('products?select=id&limit=1');
   if(rows && rows.length > 0) return;
   var initial = [
-    {maker:'\u30d1\u30ca\u30bd\u30cb\u30c3\u30af',name:'CS225DFL',  ni:3,ho:1,go:0, roku:0},
-    {maker:'\u30d1\u30ca\u30bd\u30cb\u30c3\u30af',name:'285DFL',     ni:3,ho:0,go:5, roku:0},
-    {maker:'\u30d1\u30ca\u30bd\u30cb\u30c3\u30af',name:'405DFL2',    ni:2,ho:0,go:0, roku:0},
-    {maker:'\u30d1\u30ca\u30bd\u30cb\u30c3\u30af',name:'565DFL2',    ni:3,ho:0,go:0, roku:0},
-    {maker:'\u672a\u6765\u5de5\u696d',name:'MFCD-16',    ni:0,ho:0,go:16,roku:0,note:'16\u5dfb'},
-    {maker:'\u4e09\u83f1\u96fb\u6a5f',name:'S225ATES',  ni:3,ho:3,go:0, roku:0},
-    {maker:'\u4e09\u83f1\u96fb\u6a5f',name:'255ATES',   ni:0,ho:5,go:0, roku:0},
-    {maker:'\u4e09\u83f1\u96fb\u6a5f',name:'285ATES',   ni:8,ho:5,go:2, roku:0,note:'\u307b\u306b2\u53f0'},
-    {maker:'\u4e09\u83f1\u96fb\u6a5f',name:'365ATES',   ni:3,ho:0,go:0, roku:0},
-    {maker:'\u4e09\u83f1\u96fb\u6a5f',name:'405ATEP',   ni:0,ho:2,go:0, roku:0},
-    {maker:'\u4e09\u83f1\u96fb\u6a5f',name:'565ATEP',   ni:5,ho:0,go:0, roku:0},
-    {maker:'\u4e09\u83f1\u96fb\u6a5f',name:'MSZ-GV405S',ni:0,ho:0,go:2, roku:0},
+    {maker:'\u30d1\u30ca\u30bd\u30cb\u30c3\u30af',name:'CS-225DFL-W',  ni:3,ho:1,go:0, roku:0,jisha:0},
+    {maker:'\u30d1\u30ca\u30bd\u30cb\u30c3\u30af',name:'CS-285DFL-W',   ni:3,ho:0,go:5, roku:0,jisha:0},
+    {maker:'\u30d1\u30ca\u30bd\u30cb\u30c3\u30af',name:'CS-405DFL2-W',  ni:2,ho:0,go:0, roku:0,jisha:0},
+    {maker:'\u30d1\u30ca\u30bd\u30cb\u30c3\u30af',name:'CS-565DFL2-W',  ni:3,ho:0,go:0, roku:0,jisha:0},
+    {maker:'\u672a\u6765\u5de5\u696d',name:'MFCD-16',    ni:0,ho:0,go:16,roku:0,jisha:0,note:'16\u5dfb'},
+    {maker:'\u30c0\u30a4\u30ad\u30f3',name:'S225ATES-W',  ni:3,ho:3,go:0, roku:0,jisha:0},
+    {maker:'\u30c0\u30a4\u30ad\u30f3',name:'S255ATES-W',  ni:0,ho:5,go:0, roku:0,jisha:0},
+    {maker:'\u30c0\u30a4\u30ad\u30f3',name:'S285ATES-W',  ni:8,ho:5,go:2, roku:0,jisha:0,note:'\u307b\u306b2\u53f0'},
+    {maker:'\u30c0\u30a4\u30ad\u30f3',name:'S365ATES-W',  ni:3,ho:0,go:0, roku:0,jisha:0},
+    {maker:'\u30c0\u30a4\u30ad\u30f3',name:'S405ATEP-W',  ni:0,ho:2,go:0, roku:0,jisha:0},
+    {maker:'\u30c0\u30a4\u30ad\u30f3',name:'S565ATEP-W',  ni:5,ho:0,go:0, roku:0,jisha:0},
+    {maker:'\u4e09\u83f1\u96fb\u6a5f',name:'MSZ-GV4025S-W',ni:0,ho:0,go:2, roku:0,jisha:0},
   ];
   for(var i=0;i<initial.length;i++){
-    var p = Object.assign({id:uid(),teika:0,cost:0,sell:0,note:'',reserves:[]}, initial[i]);
+    var p = Object.assign({id:uid(),teika:0,cost:0,sell:0,note:'',reserves:[],jisha:0}, initial[i]);
     await upsertProduct(p);
   }
 }
@@ -1061,7 +1066,7 @@ async function handleAiPhoto(event){
   const existingList=data.products.map(p=>`${p.maker||''}　${p.name}`).join('\n');
   const prompt=`あなたは倉庫在庫管理の専門家です。
 この画像は手書きの在庫メモや納品書、在庫表です。
-画像から商品名（型番）、メーカー、倉庫（に/ほ/5番/6番）、数量を読み取ってください。
+画像から商品名（型番）、メーカー、倉庫（に/ほ/5番/6番/自社）、数量を読み取ってください。
 
 既存の登録商品リスト（参考）:
 ${existingList}
@@ -1071,6 +1076,7 @@ ${existingList}
 - 「ほ」「ほ倉庫」→ ho
 - 「5番」「5番倉庫」「5」→ go
 - 「6番」「6番倉庫」「6」→ roku
+- 「自社」「自社倉庫」→ jisha
 - 倉庫の記載がない場合は warehouse を空文字にしてください
 
 必ず以下のJSON形式のみで返答してください。他の文章は一切不要です:
