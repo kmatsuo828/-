@@ -664,23 +664,23 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 const SUPA_URL='https://bvggviqafftbxafdkbg.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2Z2d2aXFhZmZ0dGJ4YWZka2JnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0ODM1NTcsImV4cCI6MjA5NjA1OTU1N30.jTJM7htcIJxibeOJ-xn2_7Ymxuo-5lesEllSgZslQW4';
 const PK='zaiko_pw_v1';
-// ─── AI 経由設定 ─────────────────────────────────────────────────
-// APIキーはサイトに埋め込まず、Supabase Edge Function (claude-proxy) 経由で安全に呼び出す。
-const AI_PROXY_URL = SUPA_URL + '/functions/v1/claude-proxy';
-const AI_MODEL = 'claude-sonnet-4-6';
-async function callClaude(payload){
+// ─── AI 経由設定（Gemini） ───────────────────────────────────────
+// APIキーはサイトに埋め込まず、Supabase Edge Function (gemini-proxy) 経由で安全に呼び出す。
+const AI_PROXY_URL = SUPA_URL + '/functions/v1/gemini-proxy';
+const AI_MODEL = 'gemini-2.5-flash';
+async function callGemini(geminiBody){
   var resp;
   try{
     resp = await fetch(AI_PROXY_URL, {
       method:'POST',
       headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY},
-      body: JSON.stringify(payload)
+      body: JSON.stringify({model:AI_MODEL, body:geminiBody})
     });
   }catch(e){
-    throw new Error('AIサーバーに接続できません。Supabaseの Edge Function「claude-proxy」が未設定の可能性があります。');
+    throw new Error('AIサーバーに接続できません。Supabaseの Edge Function「gemini-proxy」が未設定の可能性があります。');
   }
   if(resp.status===404){
-    throw new Error('AI機能が未設定です。Supabaseに Edge Function「claude-proxy」を作成してください。');
+    throw new Error('AI機能が未設定です。Supabaseに Edge Function「gemini-proxy」を作成してください。');
   }
   var txt = await resp.text();
   var json;
@@ -690,6 +690,16 @@ async function callClaude(payload){
     throw new Error((json && json.error && json.error.message) ? json.error.message : ('HTTP '+resp.status));
   }
   return json;
+}
+// Geminiレスポンスからテキスト（=JSON文字列）を取り出す
+function geminiText(resp){
+  try{
+    if(resp.promptFeedback && resp.promptFeedback.blockReason){
+      throw new Error('AIが安全フィルタで応答をブロックしました');
+    }
+    var parts = (resp.candidates && resp.candidates[0] && resp.candidates[0].content && resp.candidates[0].content.parts) || [];
+    return parts.map(function(p){return p.text||'';}).join('');
+  }catch(e){ throw e; }
 }
 const WH_LABELS={ni:'\u306b\u5009\u5eab',ho:'\u307b\u5009\u5eab',go:'5\u756a\u5009\u5eab',roku:'6\u756a\u5009\u5eab',jisha:'\u81ea\u793e\u5009\u5eab'};
 const WH_KEYS=['ni','ho','go','roku','jisha'];
@@ -1136,14 +1146,11 @@ async function searchTeika(){
     '- 数値は整数で返してください'
   ].join('\n');
   try{
-    const result=await callClaude({
-      model:AI_MODEL,
-      max_tokens:800,
-      tools:[{type:'web_search_20250305',name:'web_search'}],
-      messages:[{role:'user',content:promptText}]
+    const result=await callGemini({
+      contents:[{parts:[{text:promptText}]}],
+      tools:[{google_search:{}}]
     });
-    if(result.error){throw new Error(result.error.message);}
-    const text=result.content.filter(function(c){return c.type==='text';}).map(function(c){return c.text;}).join('');
+    const text=geminiText(result);
     const cleaned=text.replace(/```json\s*|```/g,'').trim();
     const jsonMatch=cleaned.match(/\{[\s\S]*?\}/);
     if(!jsonMatch)throw new Error('レスポンスの解析に失敗しました');
@@ -1322,16 +1329,14 @@ ${existingList}
   ]
 }`;
   try{
-    const result=await callClaude({
-      model:AI_MODEL,
-      max_tokens:1000,
-      messages:[{role:'user',content:[
-        {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
-        {type:'text',text:prompt}
-      ]}]
+    const result=await callGemini({
+      contents:[{parts:[
+        {inline_data:{mime_type:mediaType,data:base64}},
+        {text:prompt}
+      ]}],
+      generationConfig:{responseMimeType:'application/json',temperature:0}
     });
-    if(result.error){throw new Error(result.error.message||'API error');}
-    const text=result.content.map(c=>c.text||'').join('');
+    const text=geminiText(result);
     const cleaned=text.replace(/```json|```/g,'').trim();
     const parsed=JSON.parse(cleaned);
     aiParsedItems=parsed.items||[];
@@ -1466,16 +1471,14 @@ ${existingList}
   ]
 }`;
   try{
-    const result=await callClaude({
-      model:AI_MODEL,
-      max_tokens:1200,
-      messages:[{role:'user',content:[
-        {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
-        {type:'text',text:prompt}
-      ]}]
+    const result=await callGemini({
+      contents:[{parts:[
+        {inline_data:{mime_type:mediaType,data:base64}},
+        {text:prompt}
+      ]}],
+      generationConfig:{responseMimeType:'application/json',temperature:0}
     });
-    if(result.error){throw new Error(result.error.message||'API error');}
-    const text=result.content.map(c=>c.text||'').join('');
+    const text=geminiText(result);
     const cleaned=text.replace(/```json|```/g,'').trim();
     const parsed=JSON.parse(cleaned);
     aiShukkaItems=parsed.items||[];
