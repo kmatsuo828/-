@@ -81,6 +81,14 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 .price-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 /* BUTTONS */
 .btn-row{display:flex;gap:8px;margin-top:4px;}
+/* Sticky action footer so 保存/キャンセル are always reachable & above dropdowns */
+.modal-actions{position:sticky;bottom:0;z-index:1002;background:var(--surface);padding-top:10px;margin-top:6px;box-shadow:0 -6px 10px -6px var(--shadow);}
+.rsv-deduct-badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;}
+.rsv-deduct-badge.on{background:#fdf0ec;color:var(--accent);}
+.rsv-deduct-badge.off{background:#e8f4ec;color:var(--green);}
+.seg-toggle{display:flex;background:var(--surface2);border-radius:8px;padding:3px;gap:3px;}
+.seg-toggle button{flex:1;padding:8px;border:none;border-radius:6px;font-family:'Noto Sans JP',sans-serif;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:var(--ink3);}
+.seg-toggle button.active{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px var(--shadow);}
 .btn{flex:1;padding:13px;border-radius:10px;border:none;font-family:'Noto Sans JP',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:transform .12s,opacity .12s;}
 .btn:active{transform:scale(.97);opacity:.85;}
 .btn-primary{background:var(--accent);color:#fff;}.btn-secondary{background:var(--surface2);color:var(--ink2);}
@@ -529,6 +537,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title" id="modalProductTitle">商品を追加</div>
+    <button class="btn btn-secondary btn-full" style="margin-bottom:14px;" type="button" onclick="openBulkImport()">📁 CSV・テキスト・画像から一括登録</button>
     <div class="form-group">
       <label class="form-label">メーカー名</label>
       <div class="maker-combo" id="makerCombo">
@@ -543,6 +552,10 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
         <input type="text" class="maker-combo-input" id="inp-category" placeholder="入力 or ▼で選択（例: ルームエアコン）" oninput="filterCategoryDropdown()" onfocus="openCategoryDropdown()" autocomplete="off">
         <button class="maker-combo-toggle" onclick="toggleCategoryDropdown()" type="button">▼</button>
         <div class="maker-dropdown" id="categoryDropdown"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+        <button class="btn btn-blue" style="flex:none;padding:7px 12px;font-size:12px;border-radius:8px;white-space:nowrap;" onclick="searchGenre()" id="btnSearchGenre" type="button">🔍 AIジャンル判定</button>
+        <span id="genreAiStatus" style="font-size:11px;color:var(--ink3);">メーカー＋型番から自動分類</span>
       </div>
     </div>
     <div class="form-group"><label class="form-label">型番・商品名</label><input type="text" class="form-input" id="inp-name" placeholder="例: CS225DFL"></div>
@@ -585,12 +598,14 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
     </div>
     <div class="form-group"><label class="form-label">備考</label><textarea class="form-textarea" id="inp-note" placeholder="メモ（任意）"></textarea></div>
     <input type="hidden" id="inp-edit-id">
-    <div class="btn-row">
-      <button class="btn btn-secondary" onclick="closeModal('modalProduct')">キャンセル</button>
-      <button class="btn btn-primary" onclick="saveProduct()">保存</button>
-    </div>
-    <div id="delete-btn-wrap" style="margin-top:8px;display:none;">
-      <button class="btn btn-danger btn-full" onclick="deleteProduct()">🗑 この商品を削除</button>
+    <div class="modal-actions">
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="closeModal('modalProduct')">キャンセル</button>
+        <button class="btn btn-primary" onclick="saveProduct()">保存</button>
+      </div>
+      <div id="delete-btn-wrap" style="margin-top:8px;display:none;">
+        <button class="btn btn-danger btn-full" onclick="deleteProduct()">🗑 この商品を削除</button>
+      </div>
     </div>
   </div>
 </div>
@@ -643,12 +658,78 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title">🔒 取り置き一覧</div>
-    <div class="modal-subtitle">在庫から確保済み。出荷確定で在庫から消し込み、解除で在庫へ戻します。</div>
+    <div class="modal-subtitle">得意先ごとの取り置きを一覧表示。出荷確定／解除ができます。</div>
+    <button class="btn btn-amber btn-full" style="margin-bottom:10px;" type="button" onclick="toggleReservePhotoPanel()">📷 写真・ファイルから取り置き登録</button>
+    <div id="reservePhotoPanel" style="display:none;margin-bottom:12px;background:var(--bg);border-radius:10px;padding:12px;">
+      <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:6px;">在庫の扱い</div>
+      <div class="seg-toggle" style="margin-bottom:10px;">
+        <button id="rsv-deduct-on" class="active" type="button" onclick="setReserveDeduct(true)">在庫を減らして取置</button>
+        <button id="rsv-deduct-off" type="button" onclick="setReserveDeduct(false)">在庫はそのまま取置</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <button class="btn btn-blue" style="flex:1;padding:12px;" type="button" onclick="document.getElementById('rsvCameraInput').click()">📷 カメラ</button>
+        <button class="btn btn-secondary" style="flex:1;padding:12px;" type="button" onclick="document.getElementById('rsvFileInput').click()">🖼 アルバム/ファイル</button>
+      </div>
+      <input type="file" id="rsvCameraInput" accept="image/*" capture="environment" onchange="handleAiReservePhoto(event)" style="display:none;">
+      <input type="file" id="rsvFileInput" accept="image/*" onchange="handleAiReservePhoto(event)" style="display:none;">
+      <img id="rsvAiPreview" class="ai-preview">
+      <div id="rsvAiStatus" class="ai-status" style="display:none;"></div>
+      <div class="ai-result" id="rsvAiResult">
+        <div class="ai-result-title">📋 読み取り結果 — 確認・編集して登録</div>
+        <div id="rsvAiItems"></div>
+        <div style="font-size:11px;color:var(--ink3);margin-bottom:10px;">※未登録の商品・在庫不足（在庫を減らす設定時）の項目は登録できません。</div>
+        <button class="btn btn-amber btn-full" onclick="registerAiReserveItems()" style="padding:13px;">🔒 チェックした商品を取り置き登録</button>
+      </div>
+    </div>
     <div class="search-row" style="margin-bottom:10px;">
       <input type="text" class="search-input" placeholder="得意先・型番で絞り込み…" id="reserveSearchInput" oninput="renderReserveList()">
     </div>
     <div id="reserveListBody"></div>
-    <button class="btn btn-secondary btn-full" style="margin-top:8px;" onclick="closeModal('modalReserveList')">閉じる</button>
+    <div class="modal-actions">
+      <button class="btn btn-secondary btn-full" onclick="closeModal('modalReserveList')">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: BULK IMPORT -->
+<div class="modal-overlay" id="modalBulkImport">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📁 商品の一括登録</div>
+    <div class="modal-subtitle">CSV/テキストの貼り付け・ファイル、または画像から複数商品をまとめて登録します（既存の型番はスキップ）。</div>
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="bulk-mode-text" onclick="setBulkMode('text')">📋 CSV / テキスト</button>
+      <button class="mode-btn" id="bulk-mode-photo" onclick="setBulkMode('photo')">📷 画像で読取り</button>
+    </div>
+    <div id="bulk-text-mode">
+      <div style="font-size:11px;color:var(--ink3);margin-bottom:6px;line-height:1.7;">
+        1行＝1商品。カンマ区切りで<b>「メーカー, ジャンル, 型番, に, ほ, 5番, 6番, 自社」</b>。在庫列は省略可。先頭の見出し行は自動でスキップ。<br>例: <code>ダイキン,ルームエアコン,S225ATES-W,3,3,0,0,0</code>
+      </div>
+      <textarea class="form-textarea" id="bulkText" style="min-height:120px;font-family:'JetBrains Mono',monospace;font-size:12px;" placeholder="ここにCSV・表データを貼り付け…"></textarea>
+      <div style="display:flex;gap:8px;margin:8px 0;">
+        <button class="btn btn-secondary" style="flex:1;" type="button" onclick="document.getElementById('bulkFileInput').click()">📄 ファイル選択</button>
+        <button class="btn btn-blue" style="flex:1;" type="button" onclick="parseBulkText()">▶ 解析する</button>
+      </div>
+      <input type="file" id="bulkFileInput" accept=".csv,.tsv,.txt,text/csv,text/plain" onchange="handleBulkFile(event)" style="display:none;">
+    </div>
+    <div id="bulk-photo-mode" style="display:none;">
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <button class="btn btn-blue" style="flex:1;padding:12px;" type="button" onclick="document.getElementById('bulkCameraInput').click()">📷 カメラ</button>
+        <button class="btn btn-secondary" style="flex:1;padding:12px;" type="button" onclick="document.getElementById('bulkPhotoInput').click()">🖼 アルバム/ファイル</button>
+      </div>
+      <input type="file" id="bulkCameraInput" accept="image/*" capture="environment" onchange="handleBulkPhoto(event)" style="display:none;">
+      <input type="file" id="bulkPhotoInput" accept="image/*" onchange="handleBulkPhoto(event)" style="display:none;">
+      <img id="bulkAiPreview" class="ai-preview">
+    </div>
+    <div id="bulkStatus" class="ai-status" style="display:none;"></div>
+    <div class="ai-result" id="bulkResult">
+      <div class="ai-result-title">📋 登録プレビュー — 確認・編集して登録</div>
+      <div id="bulkItems"></div>
+      <button class="btn btn-green btn-full" onclick="registerBulkItems()" style="padding:13px;">✅ チェックした商品を登録</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary btn-full" onclick="closeModal('modalBulkImport')">閉じる</button>
+    </div>
   </div>
 </div>
 
@@ -731,11 +812,15 @@ let nyukoMode = 'select';
 let shukkaMode = 'select';
 let aiParsedItems = [];
 let aiShukkaItems = [];
+let aiReserveItems = [];
+let bulkItems = [];
+let reserveDeductMode = true;
+let bulkMode = 'text';
 // Capability flags — true only if the optional DB column/table exists.
 // Lets the app run fully even before the (optional) SQL migration is applied.
 let HAS_CATEGORY = false;
 let HAS_CUSTOMERS = false;
-const PRESET_CATEGORIES=['ルームエアコン','業務用エアコン','配管・部材','コンセント・スイッチ','ケーブル・電線','分電盤・ブレーカー','照明器具','換気・送風機','給湯・温水','その他'];
+const PRESET_CATEGORIES=['ルームエアコン','業務用エアコン','配管・部材','コンセント','スイッチ','ケーブル・電線','分電盤・ブレーカー','照明器具','換気・送風機','給湯・温水','その他'];
 
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 function fmt(n){ return n>0?'\u00a5'+Number(n).toLocaleString():'\u2015'; }
@@ -895,7 +980,8 @@ function renderMakerFilter(){
 function renderCategoryFilter(){
   const sel=document.getElementById('filterCategory');if(!sel)return;
   const cur=sel.value;
-  const cats=[...new Set(data.products.map(p=>(p.category||'').trim()).filter(Boolean))].sort();
+  const fromData=data.products.map(p=>(p.category||'').trim()).filter(Boolean);
+  const cats=[...new Set([...PRESET_CATEGORIES,...fromData])].sort();
   const hasUncat=data.products.some(p=>!(p.category||'').trim());
   let html='<option value="all">全ジャンル</option>';
   html+=cats.map(c=>`<option value="${c}"${c===cur?' selected':''}>${c}</option>`).join('');
@@ -940,12 +1026,8 @@ function renderReserveBanner(){
   const banner=document.getElementById('reserveBanner');if(!banner)return;
   let total=0, lines=0;
   data.products.forEach(p=>(p.reserves||[]).forEach(r=>{total+=(r.qty||0);lines++;}));
-  if(total>0){
-    document.getElementById('reserveBannerCount').textContent=lines+'件 / 計'+total+'台';
-    banner.style.display='flex';
-  }else{
-    banner.style.display='none';
-  }
+  banner.style.display='flex';
+  document.getElementById('reserveBannerCount').textContent = total>0 ? (lines+'件 / 計'+total+'台') : 'なし（写真登録もこちら）';
 }
 
 
@@ -1227,7 +1309,7 @@ function openOpForm(type){
   }else if(type==='torioki'){
     const reserves=p.reserves||[];
     const rList=reserves.length>0?`<div class="reserve-info"><div class="reserve-info-title">🔒 現在の取り置き</div>
-      ${reserves.map((r,i)=>`<div class="reserve-info-item">・<strong>${r.customer||r.name||'未記入'}</strong>（${WH_LABELS[r.wh]}）${r.qty}台
+      ${reserves.map((r,i)=>`<div class="reserve-info-item">・<strong>${r.customer||r.name||'未記入'}</strong>（${WH_LABELS[r.wh]}）${r.qty}台 <span class="rsv-deduct-badge ${r.deducted===false?'off':'on'}">${r.deducted===false?'在庫未引':'在庫引済'}</span>
         <button onclick="shipReserveById('${p.id}',${i})" style="margin-left:6px;background:var(--blue);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:11px;cursor:pointer;">出荷確定</button>
         <button onclick="cancelReserveById('${p.id}',${i})" style="margin-left:4px;background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:11px;cursor:pointer;">解除</button></div>`).join('')}
       </div>`:'';
@@ -1238,10 +1320,23 @@ function openOpForm(type){
           <div class="maker-dropdown" id="opCustDD"></div>
         </div>
       </div>
+      <div class="form-group"><label class="form-label">在庫の扱い</label>
+        <div class="seg-toggle">
+          <button id="op-deduct-on" class="active" type="button" onclick="setOpDeduct(true)">在庫を減らして取置</button>
+          <button id="op-deduct-off" type="button" onclick="setOpDeduct(false)">在庫はそのまま取置</button>
+        </div>
+        <input type="hidden" id="op-deduct" value="1">
+      </div>
       <div class="form-group"><label class="form-label">倉庫</label><select class="form-select" id="op-wh">${whOpts}</select></div>
       <div class="form-group"><label class="form-label">数量</label><input type="number" class="form-input" id="op-qty" value="1" min="1"></div>
       <button class="btn btn-amber btn-full" onclick="execOp('torioki')">🔒 取り置き登録</button>${rList}`;
   }
+}
+
+function setOpDeduct(on){
+  document.getElementById('op-deduct').value = on ? '1' : '0';
+  document.getElementById('op-deduct-on').classList.toggle('active', on);
+  document.getElementById('op-deduct-off').classList.toggle('active', !on);
 }
 
 function setNyukoMode(mode){
@@ -1704,13 +1799,14 @@ async function execOp(type){
     }else if(type==='torioki'){
       var wh = document.getElementById('op-wh').value;
       var customer = ((document.getElementById('op-customer')||{}).value||'').trim()||'\u672a\u8a18\u5165';
-      if((p[wh]||0)<qty){alert('\u5728\u5eab\u304c\u4e0d\u8db3\u3057\u3066\u3044\u307e\u3059');return;}
+      var deduct = ((document.getElementById('op-deduct')||{value:'1'}).value)==='1';
+      if(deduct && (p[wh]||0)<qty){alert('\u5728\u5eab\u304c\u4e0d\u8db3\u3057\u3066\u3044\u307e\u3059');return;}
       if(!p.reserves) p.reserves=[];
-      p.reserves.push({id:uid(),customer:customer,wh:wh,qty:qty,date:new Date().toISOString()});
-      p[wh]=(p[wh]||0)-qty;
+      p.reserves.push({id:uid(),customer:customer,wh:wh,qty:qty,deducted:deduct,date:new Date().toISOString()});
+      if(deduct) p[wh]=(p[wh]||0)-qty;
       await upsertProduct(p);
       await addCustomerIfNew(customer);
-      await addHistoryDB('torioki',p.name,customer+'\u5206\u3092'+WH_LABELS[wh]+'\u3067'+qty+'\u53f0\u53d6\u308a\u7f6e\u304d');
+      await addHistoryDB('torioki',p.name,customer+'\u5206\u3092'+WH_LABELS[wh]+'\u3067'+qty+'\u53f0\u53d6\u308a\u7f6e\u304d'+(deduct?'\uff08\u5728\u5eab\u5f15\u304d\uff09':'\uff08\u5728\u5eab\u305d\u306e\u307e\u307e\uff09'));
     }
     closeModal('modalOperation');
     renderSummary();renderList();
@@ -1722,13 +1818,17 @@ async function cancelReserveById(productId, idx){
   var p = data.products.find(function(x){return x.id===productId;});
   if(!p||!p.reserves||!p.reserves[idx]) return;
   var r = p.reserves[idx];
-  if(!confirm('\u53d6\u308a\u7f6e\u304d\u3092\u89e3\u9664\u3057\u3001\u5728\u5eab\u3078\u623b\u3057\u307e\u3059\u304b\uff1f\n'+(r.customer||r.name||'')+' / '+WH_LABELS[r.wh]+' '+r.qty+'\u53f0')) return;
+  var wasDeducted = (r.deducted!==false);
+  var msg = wasDeducted
+    ? ('\u53d6\u308a\u7f6e\u304d\u3092\u89e3\u9664\u3057\u3001\u5728\u5eab\u3078\u623b\u3057\u307e\u3059\u304b\uff1f\n'+(r.customer||r.name||'')+' / '+WH_LABELS[r.wh]+' '+r.qty+'\u53f0')
+    : ('\u53d6\u308a\u7f6e\u304d\u3092\u89e3\u9664\u3057\u307e\u3059\u304b\uff1f\uff08\u5728\u5eab\u306f\u5143\u3005\u6e1b\u3089\u3057\u3066\u3044\u306a\u3044\u305f\u3081\u5909\u5316\u306a\u3057\uff09\n'+(r.customer||r.name||'')+' / '+WH_LABELS[r.wh]+' '+r.qty+'\u53f0');
+  if(!confirm(msg)) return;
   showLoading(true);
   try{
-    p[r.wh]=(p[r.wh]||0)+r.qty;
+    if(wasDeducted) p[r.wh]=(p[r.wh]||0)+r.qty;
     p.reserves.splice(idx,1);
     await upsertProduct(p);
-    await addHistoryDB('torioki',p.name,(r.customer||r.name||'')+'\u306e\u53d6\u308a\u7f6e\u304d\u89e3\u9664\uff08'+WH_LABELS[r.wh]+' '+r.qty+'\u53f0\u623b\u3057\uff09');
+    await addHistoryDB('torioki',p.name,(r.customer||r.name||'')+'\u306e\u53d6\u308a\u7f6e\u304d\u89e3\u9664\uff08'+WH_LABELS[r.wh]+' '+r.qty+'\u53f0'+(wasDeducted?'\u623b\u3057':'\u30fb\u5728\u5eab\u5909\u66f4\u306a\u3057')+'\uff09');
     closeModal('modalOperation');
     renderSummary();renderList();
     if(document.getElementById('modalReserveList').classList.contains('open')) renderReserveList();
@@ -1740,9 +1840,18 @@ async function shipReserveById(productId, idx){
   var p = data.products.find(function(x){return x.id===productId;});
   if(!p||!p.reserves||!p.reserves[idx]) return;
   var r = p.reserves[idx];
-  if(!confirm('\u3053\u306e\u53d6\u308a\u7f6e\u304d\u3092\u51fa\u8377\u78ba\u5b9a\u3057\u307e\u3059\u304b\uff1f\n'+(r.customer||r.name||'')+' / '+WH_LABELS[r.wh]+' '+r.qty+'\u53f0\n\u203b\u5728\u5eab\u306f\u53d6\u308a\u7f6e\u304d\u6642\u306b\u5f15\u304d\u6e08\u307f\u306e\u305f\u3081\u3001\u3053\u3053\u3067\u306f\u6e1b\u308a\u307e\u305b\u3093')) return;
+  var wasDeducted = (r.deducted!==false);
+  if(!wasDeducted && (p[r.wh]||0)<r.qty){
+    alert(WH_LABELS[r.wh]+'\u306e\u5728\u5eab\u304c\u4e0d\u8db3\u3057\u3066\u3044\u307e\u3059\uff08\u73fe\u5728 '+(p[r.wh]||0)+'\u53f0\uff09\u3002\u51fa\u8377\u78ba\u5b9a\u3067\u304d\u307e\u305b\u3093\u3002');
+    return;
+  }
+  var note = wasDeducted
+    ? '\u203b\u5728\u5eab\u306f\u53d6\u308a\u7f6e\u304d\u6642\u306b\u5f15\u304d\u6e08\u307f\u306e\u305f\u3081\u3001\u3053\u3053\u3067\u306f\u6e1b\u308a\u307e\u305b\u3093'
+    : '\u203b\u3053\u306e\u53d6\u7f6e\u306f\u5728\u5eab\u672a\u5f15\u306e\u305f\u3081\u3001\u51fa\u8377\u78ba\u5b9a\u3067\u4eca'+r.qty+'\u53f0\u3092\u5728\u5eab\u304b\u3089\u6e1b\u3089\u3057\u307e\u3059';
+  if(!confirm('\u3053\u306e\u53d6\u308a\u7f6e\u304d\u3092\u51fa\u8377\u78ba\u5b9a\u3057\u307e\u3059\u304b\uff1f\n'+(r.customer||r.name||'')+' / '+WH_LABELS[r.wh]+' '+r.qty+'\u53f0\n'+note)) return;
   showLoading(true);
   try{
+    if(!wasDeducted) p[r.wh]=(p[r.wh]||0)-r.qty;
     p.reserves.splice(idx,1);
     await upsertProduct(p);
     await addHistoryDB('shuko',p.name,'['+(p.maker||'')+'] '+WH_LABELS[r.wh]+'\u304b\u3089'+r.qty+'\u53f0\u51fa\u8377\uff08\u53d6\u308a\u7f6e\u304d\u78ba\u5b9a\uff09 \u2192 '+(r.customer||r.name||''));
@@ -1781,18 +1890,266 @@ function renderReserveList(){
   });
   el.innerHTML=rows.map(function(x){
     var r=x.r, p=x.p;
+    var ded=(r.deducted!==false);
     return '<div class="rsv-card">'
       +'<div class="rsv-card-top"><div>'
       +'<div class="rsv-card-name">'+p.name+'</div>'
       +'<div class="rsv-card-maker">'+(p.category?p.category+' ・ ':'')+(p.maker||'\u30e1\u30fc\u30ab\u30fc\u672a\u8a2d\u5b9a')+'</div>'
       +'</div><div class="rsv-card-qty">'+r.qty+'<span style="font-size:11px;color:var(--ink3);font-family:\'Noto Sans JP\',sans-serif;"> 台</span></div></div>'
       +'<div class="rsv-card-meta"><span class="wh-badge '+r.wh+'"><span class="wh-dot"></span>'+WH_LABELS[r.wh]+'</span>'
+      +'<span class="rsv-deduct-badge '+(ded?'on':'off')+'">'+(ded?'在庫引済':'在庫未引')+'</span>'
       +'<span>得意先: <span class="rsv-customer">'+(r.customer||r.name||'\u672a\u8a18\u5165')+'</span></span></div>'
       +'<div class="rsv-actions">'
       +'<button class="btn btn-blue" style="flex:1;" onclick="shipReserveById(\''+p.id+'\','+x.idx+')">📤 出荷確定</button>'
-      +'<button class="btn btn-danger" style="flex:1;" onclick="cancelReserveById(\''+p.id+'\','+x.idx+')">↩ 解除（在庫へ戻す）</button>'
+      +'<button class="btn btn-danger" style="flex:1;" onclick="cancelReserveById(\''+p.id+'\','+x.idx+')">↩ 解除</button>'
       +'</div></div>';
   }).join('');
+}
+
+// ═══ AI ジャンル判定 ═════════════════════════════════════════════
+async function searchGenre(){
+  const maker=document.getElementById('inp-maker').value.trim();
+  const name=document.getElementById('inp-name').value.trim();
+  if(!name){alert('先に型番・商品名を入力してください');return;}
+  const statusEl=document.getElementById('genreAiStatus');
+  const btn=document.getElementById('btnSearchGenre');
+  btn.disabled=true; statusEl.textContent='AI判定中…';
+  const prompt=[
+    'あなたは電材総合商社の商品分類担当です。',
+    '次の商品が下記カテゴリのどれに最も該当するか1つ選んでください。',
+    '候補: '+PRESET_CATEGORIES.join(' / '),
+    'メーカー: '+(maker||'不明'),
+    '型番・商品名: '+name,
+    '候補に無ければ最も適切な短いジャンル名を新規に付けて構いません。',
+    '必ず次のJSONのみで返答: {"category":"ジャンル名"}'
+  ].join('\n');
+  try{
+    const result=await callGemini({contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0}});
+    const parsed=JSON.parse(geminiText(result).replace(/```json|```/g,'').trim());
+    if(parsed.category){
+      document.getElementById('inp-category').value=parsed.category;
+      statusEl.textContent='✅ 判定: '+parsed.category;
+    }else{ statusEl.textContent='⚠️ 判定できませんでした'; }
+  }catch(e){ statusEl.textContent='❌ '+e.message; }
+  finally{ btn.disabled=false; }
+}
+
+// ═══ 取り置き：写真/ファイルから登録 ════════════════════════════
+function toggleReservePhotoPanel(){
+  const el=document.getElementById('reservePhotoPanel');
+  el.style.display = (el.style.display==='none'||!el.style.display) ? 'block' : 'none';
+}
+function setReserveDeduct(on){
+  reserveDeductMode=on;
+  document.getElementById('rsv-deduct-on').classList.toggle('active',on);
+  document.getElementById('rsv-deduct-off').classList.toggle('active',!on);
+}
+async function handleAiReservePhoto(event){
+  const file=event.target.files[0]; if(!file) return;
+  const img=document.getElementById('rsvAiPreview');
+  img.src=URL.createObjectURL(file); img.style.display='block';
+  document.getElementById('rsvAiResult').style.display='none';
+  const statusEl=document.getElementById('rsvAiStatus');
+  statusEl.style.display='block'; statusEl.className='ai-status loading';
+  statusEl.innerHTML='<span class="spinner"></span>AIが画像を読み取り中…';
+  const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+  const mediaType=file.type||'image/jpeg';
+  const existingList=data.products.map(p=>`${p.maker||''}　${p.name}`).join('\n');
+  const prompt=`あなたは倉庫在庫管理の専門家です。
+この画像は取り置き（確保）依頼のメモ・受注票です。
+商品名（型番）、メーカー、倉庫（に/ほ/5番/6番/自社）、数量、得意先を読み取ってください。
+既存商品リスト（できるだけこの型番に一致）:
+${existingList}
+倉庫: 「に」→ni 「ほ」→ho 「5番」→go 「6番」→roku 「自社」→jisha 記載なし→空文字
+必ず次のJSONのみ: {"items":[{"maker":"","name":"","warehouse":"ni/ho/go/roku/jisha/空","qty":数値,"customer":"得意先","note":""}]}`;
+  try{
+    const result=await callGemini({contents:[{parts:[{inline_data:{mime_type:mediaType,data:base64}},{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0}});
+    const parsed=JSON.parse(geminiText(result).replace(/```json|```/g,'').trim());
+    aiReserveItems=parsed.items||[];
+    if(!aiReserveItems.length){statusEl.className='ai-status error';statusEl.innerHTML='⚠️ 読み取れませんでした。別の写真をお試しください。';return;}
+    renderAiReserveItems();
+    statusEl.style.display='none';
+    document.getElementById('rsvAiResult').style.display='block';
+  }catch(e){statusEl.className='ai-status error';statusEl.innerHTML='❌ 読み取りに失敗しました: '+e.message;}
+}
+function renderAiReserveItems(){
+  const el=document.getElementById('rsvAiItems');
+  el.innerHTML=aiReserveItems.map(function(item,i){
+    const matched=findProductByName(item.name);
+    if(!matched){
+      return `<div class="ai-item" id="rsv-item-${i}" style="border-color:var(--accent);">
+        <div class="ai-item-name" style="color:var(--accent);">${item.name||'(型番不明)'}</div>
+        <div class="ai-item-maker">${item.maker||''}</div>
+        <div style="font-size:12px;color:var(--accent);margin-top:4px;">⚠️ 未登録の商品です。先に商品登録が必要です。</div>
+      </div>`;
+    }
+    let wOpts=''; WH_KEYS.forEach(w=>{const st=matched[w]||0;const sel=(item.warehouse===w)?' selected':'';wOpts+=`<option value="${w}"${sel}>${WH_LABELS[w]}（在庫${st}台）</option>`;});
+    return `<div class="ai-item" id="rsv-item-${i}">
+      <div class="ai-item-header"><div>
+        <div class="ai-item-name">${matched.name}</div>
+        <div class="ai-item-maker">${(matched.category?matched.category+' ・ ':'')}${matched.maker||''}</div>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="rsv-check-${i}" checked style="width:18px;height:18px;"><span style="font-size:12px;color:var(--ink2);">登録</span></label>
+      </div>
+      <input type="hidden" id="rsv-pid-${i}" value="${matched.id}">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+        <select class="form-select" id="rsv-wh-${i}" style="flex:1;padding:7px 8px;font-size:13px;">${wOpts}</select>
+        <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="form-input" id="rsv-qty-${i}" value="${item.qty||1}" min="1" style="width:70px;padding:7px 8px;font-size:14px;text-align:center;"><span style="font-size:13px;color:var(--ink3);">台</span></div>
+      </div>
+      <input type="text" class="form-input" id="rsv-cust-${i}" value="${(item.customer||'').replace(/"/g,'&quot;')}" placeholder="得意先（任意）" style="padding:8px 10px;font-size:13px;">
+    </div>`;
+  }).join('');
+}
+async function registerAiReserveItems(){
+  var done=0,skipped=0,errors=[];
+  showLoading(true);
+  try{
+    for(var i=0;i<aiReserveItems.length;i++){
+      var chk=document.getElementById('rsv-check-'+i);
+      if(!chk||!chk.checked){skipped++;continue;}
+      var pidEl=document.getElementById('rsv-pid-'+i); if(!pidEl){skipped++;continue;}
+      var p=data.products.find(function(x){return x.id===pidEl.value;});
+      var wh=(document.getElementById('rsv-wh-'+i)||{value:''}).value;
+      var qty=parseInt((document.getElementById('rsv-qty-'+i)||{value:0}).value)||0;
+      var cust=((document.getElementById('rsv-cust-'+i)||{value:''}).value||'').trim()||'未記入';
+      if(!p||!wh||qty<=0){skipped++;continue;}
+      if(reserveDeductMode && (p[wh]||0)<qty){errors.push(p.name+'（'+WH_LABELS[wh]+'在庫'+(p[wh]||0)+'台<'+qty+'台）');skipped++;continue;}
+      if(!p.reserves)p.reserves=[];
+      p.reserves.push({id:uid(),customer:cust,wh:wh,qty:qty,deducted:reserveDeductMode,date:new Date().toISOString()});
+      if(reserveDeductMode) p[wh]=(p[wh]||0)-qty;
+      await upsertProduct(p);
+      await addCustomerIfNew(cust);
+      await addHistoryDB('torioki',p.name,'[AI取置] '+cust+'分を'+WH_LABELS[wh]+'で'+qty+'台'+(reserveDeductMode?'（在庫引き）':'（在庫そのまま）'));
+      done++;
+    }
+    renderSummary();renderList();renderReserveList();
+    document.getElementById('rsvAiResult').style.display='none';
+    document.getElementById('rsvAiPreview').style.display='none';
+    var f1=document.getElementById('rsvFileInput'); if(f1)f1.value='';
+    var f2=document.getElementById('rsvCameraInput'); if(f2)f2.value='';
+    aiReserveItems=[];
+    var msg='✅ 取り置き登録完了\n'+done+'件'+(skipped>0?'（'+skipped+'件スキップ）':'');
+    if(errors.length) msg+='\n\n⚠️ 在庫不足でスキップ:\n'+errors.join('\n');
+    alert(msg);
+  }catch(e){alert('取り置き登録エラー: '+e.message);}
+  finally{showLoading(false);}
+}
+
+// ═══ 商品の一括登録（CSV/テキスト/画像） ════════════════════════
+function openBulkImport(){
+  setBulkMode('text');
+  document.getElementById('bulkText').value='';
+  document.getElementById('bulkResult').style.display='none';
+  document.getElementById('bulkStatus').style.display='none';
+  document.getElementById('bulkAiPreview').style.display='none';
+  bulkItems=[];
+  openModal('modalBulkImport');
+}
+function setBulkMode(m){
+  bulkMode=m;
+  document.getElementById('bulk-text-mode').style.display=m==='text'?'block':'none';
+  document.getElementById('bulk-photo-mode').style.display=m==='photo'?'block':'none';
+  document.getElementById('bulk-mode-text').classList.toggle('active',m==='text');
+  document.getElementById('bulk-mode-photo').classList.toggle('active',m==='photo');
+}
+function handleBulkFile(event){
+  const file=event.target.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=function(){ document.getElementById('bulkText').value=r.result; parseBulkText(); };
+  r.readAsText(file,'UTF-8');
+}
+function bulkSplitLine(line){ return (line.indexOf('\t')>=0) ? line.split('\t') : line.split(','); }
+function parseBulkText(){
+  const raw=document.getElementById('bulkText').value||'';
+  const lines=raw.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  if(!lines.length){alert('データを貼り付けてください');return;}
+  var items=[];
+  lines.forEach(function(line,idx){
+    var c=bulkSplitLine(line).map(s=>s.trim());
+    var joined=c.join('');
+    if(idx===0 && /メーカー|maker|型番|商品名|ジャンル/i.test(joined)) return; // ヘッダー行をスキップ
+    if(c.length===1){ if(c[0]) items.push({maker:'',category:'',name:c[0],ni:0,ho:0,go:0,roku:0,jisha:0}); return; }
+    if(c.length<3) return;
+    var rec={maker:c[0]||'',category:c[1]||'',name:c[2]||'',
+      ni:parseInt(c[3])||0,ho:parseInt(c[4])||0,go:parseInt(c[5])||0,roku:parseInt(c[6])||0,jisha:parseInt(c[7])||0};
+    if(rec.name) items.push(rec);
+  });
+  if(!items.length){alert('商品行を認識できませんでした。形式をご確認ください。');return;}
+  bulkItems=items; renderBulkItems();
+  document.getElementById('bulkResult').style.display='block';
+}
+async function handleBulkPhoto(event){
+  const file=event.target.files[0]; if(!file) return;
+  const img=document.getElementById('bulkAiPreview'); img.src=URL.createObjectURL(file); img.style.display='block';
+  document.getElementById('bulkResult').style.display='none';
+  const statusEl=document.getElementById('bulkStatus'); statusEl.style.display='block'; statusEl.className='ai-status loading';
+  statusEl.innerHTML='<span class="spinner"></span>AIが画像を読み取り中…';
+  const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+  const mediaType=file.type||'image/jpeg';
+  const prompt=`あなたは電材総合商社の商品マスタ登録担当です。
+この画像は商品一覧表・在庫表です。各商品について、メーカー、ジャンル（商品分類）、型番・商品名、各倉庫の在庫数を読み取ってください。
+倉庫列がある場合: 「に」→ni 「ほ」→ho 「5番」→go 「6番」→roku 「自社」→jisha
+ジャンルが不明なら空文字。数量が不明なら0。
+必ず次のJSONのみ: {"items":[{"maker":"","category":"","name":"","ni":0,"ho":0,"go":0,"roku":0,"jisha":0}]}`;
+  try{
+    const result=await callGemini({contents:[{parts:[{inline_data:{mime_type:mediaType,data:base64}},{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0}});
+    const parsed=JSON.parse(geminiText(result).replace(/```json|```/g,'').trim());
+    bulkItems=(parsed.items||[]).map(function(it){return {maker:it.maker||'',category:it.category||'',name:it.name||'',ni:parseInt(it.ni)||0,ho:parseInt(it.ho)||0,go:parseInt(it.go)||0,roku:parseInt(it.roku)||0,jisha:parseInt(it.jisha)||0};}).filter(function(it){return it.name;});
+    if(!bulkItems.length){statusEl.className='ai-status error';statusEl.innerHTML='⚠️ 商品を読み取れませんでした。';return;}
+    renderBulkItems();
+    statusEl.style.display='none';
+    document.getElementById('bulkResult').style.display='block';
+  }catch(e){statusEl.className='ai-status error';statusEl.innerHTML='❌ 読み取りに失敗しました: '+e.message;}
+}
+function renderBulkItems(){
+  const el=document.getElementById('bulkItems');
+  el.innerHTML=bulkItems.map(function(it,i){
+    var exists=data.products.find(function(p){return p.name.toLowerCase().trim()===(it.name||'').toLowerCase().trim();});
+    var whInputs=WH_KEYS.map(function(w){return `<div style="text-align:center;"><div style="font-size:9px;color:var(--ink3);">${WH_LABELS[w].replace('倉庫','')}</div><input type="number" id="bulk-${w}-${i}" value="${it[w]||0}" min="0" class="form-input" style="width:46px;padding:5px 2px;font-size:12px;text-align:center;"></div>`;}).join('');
+    return `<div class="ai-item" id="bulk-item-${i}"${exists?' style="border-color:var(--accent2);"':''}>
+      <div class="ai-item-header">
+        <div style="flex:1;">
+          <input type="text" id="bulk-maker-${i}" value="${(it.maker||'').replace(/"/g,'&quot;')}" placeholder="メーカー" class="form-input" style="font-size:11px;padding:4px 6px;margin-bottom:3px;">
+          <input type="text" id="bulk-name-${i}" value="${(it.name||'').replace(/"/g,'&quot;')}" placeholder="型番" class="form-input" style="font-size:13px;font-weight:700;padding:4px 6px;">
+        </div>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;margin-left:8px;"><input type="checkbox" id="bulk-check-${i}" ${exists?'':'checked'} style="width:18px;height:18px;"><span style="font-size:11px;color:var(--ink2);">登録</span></label>
+      </div>
+      <input type="text" id="bulk-cat-${i}" value="${(it.category||'').replace(/"/g,'&quot;')}" placeholder="ジャンル" class="form-input" style="font-size:11px;padding:4px 6px;margin-bottom:6px;">
+      <div style="display:flex;gap:4px;justify-content:space-between;">${whInputs}</div>
+      ${exists?'<div style="font-size:11px;color:var(--accent2);margin-top:5px;">⚠️ 同じ型番が登録済み（チェックを入れると在庫を上書き更新）</div>':''}
+    </div>`;
+  }).join('');
+}
+async function registerBulkItems(){
+  var added=0,updated=0,skipped=0;
+  showLoading(true);
+  try{
+    for(var i=0;i<bulkItems.length;i++){
+      var chk=document.getElementById('bulk-check-'+i);
+      if(!chk||!chk.checked){skipped++;continue;}
+      var name=((document.getElementById('bulk-name-'+i)||{value:''}).value||'').trim();
+      if(!name){skipped++;continue;}
+      var maker=((document.getElementById('bulk-maker-'+i)||{value:''}).value||'').trim();
+      var category=((document.getElementById('bulk-cat-'+i)||{value:''}).value||'').trim();
+      var qo={}; WH_KEYS.forEach(function(w){qo[w]=parseInt((document.getElementById('bulk-'+w+'-'+i)||{value:0}).value)||0;});
+      var existing=data.products.find(function(p){return p.name.toLowerCase().trim()===name.toLowerCase().trim();});
+      if(existing){
+        Object.assign(existing,{maker:maker||existing.maker,category:category||existing.category},qo);
+        await upsertProduct(existing); updated++;
+      }else{
+        var newP=Object.assign({id:uid(),maker:maker,category:category,name:name},qo,{teika:0,cost:0,sell:0,note:'',reserves:[]});
+        data.products.push(newP);
+        await upsertProduct(newP); added++;
+      }
+    }
+    renderMakerFilter();renderSummary();renderList();
+    document.getElementById('bulkResult').style.display='none';
+    document.getElementById('bulkText').value='';
+    bulkItems=[];
+    closeModal('modalBulkImport');
+    alert('✅ 一括登録完了\n新規 '+added+'件 / 更新 '+updated+'件'+(skipped>0?' / スキップ '+skipped+'件':''));
+  }catch(e){alert('一括登録エラー: '+e.message);}
+  finally{showLoading(false);}
 }
 
 // ─── Override: execNyuko ─────────────────────────────────────────
