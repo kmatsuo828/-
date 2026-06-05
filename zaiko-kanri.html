@@ -510,7 +510,103 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 <!-- FAB -->
 <button class="fab" id="mainFab" onclick="openAddModal()">＋</button>
 
-<!-- BOTTOM NAV (6 tabs) -->
+<!-- ══ TORIOKI (取り置き) ══ -->
+<div id="screen-torioki" class="screen pb-safe">
+  <div class="section-hd" style="margin-bottom:14px"><h2>取り置き登録</h2></div>
+
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="torioki-mode-select" onclick="setToriokiMode('select')">📋 手動入力</button>
+    <button class="mode-btn" id="torioki-mode-photo" onclick="setToriokiMode('photo')">📷 写真</button>
+    <button class="mode-btn" id="torioki-mode-list" onclick="setToriokiMode('list')">🔒 一覧</button>
+  </div>
+
+  <!-- SELECT MODE -->
+  <div id="torioki-select-mode">
+    <div class="form-group">
+      <label class="form-label">① メーカーを選択</label>
+      <select class="form-select" id="tr-maker" onchange="updateToriokiProducts()">
+        <option value="">── メーカーを選択 ──</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">② 品番を選択</label>
+      <select class="form-select" id="tr-product" onchange="updateToriokiStockInfo()">
+        <option value="">── 品番を選択 ──</option>
+      </select>
+    </div>
+    <div id="tr-stock-info" style="display:none;" class="stock-info-box">
+      <div class="stock-info-label">現在の在庫</div>
+      <div id="tr-stock-badges" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">③ 在庫の扱い</label>
+      <div class="seg-toggle">
+        <button id="tr-deduct-on" class="active" type="button" onclick="setToriokiSelectDeduct(true)">在庫を減らして取置</button>
+        <button id="tr-deduct-off" type="button" onclick="setToriokiSelectDeduct(false)">在庫はそのまま取置</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">④ 倉庫</label>
+      <select class="form-select" id="tr-wh">
+        <option value="ni">に倉庫</option><option value="ho">ほ倉庫</option>
+        <option value="go">5番倉庫</option><option value="roku">6番倉庫</option><option value="jisha">自社倉庫</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">⑤ 数量</label>
+      <input type="number" class="form-input" id="tr-qty" value="1" min="1">
+    </div>
+    <div class="form-group">
+      <label class="form-label">⑥ 得意先（任意）</label>
+      <div class="maker-combo">
+        <input type="text" class="maker-combo-input" id="tr-dest" placeholder="得意先を入力 or ▼で選択" autocomplete="off"
+          oninput="filterCustomerDropdown('tr-dest','trDestDD')" onfocus="openCustomerDropdown('tr-dest','trDestDD')">
+        <button class="maker-combo-toggle" type="button" onclick="toggleCustomerDropdown('tr-dest','trDestDD')">▼</button>
+        <div class="maker-dropdown" id="trDestDD"></div>
+      </div>
+    </div>
+    <button class="btn btn-amber btn-full" onclick="execTorioki()" style="padding:15px;font-size:16px;">🔒 取り置き登録</button>
+  </div>
+
+  <!-- PHOTO MODE -->
+  <div id="torioki-photo-mode" style="display:none;">
+    <div style="background:#fff8e8;border-radius:10px;padding:12px;margin-bottom:14px;font-size:12px;color:var(--accent2);line-height:1.6;">
+      📷 取り置き依頼メモや受注票を撮影・アップロードすると、AIが商品・数量・倉庫・得意先を読み取ります。
+    </div>
+    <div class="form-group" style="margin-bottom:10px;">
+      <label class="form-label">在庫の扱い</label>
+      <div class="seg-toggle">
+        <button id="tr-ph-deduct-on" class="active" type="button" onclick="setToriokiPhotoDeduct(true)">在庫を減らして取置</button>
+        <button id="tr-ph-deduct-off" type="button" onclick="setToriokiPhotoDeduct(false)">在庫はそのまま取置</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button class="btn btn-blue" style="flex:1;padding:15px;" type="button" onclick="document.getElementById('trCameraInput').click()">📷 カメラで撮影</button>
+      <button class="btn btn-secondary" style="flex:1;padding:15px;" type="button" onclick="document.getElementById('trFileInput').click()">🖼 アルバム / ファイル</button>
+    </div>
+    <input type="file" id="trCameraInput" accept="image/*" capture="environment" onchange="handleAiToriokiPhoto(event)" style="display:none;">
+    <input type="file" id="trFileInput" accept="image/*" onchange="handleAiToriokiPhoto(event)" style="display:none;">
+    <div style="font-size:11px;color:var(--ink3);text-align:center;margin-bottom:14px;">端末内のアルバム・ファイルからも選べます</div>
+    <img id="trAiPreview" class="ai-preview">
+    <div id="trAiStatus" class="ai-status" style="display:none;"></div>
+    <div class="ai-result" id="trAiResult">
+      <div class="ai-result-title">📋 読み取り結果 — 確認・編集して登録</div>
+      <div id="trAiItems"></div>
+      <div style="font-size:11px;color:var(--ink3);margin-bottom:10px;">※未登録商品は新規登録して取り置きできます。在庫不足の場合はスキップされます（在庫引き設定時）。</div>
+      <button class="btn btn-amber btn-full" onclick="registerToriokiAiItems()" style="padding:14px;">🔒 チェックした商品を取り置き登録</button>
+    </div>
+  </div>
+
+  <!-- LIST MODE -->
+  <div id="torioki-list-mode" style="display:none;">
+    <div class="search-row" style="margin-bottom:10px;">
+      <input type="text" class="search-input" placeholder="得意先・型番で絞り込み…" id="trListSearch" oninput="renderToriokiList()">
+    </div>
+    <div id="trListBody"></div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV (7 tabs) -->
 <div class="bottom-nav">
   <button class="nav-btn active" id="nav-home" onclick="switchScreen('home')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>ホーム
@@ -520,6 +616,9 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
   </button>
   <button class="nav-btn" id="nav-shukka" onclick="switchScreen('shukka')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/><path d="M5 20h14"/></svg>出荷
+  </button>
+  <button class="nav-btn" id="nav-torioki" onclick="switchScreen('torioki')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>取置
   </button>
   <button class="nav-btn" id="nav-history" onclick="switchScreen('history')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>履歴
@@ -805,6 +904,7 @@ let data = {products:[]};
 let historyCache = [];
 let customersCache = [];
 let currentProductId = null;
+let currentOpFormType = null;
 let pdfWhFilter = 'all', pdfType = 'all';
 let priceUnlocked = false;
 let currentScreen = 'home';
@@ -813,6 +913,7 @@ let shukkaMode = 'select';
 let aiParsedItems = [];
 let aiShukkaItems = [];
 let aiReserveItems = [];
+let aiToriokiItems = [];
 let bulkItems = [];
 let reserveDeductMode = true;
 let bulkMode = 'text';
@@ -945,7 +1046,7 @@ function startRealtime(){
       data.products = (rows||[]).map(function(r){return Object.assign({category:''},r,{reserves:r.reserves||[],category:r.category||''});});
       renderSummary(); renderList(); renderMakerFilter();
       if(priceUnlocked) renderPriceList();
-      if(document.getElementById('modalReserveList').classList.contains('open')) renderReserveList();
+      if(document.getElementById('modalReserveList').classList.contains('open')) renderReserveList(); if(currentScreen==='torioki') renderToriokiList();
     }catch(e){}
   }, 10000);
 }
@@ -1074,6 +1175,7 @@ function switchScreen(name){
   if(name==='history')renderHistory();
   if(name==='nyuko')initNyuko();
   if(name==='shukka')initShukka();
+  if(name==='torioki')initTorioki();
   if(name==='price'){renderMakerFilter();if(priceUnlocked)renderPriceList();}
 }
 
@@ -1288,6 +1390,7 @@ function openOperation(id){
 }
 
 function openOpForm(type){
+  currentOpFormType=type;
   const p=data.products.find(x=>x.id===currentProductId);if(!p)return;
   const formEl=document.getElementById('op-form');
   formEl.style.display='block';
@@ -1329,7 +1432,8 @@ function openOpForm(type){
       </div>
       <div class="form-group"><label class="form-label">倉庫</label><select class="form-select" id="op-wh">${whOpts}</select></div>
       <div class="form-group"><label class="form-label">数量</label><input type="number" class="form-input" id="op-qty" value="1" min="1"></div>
-      <button class="btn btn-amber btn-full" onclick="execOp('torioki')">🔒 取り置き登録</button>${rList}`;
+      <button class="btn btn-amber btn-full" onclick="execOp('torioki')">🔒 取り置き登録</button>
+      <button class="btn btn-secondary btn-full" style="margin-top:6px;" type="button" onclick="openAddModalFromOp()">＋ 商品が一覧にない → 新規商品を登録してから取り置き</button>${rList}`;
   }
 }
 
@@ -1337,6 +1441,12 @@ function setOpDeduct(on){
   document.getElementById('op-deduct').value = on ? '1' : '0';
   document.getElementById('op-deduct-on').classList.toggle('active', on);
   document.getElementById('op-deduct-off').classList.toggle('active', !on);
+}
+
+function openAddModalFromOp(){
+  // Open product-add modal on top of the operation modal.
+  // After saving, saveProduct() will refresh the torioki form automatically.
+  openAddModal();
 }
 
 function setNyukoMode(mode){
@@ -1454,6 +1564,11 @@ function renderAiItems(){
   const el=document.getElementById('aiItems');
   el.innerHTML=aiParsedItems.map((item,i)=>{
     const whOpts=`<option value="">倉庫未選択</option>`+WH_KEYS.map(w=>`<option value="${w}"${item.warehouse===w?' selected':''}>${WH_LABELS[w]}</option>`).join('');
+    const existing=findProductByName(item.name);
+    const similar=existing?[]:findSimilarProducts(item.name);
+    const matchNote=existing
+      ?`<div style="font-size:11px;color:var(--green);margin-top:3px;">✅ 既存商品に一致 — 在庫を追加します</div>`
+      : dupWarningHtml(similar);
     return`<div class="ai-item" id="ai-item-${i}">
       <div class="ai-item-header">
         <div>
@@ -1472,6 +1587,7 @@ function renderAiItems(){
           <span style="font-size:13px;color:var(--ink3);">台</span>
         </div>
       </div>
+      ${matchNote}
       ${item.note?`<div style="font-size:11px;color:var(--ink3);margin-top:4px;">📝 ${item.note}</div>`:''}
     </div>`;
   }).join('');
@@ -1597,6 +1713,44 @@ function findProductByName(name){
   return data.products.find(function(p){return p.name.toLowerCase().trim()===n;})
     || data.products.find(function(p){return p.name.toLowerCase().replace(/[-\s]/g,'')===n.replace(/[-\s]/g,'');})
     || null;
+}
+
+// ─── 重複・類似品番の検出 ─────────────────────────────────────
+function normalizeName(s){
+  return (s||'').toLowerCase().replace(/[-\s.()\[\]\/]/g,'');
+}
+function findSimilarProducts(inputName){
+  var n=normalizeName(inputName);
+  if(n.length<3) return [];
+  var results=[];
+  data.products.forEach(function(p){
+    var pn=normalizeName(p.name);
+    if(pn===n||pn.length<2) return;
+    var score=0,reason='';
+    // 末尾1〜2文字のみ違う（型番バリエーション検出）
+    var shorter=Math.min(n.length,pn.length);
+    if(shorter>=4 && n.slice(0,shorter-1)===pn.slice(0,shorter-1)){ score=90; reason='末尾のみ異なる（型番バリエーション）'; }
+    // 先頭5文字以上一致
+    else if(n.length>=5 && pn.length>=5 && n.slice(0,6)===pn.slice(0,6)){ score=75; reason='型番の先頭が共通'; }
+    // トライグラム類似度
+    else{
+      var tri=new Set();
+      for(var j=0;j<=n.length-3;j++) tri.add(n.slice(j,j+3));
+      var m=0;
+      for(var j=0;j<=pn.length-3;j++){ if(tri.has(pn.slice(j,j+3))) m++; }
+      var denom=Math.max(1,Math.max(n.length,pn.length)-2);
+      if(n.length>=4 && m/denom>0.55){ score=Math.round(m/denom*70); reason='共通する文字列が多い'; }
+    }
+    if(score>=60) results.push({p:p,score:score,reason:reason});
+  });
+  return results.sort(function(a,b){return b.score-a.score;}).slice(0,3);
+}
+function dupWarningHtml(similar){
+  if(!similar||!similar.length) return '';
+  return `<div style="font-size:11px;background:#fff8e8;border:1px solid #f5d080;border-radius:6px;padding:5px 8px;margin-top:5px;">
+    ⚠️ 似た品番が既に登録されています。重複でないか確認してください:<br>
+    ${similar.map(s=>`<span style="font-family:'JetBrains Mono',monospace;font-weight:700;">${s.p.name}</span><span style="color:var(--ink3);"> (${s.p.maker||'―'}) ${s.reason}</span>`).join('<br>')}
+  </div>`;
 }
 
 function renderAiShukkaItems(){
@@ -1748,6 +1902,10 @@ async function saveProduct(){
     closeModal('modalProduct');
     renderMakerFilter();renderSummary();renderList();
     if(priceUnlocked) renderPriceList();
+    // 取り置きフォームが開いていれば商品リストを更新（新規登録した商品がすぐ選択できる）
+    if(document.getElementById('modalOperation').classList.contains('open') && currentOpFormType==='torioki'){
+      openOpForm('torioki');
+    }
   }catch(e){alert('\u4fdd\u5b58\u30a8\u30e9\u30fc: '+e.message);}
   finally{showLoading(false);}
 }
@@ -1831,7 +1989,7 @@ async function cancelReserveById(productId, idx){
     await addHistoryDB('torioki',p.name,(r.customer||r.name||'')+'\u306e\u53d6\u308a\u7f6e\u304d\u89e3\u9664\uff08'+WH_LABELS[r.wh]+' '+r.qty+'\u53f0'+(wasDeducted?'\u623b\u3057':'\u30fb\u5728\u5eab\u5909\u66f4\u306a\u3057')+'\uff09');
     closeModal('modalOperation');
     renderSummary();renderList();
-    if(document.getElementById('modalReserveList').classList.contains('open')) renderReserveList();
+    if(document.getElementById('modalReserveList').classList.contains('open')) renderReserveList(); if(currentScreen==='torioki') renderToriokiList();
   }catch(e){alert('\u30a8\u30e9\u30fc: '+e.message);}
   finally{showLoading(false);}
 }
@@ -1857,7 +2015,7 @@ async function shipReserveById(productId, idx){
     await addHistoryDB('shuko',p.name,'['+(p.maker||'')+'] '+WH_LABELS[r.wh]+'\u304b\u3089'+r.qty+'\u53f0\u51fa\u8377\uff08\u53d6\u308a\u7f6e\u304d\u78ba\u5b9a\uff09 \u2192 '+(r.customer||r.name||''));
     closeModal('modalOperation');
     renderSummary();renderList();
-    if(document.getElementById('modalReserveList').classList.contains('open')) renderReserveList();
+    if(document.getElementById('modalReserveList').classList.contains('open')) renderReserveList(); if(currentScreen==='torioki') renderToriokiList();
   }catch(e){alert('\u30a8\u30e9\u30fc: '+e.message);}
   finally{showLoading(false);}
 }
@@ -1865,45 +2023,240 @@ async function shipReserveById(productId, idx){
 // ═══ RESERVE LIST (取り置き一覧) ═════════════════════════════════
 function openReserveList(){ renderReserveList(); openModal('modalReserveList'); }
 
-function renderReserveList(){
-  var q=(document.getElementById('reserveSearchInput').value||'').toLowerCase();
+// ─ Shared reserve-list renderer ─────────────────────────────────
+function buildReserveRows(q){
   var rows=[];
-  data.products.forEach(function(p){
-    (p.reserves||[]).forEach(function(r,i){
-      rows.push({p:p, r:r, idx:i});
-    });
-  });
-  if(q){
-    rows=rows.filter(function(x){
-      return (x.r.customer||x.r.name||'').toLowerCase().includes(q)
-        || x.p.name.toLowerCase().includes(q)
-        || (x.p.maker||'').toLowerCase().includes(q);
-    });
-  }
-  var el=document.getElementById('reserveListBody');
-  if(!rows.length){ el.innerHTML='<div class="empty-state">取り置きはありません</div>'; return; }
-  // sort by customer then product
-  rows.sort(function(a,b){
-    var ca=(a.r.customer||a.r.name||''), cb=(b.r.customer||b.r.name||'');
-    if(ca===cb) return a.p.name<b.p.name?-1:1;
-    return ca<cb?-1:1;
-  });
-  el.innerHTML=rows.map(function(x){
-    var r=x.r, p=x.p;
-    var ded=(r.deducted!==false);
+  data.products.forEach(function(p){(p.reserves||[]).forEach(function(r,i){rows.push({p:p,r:r,idx:i});});});
+  if(q) rows=rows.filter(function(x){return (x.r.customer||x.r.name||'').toLowerCase().includes(q)||x.p.name.toLowerCase().includes(q)||(x.p.maker||'').toLowerCase().includes(q);});
+  rows.sort(function(a,b){var ca=(a.r.customer||a.r.name||''),cb=(b.r.customer||b.r.name||'');if(ca===cb)return a.p.name<b.p.name?-1:1;return ca<cb?-1:1;});
+  return rows;
+}
+function reserveRowsHtml(rows){
+  return rows.map(function(x){
+    var r=x.r,p=x.p,ded=(r.deducted!==false);
     return '<div class="rsv-card">'
       +'<div class="rsv-card-top"><div>'
       +'<div class="rsv-card-name">'+p.name+'</div>'
-      +'<div class="rsv-card-maker">'+(p.category?p.category+' ・ ':'')+(p.maker||'\u30e1\u30fc\u30ab\u30fc\u672a\u8a2d\u5b9a')+'</div>'
+      +'<div class="rsv-card-maker">'+(p.category?p.category+' ・ ':'')+(p.maker||'メーカー未設定')+'</div>'
       +'</div><div class="rsv-card-qty">'+r.qty+'<span style="font-size:11px;color:var(--ink3);font-family:\'Noto Sans JP\',sans-serif;"> 台</span></div></div>'
       +'<div class="rsv-card-meta"><span class="wh-badge '+r.wh+'"><span class="wh-dot"></span>'+WH_LABELS[r.wh]+'</span>'
       +'<span class="rsv-deduct-badge '+(ded?'on':'off')+'">'+(ded?'在庫引済':'在庫未引')+'</span>'
-      +'<span>得意先: <span class="rsv-customer">'+(r.customer||r.name||'\u672a\u8a18\u5165')+'</span></span></div>'
+      +'<span>得意先: <span class="rsv-customer">'+(r.customer||r.name||'未記入')+'</span></span></div>'
       +'<div class="rsv-actions">'
       +'<button class="btn btn-blue" style="flex:1;" onclick="shipReserveById(\''+p.id+'\','+x.idx+')">📤 出荷確定</button>'
       +'<button class="btn btn-danger" style="flex:1;" onclick="cancelReserveById(\''+p.id+'\','+x.idx+')">↩ 解除</button>'
       +'</div></div>';
   }).join('');
+}
+function renderReserveList(){
+  var q=(document.getElementById('reserveSearchInput').value||'').toLowerCase();
+  var el=document.getElementById('reserveListBody');
+  var rows=buildReserveRows(q);
+  el.innerHTML=rows.length?reserveRowsHtml(rows):'<div class="empty-state">取り置きはありません</div>';
+}
+function renderToriokiList(){
+  var q=(document.getElementById('trListSearch')||{value:''}).value.toLowerCase();
+  var el=document.getElementById('trListBody'); if(!el)return;
+  var rows=buildReserveRows(q);
+  el.innerHTML=rows.length?reserveRowsHtml(rows):'<div class="empty-state">取り置きはありません</div>';
+}
+
+// ═══ 取り置きスクリーン関数 ═══════════════════════════════════════
+function setToriokiMode(mode){
+  ['select','photo','list'].forEach(function(m){
+    document.getElementById('torioki-'+m+'-mode').style.display=m===mode?'block':'none';
+    document.getElementById('torioki-mode-'+m).classList.toggle('active',m===mode);
+  });
+  if(mode==='list') renderToriokiList();
+}
+function initTorioki(){
+  const makers=getMakers();
+  const sel=document.getElementById('tr-maker');
+  sel.innerHTML='<option value="">── メーカーを選択 ──</option>'+makers.map(function(m){return`<option value="${m}">${m}</option>`;}).join('');
+  document.getElementById('tr-product').innerHTML='<option value="">── 品番を選択 ──</option>';
+  document.getElementById('tr-stock-info').style.display='none';
+  document.getElementById('tr-deduct-on').classList.toggle('active',reserveDeductMode);
+  document.getElementById('tr-deduct-off').classList.toggle('active',!reserveDeductMode);
+  document.getElementById('tr-ph-deduct-on').classList.toggle('active',reserveDeductMode);
+  document.getElementById('tr-ph-deduct-off').classList.toggle('active',!reserveDeductMode);
+  setToriokiMode('select');
+  document.getElementById('trAiPreview').style.display='none';
+  document.getElementById('trAiStatus').style.display='none';
+  document.getElementById('trAiResult').style.display='none';
+  var f1=document.getElementById('trCameraInput'); if(f1)f1.value='';
+  var f2=document.getElementById('trFileInput'); if(f2)f2.value='';
+  aiToriokiItems=[];
+}
+function updateToriokiProducts(){
+  const mk=document.getElementById('tr-maker').value;
+  const prods=data.products.filter(function(p){return (p.maker||'')===mk;});
+  const sel=document.getElementById('tr-product');
+  sel.innerHTML='<option value="">── 品番を選択 ──</option>'+prods.map(function(p){return`<option value="${p.id}">${p.name}</option>`;}).join('');
+  document.getElementById('tr-stock-info').style.display='none';
+}
+function updateToriokiStockInfo(){
+  const id=document.getElementById('tr-product').value;
+  const infoEl=document.getElementById('tr-stock-info');
+  if(!id){infoEl.style.display='none';return;}
+  const p=data.products.find(function(x){return x.id===id;});if(!p){infoEl.style.display='none';return;}
+  const badges=WH_KEYS.map(function(w){return p[w]>0?`<span class="wh-badge ${w}"><span class="wh-dot"></span>${WH_LABELS[w].replace('倉庫','')} ${p[w]}台</span>`:'';}).join('');
+  document.getElementById('tr-stock-badges').innerHTML=badges||'<span style="color:var(--ink3);font-size:12px;">全倉庫在庫なし</span>';
+  infoEl.style.display='block';
+}
+function setToriokiSelectDeduct(on){
+  reserveDeductMode=on;
+  document.getElementById('tr-deduct-on').classList.toggle('active',on);
+  document.getElementById('tr-deduct-off').classList.toggle('active',!on);
+}
+function setToriokiPhotoDeduct(on){
+  reserveDeductMode=on;
+  document.getElementById('tr-ph-deduct-on').classList.toggle('active',on);
+  document.getElementById('tr-ph-deduct-off').classList.toggle('active',!on);
+}
+async function execTorioki(){
+  const id=document.getElementById('tr-product').value;
+  if(!id){alert('品番を選択してください');return;}
+  const wh=document.getElementById('tr-wh').value;
+  const qty=parseInt(document.getElementById('tr-qty').value)||0;
+  const dest=document.getElementById('tr-dest').value.trim();
+  const customer=dest||'未記入';
+  if(qty<=0){alert('数量を正しく入力してください');return;}
+  const p=data.products.find(function(x){return x.id===id;});if(!p)return;
+  if(reserveDeductMode&&(p[wh]||0)<qty){alert(WH_LABELS[wh]+'の在庫が不足しています（現在: '+(p[wh]||0)+'台）');return;}
+  showLoading(true);
+  try{
+    if(!p.reserves)p.reserves=[];
+    p.reserves.push({id:uid(),customer:customer,wh:wh,qty:qty,deducted:reserveDeductMode,date:new Date().toISOString()});
+    if(reserveDeductMode) p[wh]=(p[wh]||0)-qty;
+    await upsertProduct(p);
+    if(dest) await addCustomerIfNew(dest);
+    await addHistoryDB('torioki',p.name,customer+'分を'+WH_LABELS[wh]+'で'+qty+'台取り置き'+(reserveDeductMode?'（在庫引き）':'（在庫そのまま）'));
+    renderSummary();renderList();
+    document.getElementById('tr-product').value='';
+    document.getElementById('tr-qty').value=1;
+    document.getElementById('tr-dest').value='';
+    document.getElementById('tr-stock-info').style.display='none';
+    alert('✅ 取り置き完了\n'+(p.maker?p.maker+' ':'')+p.name+' × '+qty+'台\n'+WH_LABELS[wh]+'で'+customer+'分を取り置きしました');
+  }catch(e){alert('取り置きエラー: '+e.message);}
+  finally{showLoading(false);}
+}
+
+// ─── 取り置きスクリーン：写真モード ──────────────────────────────
+async function handleAiToriokiPhoto(event){
+  const file=event.target.files[0]; if(!file)return;
+  const img=document.getElementById('trAiPreview'); img.src=URL.createObjectURL(file); img.style.display='block';
+  document.getElementById('trAiResult').style.display='none';
+  const statusEl=document.getElementById('trAiStatus');
+  statusEl.style.display='block'; statusEl.className='ai-status loading';
+  statusEl.innerHTML='<span class="spinner"></span>AIが画像を読み取り中…';
+  const base64=await new Promise(function(res,rej){const r=new FileReader();r.onload=function(){res(r.result.split(',')[1]);};r.onerror=rej;r.readAsDataURL(file);});
+  const mediaType=file.type||'image/jpeg';
+  const existingList=data.products.map(function(p){return (p.maker||'')+'　'+p.name;}).join('\n');
+  const prompt=`あなたは倉庫在庫管理の専門家です。この画像は取り置き依頼のメモ・受注票です。
+商品名（型番）、メーカー、倉庫（に/ほ/5番/6番/自社）、数量、得意先を読み取ってください。
+既存商品リスト（できるだけこの型番に一致）:
+${existingList}
+倉庫: 「に」→ni 「ほ」→ho 「5番」→go 「6番」→roku 「自社」→jisha 記載なし→空文字
+必ず次のJSONのみ: {"items":[{"maker":"","name":"","warehouse":"ni/ho/go/roku/jisha/空","qty":数値,"customer":"","note":""}]}`;
+  try{
+    const result=await callGemini({contents:[{parts:[{inline_data:{mime_type:mediaType,data:base64}},{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0}});
+    const parsed=JSON.parse(geminiText(result).replace(/```json|```/g,'').trim());
+    aiToriokiItems=parsed.items||[];
+    if(!aiToriokiItems.length){statusEl.className='ai-status error';statusEl.innerHTML='⚠️ 読み取れませんでした。別の写真をお試しください。';return;}
+    renderToriokiAiItems();
+    statusEl.style.display='none';
+    document.getElementById('trAiResult').style.display='block';
+  }catch(e){statusEl.className='ai-status error';statusEl.innerHTML='❌ 読み取りに失敗しました: '+e.message;}
+}
+function renderToriokiAiItems(){
+  const el=document.getElementById('trAiItems');
+  el.innerHTML=aiToriokiItems.map(function(item,i){
+    const matched=findProductByName(item.name);
+    if(!matched){
+      const similar=findSimilarProducts(item.name);
+      const whOpts=WH_KEYS.map(function(w){return`<option value="${w}"${item.warehouse===w?' selected':''}>${WH_LABELS[w]}</option>`;}).join('');
+      return `<div class="ai-item" id="tri-item-${i}" style="border-color:var(--accent2);">
+        <div style="font-size:11px;font-weight:700;color:var(--accent2);margin-bottom:5px;">📦 未登録商品 — 新規登録して取り置き</div>
+        <input type="hidden" id="tri-isnew-${i}" value="1"><input type="hidden" id="tri-pid-${i}" value="">
+        ${dupWarningHtml(similar)}
+        <div class="ai-item-header"><div style="flex:1;">
+          <input type="text" class="form-input" id="tri-newmaker-${i}" value="${(item.maker||'').replace(/"/g,'&quot;')}" placeholder="メーカー" style="font-size:11px;padding:4px 6px;margin-bottom:3px;">
+          <input type="text" class="form-input" id="tri-newname-${i}" value="${(item.name||'').replace(/"/g,'&quot;')}" placeholder="型番（必須）" style="font-size:13px;font-weight:700;padding:4px 6px;">
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-left:8px;"><input type="checkbox" id="tri-check-${i}" checked style="width:18px;height:18px;"><span style="font-size:11px;">登録＆取置</span></label>
+        </div>
+        <input type="text" class="form-input" id="tri-newcat-${i}" value="" placeholder="ジャンル（任意）" style="font-size:11px;padding:4px 6px;margin-bottom:6px;margin-top:3px;">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+          <select class="form-select" id="tri-wh-${i}" style="flex:1;padding:7px 8px;font-size:13px;">${whOpts}</select>
+          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="form-input" id="tri-qty-${i}" value="${item.qty||1}" min="1" style="width:70px;padding:7px 8px;font-size:14px;text-align:center;"><span style="font-size:13px;color:var(--ink3);">台</span></div>
+        </div>
+        <input type="text" class="form-input" id="tri-cust-${i}" value="${(item.customer||'').replace(/"/g,'&quot;')}" placeholder="得意先（任意）" style="padding:8px 10px;font-size:13px;">
+      </div>`;
+    }
+    const similar=findSimilarProducts(item.name);
+    let wOpts=''; WH_KEYS.forEach(function(w){const st=matched[w]||0;const sel=(item.warehouse===w)?' selected':'';wOpts+=`<option value="${w}"${sel}>${WH_LABELS[w]}（在庫${st}台）</option>`;});
+    return `<div class="ai-item" id="tri-item-${i}">
+      <input type="hidden" id="tri-isnew-${i}" value="0"><input type="hidden" id="tri-pid-${i}" value="${matched.id}">
+      <div class="ai-item-header"><div>
+        <div class="ai-item-name">${matched.name}</div>
+        <div class="ai-item-maker">${(matched.category?matched.category+' ・ ':'')}${matched.maker||''}</div>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="tri-check-${i}" checked style="width:18px;height:18px;"><span style="font-size:12px;color:var(--ink2);">登録</span></label>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+        <select class="form-select" id="tri-wh-${i}" style="flex:1;padding:7px 8px;font-size:13px;">${wOpts}</select>
+        <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="form-input" id="tri-qty-${i}" value="${item.qty||1}" min="1" style="width:70px;padding:7px 8px;font-size:14px;text-align:center;"><span style="font-size:13px;color:var(--ink3);">台</span></div>
+      </div>
+      <input type="text" class="form-input" id="tri-cust-${i}" value="${(item.customer||'').replace(/"/g,'&quot;')}" placeholder="得意先（任意）" style="padding:8px 10px;font-size:13px;">
+      ${dupWarningHtml(similar)}
+    </div>`;
+  }).join('');
+}
+async function registerToriokiAiItems(){
+  var done=0,skipped=0,errors=[];
+  showLoading(true);
+  try{
+    for(var i=0;i<aiToriokiItems.length;i++){
+      var chk=document.getElementById('tri-check-'+i); if(!chk||!chk.checked){skipped++;continue;}
+      var isNew=((document.getElementById('tri-isnew-'+i)||{value:'0'}).value)==='1';
+      var wh=(document.getElementById('tri-wh-'+i)||{value:''}).value;
+      var qty=parseInt((document.getElementById('tri-qty-'+i)||{value:0}).value)||0;
+      var cust=((document.getElementById('tri-cust-'+i)||{value:''}).value||'').trim()||'未記入';
+      var p;
+      if(isNew){
+        var newName=((document.getElementById('tri-newname-'+i)||{value:''}).value||'').trim();
+        if(!newName||!wh||qty<=0){skipped++;continue;}
+        var newMaker=((document.getElementById('tri-newmaker-'+i)||{value:''}).value||'').trim();
+        var newCat=((document.getElementById('tri-newcat-'+i)||{value:''}).value||'').trim();
+        var qo={}; WH_KEYS.forEach(function(w){qo[w]=0;});
+        var newP=Object.assign({id:uid(),maker:newMaker,category:newCat,name:newName},qo,{teika:0,cost:0,sell:0,note:'',reserves:[]});
+        data.products.push(newP); await upsertProduct(newP); p=newP;
+      }else{
+        var pidEl=document.getElementById('tri-pid-'+i); if(!pidEl){skipped++;continue;}
+        p=data.products.find(function(x){return x.id===pidEl.value;});
+        if(!p||!wh||qty<=0){skipped++;continue;}
+      }
+      if(reserveDeductMode&&(p[wh]||0)<qty){errors.push(p.name+'（'+WH_LABELS[wh]+'在庫'+(p[wh]||0)+'台<'+qty+'台）');skipped++;continue;}
+      if(!p.reserves)p.reserves=[];
+      p.reserves.push({id:uid(),customer:cust,wh:wh,qty:qty,deducted:reserveDeductMode,date:new Date().toISOString()});
+      if(reserveDeductMode) p[wh]=(p[wh]||0)-qty;
+      await upsertProduct(p);
+      await addCustomerIfNew(cust);
+      await addHistoryDB('torioki',p.name,'[AI取置] '+cust+'分を'+WH_LABELS[wh]+'で'+qty+'台'+(isNew?'（新規商品）':'')+(reserveDeductMode?'（在庫引き）':'（在庫そのまま）'));
+      done++;
+    }
+    renderMakerFilter();renderSummary();renderList();
+    document.getElementById('trAiResult').style.display='none';
+    document.getElementById('trAiPreview').style.display='none';
+    var f1=document.getElementById('trFileInput'); if(f1)f1.value='';
+    var f2=document.getElementById('trCameraInput'); if(f2)f2.value='';
+    aiToriokiItems=[];
+    var msg='✅ 取り置き登録完了\n'+done+'件'+(skipped>0?'（'+skipped+'件スキップ）':'');
+    if(errors.length) msg+='\n\n⚠️ 在庫不足でスキップ:\n'+errors.join('\n');
+    alert(msg);
+    setToriokiMode('list');
+  }catch(e){alert('取り置き登録エラー: '+e.message);}
+  finally{showLoading(false);}
 }
 
 // ═══ AI ジャンル判定 ═════════════════════════════════════════════
@@ -1977,14 +2330,37 @@ function renderAiReserveItems(){
   el.innerHTML=aiReserveItems.map(function(item,i){
     const matched=findProductByName(item.name);
     if(!matched){
-      return `<div class="ai-item" id="rsv-item-${i}" style="border-color:var(--accent);">
-        <div class="ai-item-name" style="color:var(--accent);">${item.name||'(型番不明)'}</div>
-        <div class="ai-item-maker">${item.maker||''}</div>
-        <div style="font-size:12px;color:var(--accent);margin-top:4px;">⚠️ 未登録の商品です。先に商品登録が必要です。</div>
+      // 未登録商品 → 新規登録フォームを表示
+      const similar=findSimilarProducts(item.name);
+      const whOpts=WH_KEYS.map(w=>`<option value="${w}"${item.warehouse===w?' selected':''}>${WH_LABELS[w]}</option>`).join('');
+      return `<div class="ai-item" id="rsv-item-${i}" style="border-color:var(--accent2);">
+        <div style="font-size:11px;font-weight:700;color:var(--accent2);margin-bottom:5px;">📦 未登録商品 — 新規登録して取り置き</div>
+        <input type="hidden" id="rsv-isnew-${i}" value="1">
+        <input type="hidden" id="rsv-pid-${i}" value="">
+        ${dupWarningHtml(similar)}
+        <div class="ai-item-header">
+          <div style="flex:1;">
+            <input type="text" class="form-input" id="rsv-newmaker-${i}" value="${(item.maker||'').replace(/"/g,'&quot;')}" placeholder="メーカー" style="font-size:11px;padding:4px 6px;margin-bottom:3px;">
+            <input type="text" class="form-input" id="rsv-newname-${i}" value="${(item.name||'').replace(/"/g,'&quot;')}" placeholder="型番（必須）" style="font-size:13px;font-weight:700;padding:4px 6px;">
+          </div>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-left:8px;">
+            <input type="checkbox" id="rsv-check-${i}" checked style="width:18px;height:18px;">
+            <span style="font-size:11px;color:var(--ink2);">登録＆取置</span>
+          </label>
+        </div>
+        <input type="text" class="form-input" id="rsv-newcat-${i}" value="" placeholder="ジャンル（任意）" style="font-size:11px;padding:4px 6px;margin-bottom:6px;margin-top:3px;">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+          <select class="form-select" id="rsv-wh-${i}" style="flex:1;padding:7px 8px;font-size:13px;">${whOpts}</select>
+          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="form-input" id="rsv-qty-${i}" value="${item.qty||1}" min="1" style="width:70px;padding:7px 8px;font-size:14px;text-align:center;"><span style="font-size:13px;color:var(--ink3);">台</span></div>
+        </div>
+        <input type="text" class="form-input" id="rsv-cust-${i}" value="${(item.customer||'').replace(/"/g,'&quot;')}" placeholder="得意先（任意）" style="padding:8px 10px;font-size:13px;">
       </div>`;
     }
+    // 既存商品 + 類似品番チェック
+    const similar=findSimilarProducts(item.name);
     let wOpts=''; WH_KEYS.forEach(w=>{const st=matched[w]||0;const sel=(item.warehouse===w)?' selected':'';wOpts+=`<option value="${w}"${sel}>${WH_LABELS[w]}（在庫${st}台）</option>`;});
     return `<div class="ai-item" id="rsv-item-${i}">
+      <input type="hidden" id="rsv-isnew-${i}" value="0">
       <div class="ai-item-header"><div>
         <div class="ai-item-name">${matched.name}</div>
         <div class="ai-item-maker">${(matched.category?matched.category+' ・ ':'')}${matched.maker||''}</div>
@@ -1997,6 +2373,7 @@ function renderAiReserveItems(){
         <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="form-input" id="rsv-qty-${i}" value="${item.qty||1}" min="1" style="width:70px;padding:7px 8px;font-size:14px;text-align:center;"><span style="font-size:13px;color:var(--ink3);">台</span></div>
       </div>
       <input type="text" class="form-input" id="rsv-cust-${i}" value="${(item.customer||'').replace(/"/g,'&quot;')}" placeholder="得意先（任意）" style="padding:8px 10px;font-size:13px;">
+      ${dupWarningHtml(similar)}
     </div>`;
   }).join('');
 }
@@ -2007,22 +2384,37 @@ async function registerAiReserveItems(){
     for(var i=0;i<aiReserveItems.length;i++){
       var chk=document.getElementById('rsv-check-'+i);
       if(!chk||!chk.checked){skipped++;continue;}
-      var pidEl=document.getElementById('rsv-pid-'+i); if(!pidEl){skipped++;continue;}
-      var p=data.products.find(function(x){return x.id===pidEl.value;});
+      var isNew=((document.getElementById('rsv-isnew-'+i)||{value:'0'}).value)==='1';
       var wh=(document.getElementById('rsv-wh-'+i)||{value:''}).value;
       var qty=parseInt((document.getElementById('rsv-qty-'+i)||{value:0}).value)||0;
       var cust=((document.getElementById('rsv-cust-'+i)||{value:''}).value||'').trim()||'未記入';
-      if(!p||!wh||qty<=0){skipped++;continue;}
+      var p;
+      if(isNew){
+        // 未登録商品 → 新規商品として登録してから取り置き
+        var newName=((document.getElementById('rsv-newname-'+i)||{value:''}).value||'').trim();
+        if(!newName||!wh||qty<=0){skipped++;continue;}
+        var newMaker=((document.getElementById('rsv-newmaker-'+i)||{value:''}).value||'').trim();
+        var newCat=((document.getElementById('rsv-newcat-'+i)||{value:''}).value||'').trim();
+        var qo={}; WH_KEYS.forEach(function(w){qo[w]=0;});
+        var newP=Object.assign({id:uid(),maker:newMaker,category:newCat,name:newName},qo,{teika:0,cost:0,sell:0,note:'',reserves:[]});
+        data.products.push(newP);
+        await upsertProduct(newP);
+        p=newP;
+      }else{
+        var pidEl=document.getElementById('rsv-pid-'+i); if(!pidEl){skipped++;continue;}
+        p=data.products.find(function(x){return x.id===pidEl.value;});
+        if(!p||!wh||qty<=0){skipped++;continue;}
+      }
       if(reserveDeductMode && (p[wh]||0)<qty){errors.push(p.name+'（'+WH_LABELS[wh]+'在庫'+(p[wh]||0)+'台<'+qty+'台）');skipped++;continue;}
       if(!p.reserves)p.reserves=[];
       p.reserves.push({id:uid(),customer:cust,wh:wh,qty:qty,deducted:reserveDeductMode,date:new Date().toISOString()});
       if(reserveDeductMode) p[wh]=(p[wh]||0)-qty;
       await upsertProduct(p);
       await addCustomerIfNew(cust);
-      await addHistoryDB('torioki',p.name,'[AI取置] '+cust+'分を'+WH_LABELS[wh]+'で'+qty+'台'+(reserveDeductMode?'（在庫引き）':'（在庫そのまま）'));
+      await addHistoryDB('torioki',p.name,'[AI取置] '+cust+'分を'+WH_LABELS[wh]+'で'+qty+'台'+(isNew?'（新規商品同時登録）':'')+(reserveDeductMode?'（在庫引き）':'（在庫そのまま）'));
       done++;
     }
-    renderSummary();renderList();renderReserveList();
+    renderMakerFilter();renderSummary();renderList();renderReserveList();
     document.getElementById('rsvAiResult').style.display='none';
     document.getElementById('rsvAiPreview').style.display='none';
     var f1=document.getElementById('rsvFileInput'); if(f1)f1.value='';
@@ -2194,6 +2586,14 @@ async function execNyuko(mode){
           await addHistoryDB('nyuko',existing.name,'['+maker+'] '+WH_LABELS[wh]+'\u306b'+qty+'\u53f0\u5165\u8377\uff08\u65e2\u5b58\uff09');
         }
       }else{
+        // 新規登録前に類似品番を確認
+        var similar=findSimilarProducts(name);
+        if(similar.length>0){
+          var dupMsg='\u4ee5\u4e0b\u306e\u4f3c\u305f\u54c1\u756a\u304c\u65e2\u306b\u767b\u9332\u3055\u308c\u3066\u3044\u307e\u3059\u3002\u91cd\u8907\u3067\u306f\u306a\u3044\u304b\u78ba\u8a8d\u3057\u3066\u304f\u3060\u3055\u3044\uff1a\n\n';
+          similar.forEach(function(s){dupMsg+='\u30fb'+s.p.name+(s.p.maker?' ('+s.p.maker+')':'')+' \u2014 '+s.reason+'\n';});
+          dupMsg+='\n\u3053\u306e\u307e\u307e\u300c'+name+'\u300d\u3068\u3057\u3066\u65b0\u898f\u767b\u9332\u3057\u307e\u3059\u304b\uff1f';
+          if(!confirm(dupMsg)){showLoading(false);return;}
+        }
         var qo={};WH_KEYS.forEach(function(w){qo[w]=0;}); qo[wh]=qty;
         var newP=Object.assign({id:uid(),maker:maker,name:name},qo,{teika:0,cost:cost,sell:sell,note:memo,reserves:[]});
         data.products.push(newP);
