@@ -474,10 +474,12 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
     </div>
   </div>
   <div id="price-content" style="display:none;">
-    <div class="section-hd" style="margin-bottom:10px;">
+    <div class="section-hd" style="margin-bottom:8px;">
       <h2>商品情報・価格</h2>
       <button class="btn btn-secondary" style="padding:6px 12px;border-radius:6px;font-size:12px;" onclick="lockPrice()">🔒 ロック</button>
     </div>
+    <button class="btn btn-blue btn-full" onclick="openBulkPrice()" style="margin-bottom:6px;padding:11px;font-size:13px;">💴 価格・情報を一括更新 / AI検索</button>
+    <button class="btn btn-amber btn-full" onclick="openSellRate()" style="margin-bottom:10px;padding:11px;font-size:13px;">📊 売値を一括計算（定価・仕入値の %）</button>
     <div class="search-row" style="margin-bottom:8px;">
       <input type="text" class="search-input" placeholder="型番・メーカーで検索…" id="priceSearchInput" oninput="renderPriceList()">
       <select class="filter-select" id="priceMakerFilter" onchange="renderPriceList()"><option value="all">全メーカー</option></select>
@@ -907,13 +909,17 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
       <button class="mode-btn" id="bulk-mode-photo" onclick="setBulkMode('photo')">📷 画像/PDF/CSV</button>
     </div>
     <div style="font-size:11px;color:var(--ink2);font-weight:700;margin-bottom:5px;">登録する内容</div>
-    <div class="seg-toggle" style="margin-bottom:12px;">
+    <div class="seg-toggle" style="margin-bottom:8px;">
       <button id="bulk-stock-off" class="active" type="button" onclick="setBulkStock(false)">商品情報のみ</button>
       <button id="bulk-stock-on" type="button" onclick="setBulkStock(true)">在庫数も登録</button>
     </div>
+    <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface);border-radius:8px;margin-bottom:12px;cursor:pointer;">
+      <input type="checkbox" id="bulk-price-toggle" style="width:18px;height:18px;" onchange="setBulkPriceMode(this.checked)">
+      <div><span style="font-size:13px;font-weight:700;">価格も同時に登録</span><span style="font-size:11px;color:var(--ink3);margin-left:6px;">定価・仕入値・売値を読み取り</span></div>
+    </label>
     <div id="bulk-text-mode">
       <div style="font-size:11px;color:var(--ink3);margin-bottom:6px;line-height:1.7;">
-        1行＝1商品。カンマ区切りで<b>「メーカー, ジャンル, 型番, に, ほ, 5番, 6番, 自社」</b>。在庫列は省略可。先頭の見出し行は自動でスキップ。<br>例: <code>ダイキン,ルームエアコン,S225ATES-W,3,3,0,0,0</code>
+        1行＝1商品。カンマ区切りで<b>「メーカー, ジャンル, 型番, に, ほ, 5番, 6番, 自社, 定価, 仕入値, 売値」</b>。不要列は省略可。先頭見出し行は自動スキップ。<br>例: <code>ダイキン,ルームエアコン,S225ATES-W,3,3,0,0,0,180000,120000,148000</code>
       </div>
       <textarea class="form-textarea" id="bulkText" style="min-height:120px;font-family:'JetBrains Mono',monospace;font-size:12px;" placeholder="ここにCSV・表データを貼り付け…"></textarea>
       <div style="display:flex;gap:8px;margin:8px 0;">
@@ -959,6 +965,166 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
     <div id="custMgmtBody"></div>
     <div class="modal-actions">
       <button class="btn btn-secondary btn-full" onclick="closeModal('modalCustomers')">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: SELL RATE CALCULATOR -->
+<div class="modal-overlay" id="modalSellRate">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📊 売値を一括計算・設定</div>
+    <div class="modal-subtitle">定価または仕入値に対する率（%）から売値を一括設定します。ジャンル別に率を変えることもできます。</div>
+
+    <div class="form-group" style="margin-bottom:8px;">
+      <label class="form-label">計算のベース</label>
+      <div class="seg-toggle">
+        <button id="sr-base-teika" class="active" type="button" onclick="setSrBase('teika')">定価（税別）</button>
+        <button id="sr-base-cost" type="button" onclick="setSrBase('cost')">仕入値</button>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:8px;">
+      <label class="form-label">対象商品</label>
+      <div class="seg-toggle">
+        <button id="sr-target-nosell" class="active" type="button" onclick="setSrTarget('nosell')">売値未設定のみ</button>
+        <button id="sr-target-all" type="button" onclick="setSrTarget('all')">全商品（上書き）</button>
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:4px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <label class="form-label" style="margin:0;">率の設定（%）</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+          <input type="checkbox" id="sr-per-cat" onchange="renderSrCatRates()" style="width:16px;height:16px;">
+          ジャンル別に設定
+        </label>
+      </div>
+      <div id="sr-global-rate">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="number" id="sr-rate-global" class="form-input" value="85" min="1" max="200" style="width:80px;text-align:center;font-size:18px;font-weight:700;" oninput="renderSrPreview()">
+          <span style="font-size:15px;color:var(--ink2);">% を売値に設定</span>
+        </div>
+      </div>
+      <div id="sr-cat-rates" style="display:none;"></div>
+    </div>
+
+    <button class="btn btn-blue btn-full" onclick="renderSrPreview()" style="padding:11px;margin-bottom:10px;">🔍 プレビューを確認</button>
+
+    <div id="srPreviewArea" style="display:none;">
+      <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:6px;" id="srPreviewTitle"></div>
+      <div id="srPreviewBody" style="max-height:240px;overflow-y:auto;"></div>
+      <button class="btn btn-green btn-full" onclick="applySellRates()" style="padding:13px;margin-top:8px;font-size:15px;">💾 この内容で売値を設定</button>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary btn-full" onclick="closeModal('modalSellRate')">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: BULK PRICE UPDATE -->
+<div class="modal-overlay" id="modalBulkPrice">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">💴 価格・情報の一括更新</div>
+    <div class="mode-toggle" style="margin-bottom:12px;">
+      <button class="mode-btn active" id="bprice-mode-file" onclick="setBPriceMode('file')">📄 ファイル取込</button>
+      <button class="mode-btn" id="bprice-mode-ai" onclick="setBPriceMode('ai')">🌐 AI一括検索</button>
+      <button class="mode-btn" id="bprice-mode-fill" onclick="setBPriceMode('fill')">🔧 未入力補完</button>
+    </div>
+
+    <!-- ファイル取込 -->
+    <div id="bprice-file-mode">
+      <div class="form-group" style="margin-bottom:8px;">
+        <label class="form-label">文書の種類</label>
+        <div class="seg-toggle">
+          <button id="bptype-supplier" class="active" type="button" onclick="setBPFileType('supplier')">仕入先価格表</button>
+          <button id="bptype-quote" type="button" onclick="setBPFileType('quote')">自社見積書</button>
+        </div>
+      </div>
+      <div id="bpFileTypeNote" style="font-size:11px;color:var(--ink2);background:var(--surface2);border-radius:7px;padding:7px 10px;margin-bottom:10px;line-height:1.6;"></div>
+      <div class="form-group" style="margin-bottom:10px;">
+        <label class="form-label">取込む価格フィールド</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface);border-radius:8px;cursor:pointer;">
+            <input type="checkbox" id="bp-field-teika" style="width:16px;height:16px;">
+            <div><span style="font-size:13px;font-weight:700;color:var(--ink2);">定価（税別）</span><span style="font-size:11px;color:var(--ink3);margin-left:6px;">メーカー希望小売価格</span></div>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface);border-radius:8px;cursor:pointer;">
+            <input type="checkbox" id="bp-field-cost" style="width:16px;height:16px;">
+            <div><span style="font-size:13px;font-weight:700;color:var(--blue);">仕入値</span><span style="font-size:11px;color:var(--ink3);margin-left:6px;">仕入先からの買値</span></div>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface);border-radius:8px;cursor:pointer;">
+            <input type="checkbox" id="bp-field-sell" style="width:16px;height:16px;">
+            <div><span style="font-size:13px;font-weight:700;color:var(--green);">売値</span><span style="font-size:11px;color:var(--ink3);margin-left:6px;">お客様への販売価格</span></div>
+          </label>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:6px;">
+        <button class="btn btn-blue" style="flex:1;padding:12px;" type="button" onclick="document.getElementById('bpriceCameraInput').click()">📷 カメラ</button>
+        <button class="btn btn-secondary" style="flex:1;padding:12px;" type="button" onclick="document.getElementById('bpriceFileInput').click()">📄 ファイル選択</button>
+      </div>
+      <input type="file" id="bpriceCameraInput" accept="image/*" capture="environment" onchange="handleBPriceFile(event)" style="display:none;">
+      <input type="file" id="bpriceFileInput" accept="image/*,application/pdf,.pdf,.csv,.tsv,.txt" onchange="handleBPriceFile(event)" style="display:none;">
+      <div style="font-size:11px;color:var(--ink3);text-align:center;margin-bottom:10px;">写真・PDF・CSVファイルに対応</div>
+      <img id="bpricePreview" class="ai-preview">
+    </div>
+
+    <!-- AI一括検索 -->
+    <div id="bprice-ai-mode" style="display:none;">
+      <div style="font-size:12px;color:var(--ink3);margin-bottom:10px;line-height:1.6;">🌐 各商品のメーカー<b>公式サイトのみ</b>を検索して税別定価を取得します。通販サイトは参照しません。公式サイトで見つからない場合は空欄になります。</div>
+      <div class="form-group" style="margin-bottom:8px;">
+        <label class="form-label">対象商品</label>
+        <div class="seg-toggle">
+          <button id="bpai-mode-missing" class="active" type="button" onclick="setBPAiMode('missing')">定価未入力のみ</button>
+          <button id="bpai-mode-all" type="button" onclick="setBPAiMode('all')">全商品</button>
+        </div>
+      </div>
+      <div id="bpAiModeNote" style="font-size:12px;color:var(--ink2);background:var(--surface2);border-radius:8px;padding:9px 11px;margin-bottom:12px;line-height:1.6;"></div>
+      <div id="bpAiProgress" style="display:none;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+          <span id="bpAiProgressText" style="font-size:12px;color:var(--ink2);"></span>
+          <button onclick="bpAiSearchCancelled=true;" style="border:none;background:var(--accent);color:#fff;border-radius:5px;padding:3px 9px;font-size:11px;cursor:pointer;">停止</button>
+        </div>
+        <div style="background:var(--surface2);border-radius:4px;height:8px;overflow:hidden;">
+          <div id="bpAiProgressBar" style="background:var(--blue);height:8px;width:0%;transition:width .4s;border-radius:4px;"></div>
+        </div>
+      </div>
+      <button id="bpAiStartBtn" class="btn btn-blue btn-full" onclick="startBPriceAiSearch()" style="padding:13px;">🌐 AI検索を開始</button>
+    </div>
+
+    <!-- 未入力補完 -->
+    <div id="bprice-fill-mode" style="display:none;">
+      <div style="font-size:12px;color:var(--ink3);margin-bottom:10px;line-height:1.6;">🔧 AIが空白のフィールドを補完します。価格はAIの知識をもとにした推定です（web検索なし・高速）。</div>
+      <div style="margin-bottom:12px;">
+        <label style="display:flex;align-items:center;gap:8px;padding:9px;background:var(--surface);border-radius:8px;margin-bottom:6px;cursor:pointer;">
+          <input type="checkbox" id="fill-teika" checked style="width:18px;height:18px;">
+          <div><div style="font-size:13px;font-weight:700;">定価（税別）</div><div style="font-size:11px;color:var(--ink3);">0円の商品にAIが推定定価を補完</div></div>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;padding:9px;background:var(--surface);border-radius:8px;margin-bottom:6px;cursor:pointer;">
+          <input type="checkbox" id="fill-category" checked style="width:18px;height:18px;">
+          <div><div style="font-size:13px;font-weight:700;">ジャンル</div><div style="font-size:11px;color:var(--ink3);">未設定の商品にジャンルを補完</div></div>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;padding:9px;background:var(--surface);border-radius:8px;cursor:pointer;">
+          <input type="checkbox" id="fill-maker" style="width:18px;height:18px;">
+          <div><div style="font-size:13px;font-weight:700;">メーカー名</div><div style="font-size:11px;color:var(--ink3);">未設定の商品にメーカーを補完</div></div>
+        </label>
+      </div>
+      <button class="btn btn-blue btn-full" onclick="startBPriceFill()" style="padding:13px;">🔧 補完を開始</button>
+    </div>
+
+    <!-- 共通：ステータス・結果・アクション -->
+    <div id="bpriceStatus" class="ai-status" style="display:none;margin-top:10px;"></div>
+    <div id="bpriceBody" style="margin-top:8px;"></div>
+    <div id="bpriceActions" style="display:none;margin-top:8px;">
+      <div style="display:flex;gap:6px;margin-bottom:5px;">
+        <button class="btn btn-blue" style="flex:1;" type="button" onclick="checkAllBPrice(true)">全選択</button>
+        <button class="btn btn-secondary" style="flex:1;" type="button" onclick="checkAllBPrice(false)">全解除</button>
+      </div>
+      <button class="btn btn-green btn-full" onclick="saveBPriceItems()" style="padding:14px;font-size:15px;">💾 チェックした商品を保存</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary btn-full" onclick="closeBulkPrice()">閉じる</button>
     </div>
   </div>
 </div>
@@ -1185,12 +1351,34 @@ function getAllCustomers(){
 
 // ─── 一括登録：登録内容モード（商品情報のみ / 在庫数も） ───────────
 let bulkStockMode = false; // false=商品情報のみ
+let bulkPriceMode = false; // false=価格なし、true=価格も登録
 function setBulkStock(on){
   bulkStockMode=on;
   document.getElementById('bulk-stock-on').classList.toggle('active',on);
   document.getElementById('bulk-stock-off').classList.toggle('active',!on);
   if(bulkItems.length) renderBulkItems();
 }
+function setBulkPriceMode(on){
+  bulkPriceMode=on;
+  if(bulkItems.length) renderBulkItems();
+}
+
+// ─── 一括価格取込：文書種別 ─────────────────────────────────
+let bpFileType = 'supplier'; // 'supplier' | 'quote'
+function setBPFileType(t){
+  bpFileType=t;
+  document.getElementById('bptype-supplier').classList.toggle('active',t==='supplier');
+  document.getElementById('bptype-quote').classList.toggle('active',t==='quote');
+  var noteEl=document.getElementById('bpFileTypeNote');
+  if(!noteEl)return;
+  if(t==='supplier'){
+    noteEl.innerHTML='仕入先からの価格表：定価・仕入値（NET価格）を読み取ります。取込む価格フィールドをチェックしてください。';
+  }else{
+    noteEl.innerHTML='自社（株式会社マツオ）の見積書・販売価格表：売値を読み取ります。型番が登録済み商品と一致する行のみ更新します。';
+    document.getElementById('bp-field-sell').checked=true;
+  }
+}
+function _initBPFileType(){ setBPFileType('supplier'); }
 
 // ─── 得意先の管理 ─────────────────────────────────────────────
 let custMgmtList = [];
@@ -1436,7 +1624,385 @@ async function saveAutoCategories(){
   finally{ showLoading(false); }
 }
 
-// ═══ 取り置き倉庫変更 ═════════════════════════════════════════
+// ═══ 価格・情報の一括更新 ════════════════════════════════════
+let bpriceItems = [];   // [{pid,name,maker,changes:{field:{old,new}},source,matched}]
+let bpriceMode  = 'file';
+let bpAiMode    = 'missing';
+let bpAiSearchCancelled = false;
+
+function openBulkPrice(){
+  bpriceItems=[];
+  setBPriceMode('file');
+  document.getElementById('bpriceStatus').style.display='none';
+  document.getElementById('bpriceBody').innerHTML='';
+  document.getElementById('bpriceActions').style.display='none';
+  document.getElementById('bpricePreview').style.display='none';
+  _updateBpAiNote();
+  _initBPFileType();
+  openModal('modalBulkPrice');
+}
+function closeBulkPrice(){ bpAiSearchCancelled=true; closeModal('modalBulkPrice'); }
+
+function setBPriceMode(m){
+  bpriceMode=m;
+  ['file','ai','fill'].forEach(function(x){
+    document.getElementById('bprice-'+x+'-mode').style.display=x===m?'block':'none';
+    document.getElementById('bprice-mode-'+x).classList.toggle('active',x===m);
+  });
+  // reset results when mode changes
+  document.getElementById('bpriceStatus').style.display='none';
+  document.getElementById('bpriceBody').innerHTML='';
+  document.getElementById('bpriceActions').style.display='none';
+  bpriceItems=[];
+}
+function setBPAiMode(m){
+  bpAiMode=m;
+  document.getElementById('bpai-mode-missing').classList.toggle('active',m==='missing');
+  document.getElementById('bpai-mode-all').classList.toggle('active',m==='all');
+  _updateBpAiNote();
+}
+function _updateBpAiNote(){
+  var missingCnt=data.products.filter(function(p){return !(p.teika>0);}).length;
+  var note = bpAiMode==='missing'
+    ? '定価が未入力の商品 <b>'+missingCnt+'件</b> を検索します。'
+    : '全商品 <b>'+data.products.length+'件</b> の定価を再検索します（時間がかかります）。';
+  var el=document.getElementById('bpAiModeNote'); if(el) el.innerHTML=note;
+}
+
+// ─── ファイル取込 ────────────────────────────────────────────
+async function handleBPriceFile(event){
+  var file=event.target.files[0]; if(!file)return;
+  setAiPreview(document.getElementById('bpricePreview'), file);
+  var statusEl=document.getElementById('bpriceStatus');
+  statusEl.style.display='block'; statusEl.className='ai-status loading';
+  statusEl.innerHTML='<span class="spinner"></span>AIが価格表を読み取り中…';
+  document.getElementById('bpriceBody').innerHTML='';
+  document.getElementById('bpriceActions').style.display='none';
+
+  var fTeika=document.getElementById('bp-field-teika').checked;
+  var fCost=document.getElementById('bp-field-cost').checked;
+  var fSell=document.getElementById('bp-field-sell').checked;
+  if(!fTeika&&!fCost&&!fSell){ statusEl.className='ai-status error'; statusEl.innerHTML='⚠️ 取込む価格フィールドを1つ以上チェックしてください'; return; }
+
+  var existingList=data.products.map(function(p){return p.name+(p.maker?' ('+p.maker+')':'');}).join('\n');
+  var fieldsDesc=[fTeika?'teika（税別定価 / 0で不明）':'', fCost?'cost（仕入値 / 0で不明）':'', fSell?'sell（売値・販売価格 / 0で不明）':''].filter(Boolean).join(', ');
+  var context = bpFileType==='quote'
+    ? '自社（株式会社マツオ）の見積書・販売価格表です。各行の型番と売値（販売価格）を読み取ってください。金額はすべて税別で返してください。'
+    : '仕入先からの価格表・NET価格表です。各行の型番・定価・仕入値（NET価格）を読み取ってください。金額はすべて税別で返してください。';
+  var prompt='あなたは電材商社の価格管理担当です。\n'+context+'\n\n'
+    +'取込む価格フィールド: '+fieldsDesc+'\n'
+    +'金額が税込の場合は÷1.1で税別換算し、note に「税込から換算」と記載してください。不明な値は0にしてください。\n\n'
+    +'既存の登録商品（型番照合用）:\n'+existingList+'\n\n'
+    +'必ず以下のJSON形式のみで返答してください:\n'
+    +'{"items":[{"name":"型番","teika":0,"cost":0,"sell":0,"note":""}]}';
+  try{
+    var parts=await fileToAiParts(file,prompt);
+    var result=await callGemini({contents:[{parts:parts}],generationConfig:{responseMimeType:'application/json',temperature:0}});
+    var parsed=JSON.parse(geminiText(result).replace(/```json|```/g,'').trim());
+    bpriceItems=[];
+    (parsed.items||[]).forEach(function(it){
+      if(!it.name) return;
+      var p=findProductByName(it.name)||data.products.find(function(x){return normalizeName(x.name)===normalizeName(it.name);});
+      var changes={};
+      if(p){
+        if(fTeika&&it.teika>0&&it.teika!==(p.teika||0)) changes.teika={old:p.teika||0,new:it.teika};
+        if(fCost &&it.cost>0 &&it.cost!==(p.cost||0))   changes.cost={old:p.cost||0,new:it.cost};
+        if(fSell &&it.sell>0 &&it.sell!==(p.sell||0))   changes.sell={old:p.sell||0,new:it.sell};
+        var note=it.note||'';
+        if(Object.keys(changes).length>0)
+          bpriceItems.push({pid:p.id,name:p.name,maker:p.maker||'',changes:changes,source:(bpFileType==='quote'?'自社見積書':'仕入先価格表')+(note?' ('+note+')':''),matched:true});
+      }else{
+        bpriceItems.push({pid:null,name:it.name,maker:'',changes:{teika:{old:0,new:it.teika||0},cost:{old:0,new:it.cost||0},sell:{old:0,new:it.sell||0}},source:'未一致',matched:false});
+      }
+    });
+    statusEl.style.display='none';
+    if(!bpriceItems.length){
+      statusEl.style.display='block'; statusEl.className='ai-status';
+      statusEl.innerHTML='⚠️ 登録済み商品と一致する価格情報が見つかりませんでした。'; return;
+    }
+    renderBPriceItems();
+    document.getElementById('bpriceActions').style.display='block';
+  }catch(e){ statusEl.className='ai-status error'; statusEl.innerHTML='❌ 読み取りに失敗: '+e.message; }
+}
+
+// ─── AI 一括定価検索 ─────────────────────────────────────────
+async function startBPriceAiSearch(){
+  var targets=bpAiMode==='missing'
+    ? data.products.filter(function(p){return !(p.teika>0);})
+    : data.products.slice();
+  if(!targets.length){ alert('対象商品がありません'); return; }
+  bpAiSearchCancelled=false; bpriceItems=[];
+  document.getElementById('bpAiStartBtn').disabled=true;
+  document.getElementById('bpAiProgress').style.display='block';
+  document.getElementById('bpriceBody').innerHTML='';
+  document.getElementById('bpriceActions').style.display='none';
+  document.getElementById('bpriceStatus').style.display='none';
+  for(var i=0;i<targets.length;i++){
+    if(bpAiSearchCancelled) break;
+    var p=targets[i];
+    document.getElementById('bpAiProgressText').textContent=(i+1)+' / '+targets.length+'  検索中: '+p.name;
+    document.getElementById('bpAiProgressBar').style.width=(Math.round((i/targets.length)*100))+'%';
+    try{
+      var promptText='以下の空調・電材製品のメーカー希望小売価格（税別定価）をメーカー公式サイトのみで調べてください。\n'
+        +'メーカー: '+(p.maker||'不明')+'\n型番: '+p.name+'\n\n'
+        +'【重要】以下は絶対に参照禁止: Amazon・楽天市場・Yahoo!ショッピング・価格.com等の通販・比較サイト。\n'
+        +'メーカー公式サイト（例: panasonic.com、daikin.co.jp等）のみ参照してください。\n'
+        +'公式サイトで見つからない場合（オープン価格含む）は found:false で返してください。\n'
+        +'税込価格しか見つからない場合は÷1.1で税別換算し、その旨noteに記載してください。\n\n'
+        +'必ず以下のJSONのみで返答: {"found":true,"teika":数値,"source":"公式サイトURL"} または {"found":false,"note":"理由"}';
+      var res=await callGemini({contents:[{parts:[{text:promptText}]}],tools:[{google_search:{}}]});
+      var txt=geminiText(res).replace(/```json|```/g,'').trim();
+      var jsonMatch=txt.match(/\{[\s\S]*?\}/);
+      if(jsonMatch){
+        var pr=JSON.parse(jsonMatch[0]);
+        if(pr.found&&pr.teika>0){
+          var newTeika=Math.round(pr.teika);
+          if(newTeika!==(p.teika||0)){
+            bpriceItems.push({pid:p.id,name:p.name,maker:p.maker||'',changes:{teika:{old:p.teika||0,new:newTeika}},source:pr.source||'AI検索',matched:true});
+          }
+        }
+      }
+    }catch(e){ /* skip failed item */ }
+    // re-render progressively
+    if(bpriceItems.length) renderBPriceItems();
+  }
+  document.getElementById('bpAiProgressBar').style.width='100%';
+  document.getElementById('bpAiProgressText').textContent='完了 — '+bpriceItems.length+'件の定価が見つかりました';
+  document.getElementById('bpAiStartBtn').disabled=false;
+  if(bpriceItems.length){
+    document.getElementById('bpriceActions').style.display='block';
+  }else{
+    var st=document.getElementById('bpriceStatus');
+    st.style.display='block'; st.className='ai-status';
+    st.innerHTML='⚠️ 新しい定価情報は見つかりませんでした（既に最新か、未対応商品）。';
+  }
+}
+
+// ─── 未入力項目補完 ─────────────────────────────────────────
+async function startBPriceFill(){
+  var fillTeika=document.getElementById('fill-teika').checked;
+  var fillCat=document.getElementById('fill-category').checked;
+  var fillMaker=document.getElementById('fill-maker').checked;
+  if(!fillTeika&&!fillCat&&!fillMaker){ alert('補完する項目を1つ以上選択してください'); return; }
+  var targets=data.products.filter(function(p){
+    return (fillTeika&&!(p.teika>0))||(fillCat&&!(p.category||'').trim())||(fillMaker&&!(p.maker||'').trim());
+  });
+  if(!targets.length){ alert('補完対象の商品がありません（対象フィールドはすべて入力済みです）'); return; }
+  var st=document.getElementById('bpriceStatus');
+  st.style.display='block'; st.className='ai-status loading';
+  st.innerHTML='<span class="spinner"></span>AIが補完中…（'+targets.length+'件）';
+  document.getElementById('bpriceBody').innerHTML='';
+  document.getElementById('bpriceActions').style.display='none';
+  var list=targets.map(function(p){ return {id:p.id,name:p.name,maker:p.maker||'',category:p.category||'',teika:p.teika||0}; });
+  var fields=[];
+  if(fillTeika) fields.push('teika（税別推定定価、不明なら0）');
+  if(fillCat)   fields.push('category（ジャンル分類）');
+  if(fillMaker) fields.push('maker（メーカー名）');
+  var prompt='あなたは電材・空調設備の商品マスター担当です。\n'
+    +'以下の商品リストについて、空白の項目を補完してください（補完対象: '+fields.join('、')+'）。\n'
+    +'現在0やブランクになっているフィールドのみ補完し、値が入っている場合はそのままにしてください。\n'
+    +'teikaはメーカー希望小売価格（税別）を日本円で整数で推定してください（確信がなければ0）。\n'
+    +'categoryはジャンル（例: ルームエアコン、配管・部材）。makerはメーカー名（例: パナソニック、ダイキン）。\n\n'
+    +'商品リスト: '+JSON.stringify(list,null,0)+'\n\n'
+    +'必ず以下のJSON形式のみで返答: {"items":[{"id":"","teika":0,"category":"","maker":""}]}';
+  try{
+    var res=await callGemini({contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0}});
+    var parsed=JSON.parse(geminiText(res).replace(/```json|```/g,'').trim());
+    var proposed={}; (parsed.items||[]).forEach(function(it){if(it.id) proposed[it.id]=it;});
+    bpriceItems=[];
+    targets.forEach(function(p){
+      var pr=proposed[p.id]; if(!pr) return;
+      var changes={};
+      if(fillTeika&&!(p.teika>0)&&pr.teika>0) changes.teika={old:0,new:Math.round(pr.teika)};
+      if(fillCat&&!(p.category||'').trim()&&(pr.category||'').trim()) changes.category={old:'',new:pr.category.trim()};
+      if(fillMaker&&!(p.maker||'').trim()&&(pr.maker||'').trim()) changes.maker={old:'',new:pr.maker.trim()};
+      if(Object.keys(changes).length>0)
+        bpriceItems.push({pid:p.id,name:p.name,maker:p.maker||pr.maker||'',changes:changes,source:'AI推定（要確認）',matched:true});
+    });
+    st.style.display='none';
+    if(!bpriceItems.length){
+      st.style.display='block'; st.className='ai-status';
+      st.innerHTML='⚠️ 補完できる情報が見つかりませんでした。'; return;
+    }
+    renderBPriceItems();
+    document.getElementById('bpriceActions').style.display='block';
+  }catch(e){ st.className='ai-status error'; st.innerHTML='❌ 補完に失敗しました: '+e.message; }
+}
+
+// ─── レビュー表示・保存 ──────────────────────────────────────
+const PRICE_FIELD_LABELS={teika:'定価(税別)',cost:'仕入値',sell:'売値',category:'ジャンル',maker:'メーカー'};
+function renderBPriceItems(){
+  var el=document.getElementById('bpriceBody');
+  el.innerHTML=bpriceItems.map(function(item,i){
+    var notMatched=!item.matched?'<div style="font-size:11px;color:var(--accent);margin-bottom:4px;">⚠️ 登録済み商品に一致なし — 保存は登録済み商品のみ対象</div>':'';
+    var srcHtml='<div style="font-size:10px;color:var(--ink3);margin-top:3px;">📌 '+item.source+'</div>';
+    var diffRows=Object.keys(item.changes).map(function(f){
+      var c=item.changes[f];
+      var isPrice=['teika','cost','sell'].indexOf(f)>=0;
+      var oldStr=isPrice?(c.old>0?'¥'+c.old.toLocaleString():'―'):(c.old||'―');
+      var newStr=isPrice?(c.new>0?'¥'+c.new.toLocaleString():'―'):(c.new||'―');
+      return '<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0;">'
+        +'<span style="color:var(--ink3);min-width:68px;font-size:11px;">'+PRICE_FIELD_LABELS[f]+'</span>'
+        +'<span style="color:var(--ink3);">'+oldStr+'</span>'
+        +'<span style="color:var(--ink3);">→</span>'
+        +'<span style="font-weight:700;color:var(--green);">'+newStr+'</span>'
+        +'</div>';
+    }).join('');
+    var chk=item.matched?'checked':'';
+    return '<div class="ai-item" id="bpr-item-'+i+'" style="margin-bottom:7px;">'
+      +'<div class="ai-item-header"><div style="flex:1;min-width:0;">'
+      +'<div class="ai-item-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+item.name+'</div>'
+      +'<div class="ai-item-maker">'+item.maker+'</div>'
+      +'</div>'
+      +'<label style="display:flex;align-items:center;gap:5px;cursor:pointer;margin-left:8px;">'
+      +'<input type="checkbox" id="bpr-check-'+i+'" '+chk+' '+(item.matched?'':'disabled')+' style="width:18px;height:18px;">'
+      +'</label></div>'
+      +notMatched+diffRows+srcHtml
+      +'</div>';
+  }).join('');
+}
+function checkAllBPrice(checked){
+  bpriceItems.forEach(function(item,i){ var el=document.getElementById('bpr-check-'+i); if(el&&item.matched) el.checked=checked; });
+}
+async function saveBPriceItems(){
+  var saved=0,skipped=0;
+  showLoading(true);
+  try{
+    for(var i=0;i<bpriceItems.length;i++){
+      var chk=document.getElementById('bpr-check-'+i); if(!chk||!chk.checked){skipped++;continue;}
+      var item=bpriceItems[i]; if(!item.matched||!item.pid){skipped++;continue;}
+      var p=data.products.find(function(x){return x.id===item.pid;});
+      if(!p){skipped++;continue;}
+      Object.keys(item.changes).forEach(function(f){ p[f]=item.changes[f].new; });
+      await upsertProduct(p); saved++;
+    }
+    renderMakerFilter();renderSummary();renderList();
+    if(priceUnlocked) renderPriceList();
+    closeModal('modalBulkPrice');
+    alert('✅ 保存完了\n'+saved+'件を更新'+(skipped>0?' / '+skipped+'件スキップ':''));
+  }catch(e){ alert('保存エラー: '+e.message); }
+  finally{ showLoading(false); }
+}
+
+// ═══ 売値一括計算（定価・仕入値の%） ════════════════════════
+const SR_LS_KEY = 'sell_rate_settings_v1';
+let srBase   = 'teika';   // 'teika' | 'cost'
+let srTarget = 'nosell';  // 'nosell' | 'all'
+let srPreviewItems = [];
+
+function openSellRate(){
+  srPreviewItems=[];
+  document.getElementById('srPreviewArea').style.display='none';
+  document.getElementById('sr-per-cat').checked=false;
+  renderSrCatRates();
+  _updateSrFromLS();
+  openModal('modalSellRate');
+}
+function _updateSrFromLS(){
+  try{
+    var saved=JSON.parse(localStorage.getItem(SR_LS_KEY)||'{}');
+    if(saved.base) { srBase=saved.base; document.getElementById('sr-base-teika').classList.toggle('active',srBase==='teika'); document.getElementById('sr-base-cost').classList.toggle('active',srBase==='cost'); }
+    if(saved.globalRate) document.getElementById('sr-rate-global').value=saved.globalRate;
+    if(saved.catRates){
+      getAllCategories().forEach(function(cat){
+        var el=document.getElementById('sr-cat-'+_srCatId(cat));
+        if(el&&saved.catRates[cat]) el.value=saved.catRates[cat];
+      });
+    }
+  }catch(e){}
+}
+function _srSaveToLS(){
+  var catRates={};
+  getAllCategories().forEach(function(cat){
+    var el=document.getElementById('sr-cat-'+_srCatId(cat)); if(el) catRates[cat]=parseInt(el.value)||85;
+  });
+  localStorage.setItem(SR_LS_KEY, JSON.stringify({base:srBase, globalRate:parseInt(document.getElementById('sr-rate-global').value)||85, catRates:catRates}));
+}
+function _srCatId(cat){ return cat.replace(/[^a-zA-Z0-9]/g,'_'); }
+function setSrBase(b){ srBase=b; document.getElementById('sr-base-teika').classList.toggle('active',b==='teika'); document.getElementById('sr-base-cost').classList.toggle('active',b==='cost'); }
+function setSrTarget(t){ srTarget=t; document.getElementById('sr-target-nosell').classList.toggle('active',t==='nosell'); document.getElementById('sr-target-all').classList.toggle('active',t==='all'); }
+function renderSrCatRates(){
+  var perCat=document.getElementById('sr-per-cat').checked;
+  document.getElementById('sr-global-rate').style.display=perCat?'none':'block';
+  var catDiv=document.getElementById('sr-cat-rates');
+  catDiv.style.display=perCat?'block':'none';
+  if(!perCat) return;
+  var cats=getAllCategories();
+  var saved={};
+  try{ saved=JSON.parse(localStorage.getItem(SR_LS_KEY)||'{}').catRates||{}; }catch(e){}
+  catDiv.innerHTML='<div style="font-size:11px;color:var(--ink3);margin-bottom:6px;">各ジャンルに適用する率を設定してください（デフォルト85%）</div>'
+    +cats.map(function(cat){
+      var cnt=data.products.filter(function(p){return (p.category||''===cat);}).length;
+      var val=saved[cat]||85;
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--surface);border-radius:8px;margin-bottom:4px;">'
+        +'<span style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+cat+'</span>'
+        +'<input type="number" id="sr-cat-'+_srCatId(cat)+'" value="'+val+'" min="1" max="200" style="width:60px;text-align:center;font-size:14px;font-weight:700;" class="form-input" oninput="renderSrPreview()">'
+        +'<span style="font-size:13px;color:var(--ink2);">%</span>'
+        +'</div>';
+    }).join('');
+}
+function _getSrRate(product){
+  var perCat=document.getElementById('sr-per-cat').checked;
+  if(!perCat) return parseInt(document.getElementById('sr-rate-global').value)||85;
+  var cat=(product.category||'').trim();
+  var el=document.getElementById('sr-cat-'+_srCatId(cat));
+  return el?parseInt(el.value)||85:parseInt(document.getElementById('sr-rate-global').value)||85;
+}
+function renderSrPreview(){
+  var baseLabel=srBase==='teika'?'定価（税別）':'仕入値';
+  var targets=data.products.filter(function(p){
+    var base=p[srBase]||0; if(!base) return false;
+    if(srTarget==='nosell') return !(p.sell>0);
+    return true;
+  });
+  if(!targets.length){
+    document.getElementById('srPreviewArea').style.display='block';
+    document.getElementById('srPreviewTitle').textContent='対象商品なし（ベース価格が未入力、または全商品設定済み）';
+    document.getElementById('srPreviewBody').innerHTML='';
+    srPreviewItems=[];
+    return;
+  }
+  srPreviewItems=targets.map(function(p){
+    var base=p[srBase]||0;
+    var rate=_getSrRate(p);
+    var newSell=Math.round(base*rate/100);
+    return {pid:p.id,name:p.name,maker:p.maker||'',base:base,rate:rate,newSell:newSell,oldSell:p.sell||0};
+  });
+  _srSaveToLS();
+  document.getElementById('srPreviewArea').style.display='block';
+  document.getElementById('srPreviewTitle').textContent='計算結果 — '+srPreviewItems.length+'件が対象（ベース: '+baseLabel+'）';
+  document.getElementById('srPreviewBody').innerHTML=srPreviewItems.map(function(it,i){
+    var diff=it.newSell-it.oldSell;
+    var diffStr=it.oldSell>0?(diff>0?'<span style="color:var(--accent);">+¥'+diff.toLocaleString()+'</span>':diff<0?'<span style="color:var(--blue);">-¥'+(Math.abs(diff)).toLocaleString()+'</span>':'変化なし'):'新規設定';
+    return '<div style="display:flex;align-items:center;gap:6px;padding:6px 4px;border-bottom:1px solid var(--border);">'
+      +'<label style="display:flex;align-items:center;gap:5px;flex:0 0 auto;"><input type="checkbox" id="sr-check-'+i+'" checked style="width:16px;height:16px;"></label>'
+      +'<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:700;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+it.name+'</div>'
+      +'<div style="font-size:10px;color:var(--ink3);">'+it.maker+(it.rate?'  '+it.rate+'%':'')+'</div></div>'
+      +'<div style="text-align:right;font-size:12px;">'
+      +'<div style="font-weight:700;color:var(--green);">¥'+it.newSell.toLocaleString()+'</div>'
+      +'<div style="font-size:10px;color:var(--ink3);">'+diffStr+'</div>'
+      +'</div></div>';
+  }).join('');
+}
+async function applySellRates(){
+  if(!srPreviewItems.length) return;
+  var saved=0;
+  showLoading(true);
+  try{
+    for(var i=0;i<srPreviewItems.length;i++){
+      var chk=document.getElementById('sr-check-'+i); if(!chk||!chk.checked) continue;
+      var item=srPreviewItems[i];
+      var p=data.products.find(function(x){return x.id===item.pid;});
+      if(!p) continue;
+      p.sell=item.newSell;
+      await upsertProduct(p); saved++;
+    }
+    if(priceUnlocked) renderPriceList();
+    closeModal('modalSellRate');
+    alert('✅ 売値を設定しました\n'+saved+'件を更新');
+  }catch(e){ alert('エラー: '+e.message); }
+  finally{ showLoading(false); }
+}
 let moveReserveData = null;
 let changeReserveCustData = null;
 
@@ -2947,6 +3513,8 @@ function openBulkImport(){
   document.getElementById('bulkAiPreview').style.display='none';
   bulkItems=[];
   bulkStockMode=false;
+  bulkPriceMode=false;
+  document.getElementById('bulk-price-toggle').checked=false;
   document.getElementById('bulk-stock-on').classList.remove('active');
   document.getElementById('bulk-stock-off').classList.add('active');
   openModal('modalBulkImport');
@@ -2977,7 +3545,8 @@ function parseBulkText(){
     if(c.length===1){ if(c[0]) items.push({maker:'',category:'',name:c[0],ni:0,ho:0,go:0,roku:0,jisha:0}); return; }
     if(c.length<3) return;
     var rec={maker:c[0]||'',category:c[1]||'',name:c[2]||'',
-      ni:parseInt(c[3])||0,ho:parseInt(c[4])||0,go:parseInt(c[5])||0,roku:parseInt(c[6])||0,jisha:parseInt(c[7])||0};
+      ni:parseInt(c[3])||0,ho:parseInt(c[4])||0,go:parseInt(c[5])||0,roku:parseInt(c[6])||0,jisha:parseInt(c[7])||0,
+      teika:parseInt(c[8])||0,cost:parseInt(c[9])||0,sell:parseInt(c[10])||0};
     if(rec.name) items.push(rec);
   });
   if(!items.length){alert('商品行を認識できませんでした。形式をご確認ください。');return;}
@@ -2991,15 +3560,15 @@ async function handleBulkPhoto(event){
   const statusEl=document.getElementById('bulkStatus'); statusEl.style.display='block'; statusEl.className='ai-status loading';
   statusEl.innerHTML='<span class="spinner"></span>AIが読み取り中…';
   const prompt=`あなたは電材総合商社の商品マスタ登録担当です。
-入力（画像・PDF・CSV）は商品一覧表・カタログ・在庫表です。各商品について、メーカー、ジャンル（商品分類）、型番・商品名、各倉庫の在庫数を読み取ってください。
+入力（画像・PDF・CSV）は商品一覧表・カタログ・在庫表・価格表です。各商品について、メーカー、ジャンル、型番、各倉庫の在庫数、価格を読み取ってください。
 倉庫列がある場合: 「に」→ni 「ほ」→ho 「5番」→go 「6番」→roku 「自社」→jisha
-倉庫・在庫の記載がない（商品情報のみ）の場合は在庫を全て0にしてください。ジャンルが不明なら空文字。
-必ず次のJSONのみ: {"items":[{"maker":"","category":"","name":"","ni":0,"ho":0,"go":0,"roku":0,"jisha":0}]}`;
+価格は税別で返してください（税込しかない場合は÷1.1）。記載がない項目は0にしてください。
+必ず次のJSONのみ: {"items":[{"maker":"","category":"","name":"","ni":0,"ho":0,"go":0,"roku":0,"jisha":0,"teika":0,"cost":0,"sell":0}]}`;
   try{
     const parts=await fileToAiParts(file,prompt);
     const result=await callGemini({contents:[{parts:parts}],generationConfig:{responseMimeType:'application/json',temperature:0}});
     const parsed=JSON.parse(geminiText(result).replace(/```json|```/g,'').trim());
-    bulkItems=(parsed.items||[]).map(function(it){return {maker:it.maker||'',category:it.category||'',name:it.name||'',ni:parseInt(it.ni)||0,ho:parseInt(it.ho)||0,go:parseInt(it.go)||0,roku:parseInt(it.roku)||0,jisha:parseInt(it.jisha)||0};}).filter(function(it){return it.name;});
+    bulkItems=(parsed.items||[]).map(function(it){return {maker:it.maker||'',category:it.category||'',name:it.name||'',ni:parseInt(it.ni)||0,ho:parseInt(it.ho)||0,go:parseInt(it.go)||0,roku:parseInt(it.roku)||0,jisha:parseInt(it.jisha)||0,teika:parseInt(it.teika)||0,cost:parseInt(it.cost)||0,sell:parseInt(it.sell)||0};}).filter(function(it){return it.name;});
     if(!bulkItems.length){statusEl.className='ai-status error';statusEl.innerHTML='⚠️ 商品を読み取れませんでした。';return;}
     renderBulkItems();
     statusEl.style.display='none';
@@ -3012,6 +3581,11 @@ function renderBulkItems(){
     var exists=data.products.find(function(p){return p.name.toLowerCase().trim()===(it.name||'').toLowerCase().trim();});
     var whInputs=WH_KEYS.map(function(w){return `<div style="text-align:center;"><div style="font-size:9px;color:var(--ink3);">${WH_LABELS[w].replace('倉庫','')}</div><input type="number" id="bulk-${w}-${i}" value="${it[w]||0}" min="0" class="form-input" style="width:46px;padding:5px 2px;font-size:12px;text-align:center;"></div>`;}).join('');
     var whBlock = bulkStockMode ? `<div style="display:flex;gap:4px;justify-content:space-between;">${whInputs}</div>` : '';
+    var priceBlock = bulkPriceMode ? `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:6px;">
+      <div><div style="font-size:9px;color:var(--ink3);margin-bottom:2px;">定価(税別)</div><input type="number" id="bulk-teika-${i}" value="${it.teika||0}" min="0" class="form-input" style="padding:5px 4px;font-size:12px;text-align:right;"></div>
+      <div><div style="font-size:9px;color:var(--blue);margin-bottom:2px;">仕入値</div><input type="number" id="bulk-cost-${i}" value="${it.cost||0}" min="0" class="form-input" style="padding:5px 4px;font-size:12px;text-align:right;"></div>
+      <div><div style="font-size:9px;color:var(--green);margin-bottom:2px;">売値</div><input type="number" id="bulk-sell-${i}" value="${it.sell||0}" min="0" class="form-input" style="padding:5px 4px;font-size:12px;text-align:right;"></div>
+    </div>` : '';
     return `<div class="ai-item" id="bulk-item-${i}"${exists?' style="border-color:var(--accent2);"':''}>
       <div class="ai-item-header">
         <div style="flex:1;">
@@ -3021,7 +3595,7 @@ function renderBulkItems(){
         <label style="display:flex;align-items:center;gap:5px;cursor:pointer;margin-left:8px;"><input type="checkbox" id="bulk-check-${i}" ${exists?'':'checked'} style="width:18px;height:18px;"><span style="font-size:11px;color:var(--ink2);">登録</span></label>
       </div>
       <input type="text" id="bulk-cat-${i}" value="${(it.category||'').replace(/"/g,'&quot;')}" placeholder="ジャンル" class="form-input" style="font-size:11px;padding:4px 6px;margin-bottom:6px;">
-      ${whBlock}
+      ${whBlock}${priceBlock}
       ${exists?'<div style="font-size:11px;color:var(--accent2);margin-top:5px;">⚠️ 同じ型番が登録済み（チェックを入れると在庫を上書き更新）</div>':''}
     </div>`;
   }).join('');
@@ -3040,14 +3614,24 @@ async function registerBulkItems(){
       var qo={}; WH_KEYS.forEach(function(w){
         qo[w]= bulkStockMode ? (parseInt((document.getElementById('bulk-'+w+'-'+i)||{value:0}).value)||0) : 0;
       });
+      var prices={teika:0,cost:0,sell:0};
+      if(bulkPriceMode){
+        prices.teika=parseFloat((document.getElementById('bulk-teika-'+i)||{value:0}).value)||0;
+        prices.cost =parseFloat((document.getElementById('bulk-cost-'+i)||{value:0}).value)||0;
+        prices.sell =parseFloat((document.getElementById('bulk-sell-'+i)||{value:0}).value)||0;
+      }
       var existing=data.products.find(function(p){return p.name.toLowerCase().trim()===name.toLowerCase().trim();});
       if(existing){
-        // 商品情報のみモードでは既存の在庫は変更しない
         if(bulkStockMode){ Object.assign(existing,{maker:maker||existing.maker,category:category||existing.category},qo); }
         else { existing.maker=maker||existing.maker; existing.category=category||existing.category; }
+        if(bulkPriceMode){
+          if(prices.teika>0) existing.teika=prices.teika;
+          if(prices.cost>0)  existing.cost=prices.cost;
+          if(prices.sell>0)  existing.sell=prices.sell;
+        }
         await upsertProduct(existing); updated++;
       }else{
-        var newP=Object.assign({id:uid(),maker:maker,category:category,name:name},qo,{teika:0,cost:0,sell:0,note:'',reserves:[]});
+        var newP=Object.assign({id:uid(),maker:maker,category:category,name:name},qo,{teika:prices.teika||0,cost:prices.cost||0,sell:prices.sell||0,note:'',reserves:[]});
         data.products.push(newP);
         await upsertProduct(newP); added++;
       }
