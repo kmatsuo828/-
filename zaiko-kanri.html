@@ -359,8 +359,8 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
       <button class="btn btn-secondary" style="flex:1;padding:15px;" type="button" onclick="document.getElementById('aiFileInput').click()">🖼 アルバム / ファイル</button>
     </div>
     <input type="file" id="aiCameraInput" accept="image/*" capture="environment" onchange="handleAiPhoto(event)" style="display:none;">
-    <input type="file" id="aiFileInput" accept="image/*" onchange="handleAiPhoto(event)" style="display:none;">
-    <div style="font-size:11px;color:var(--ink3);text-align:center;margin-bottom:14px;">端末内の写真アルバム・ファイルからも選べます</div>
+    <input type="file" id="aiFileInput" accept="image/*,application/pdf,.pdf,.csv,.tsv,.txt" onchange="handleAiPhoto(event)" style="display:none;">
+    <div style="font-size:11px;color:var(--ink3);text-align:center;margin-bottom:14px;">写真・PDF・CSVファイルから読み取れます（アルバム/ファイル）</div>
     <img id="aiPreviewImg" class="ai-preview">
     <div id="aiStatus" class="ai-status" style="display:none;"></div>
     <div class="ai-result" id="aiResult">
@@ -432,8 +432,8 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
       <button class="btn btn-secondary" style="flex:1;padding:15px;" type="button" onclick="document.getElementById('shukkaFileInput').click()">🖼 アルバム / ファイル</button>
     </div>
     <input type="file" id="shukkaCameraInput" accept="image/*" capture="environment" onchange="handleAiShukkaPhoto(event)" style="display:none;">
-    <input type="file" id="shukkaFileInput" accept="image/*" onchange="handleAiShukkaPhoto(event)" style="display:none;">
-    <div style="font-size:11px;color:var(--ink3);text-align:center;margin-bottom:14px;">端末内の写真アルバム・ファイルからも選べます</div>
+    <input type="file" id="shukkaFileInput" accept="image/*,application/pdf,.pdf,.csv,.tsv,.txt" onchange="handleAiShukkaPhoto(event)" style="display:none;">
+    <div style="font-size:11px;color:var(--ink3);text-align:center;margin-bottom:14px;">写真・PDF・CSVファイルから読み取れます（アルバム/ファイル）</div>
     <img id="shukkaAiPreview" class="ai-preview">
     <div id="shukkaAiStatus" class="ai-status" style="display:none;"></div>
     <div class="ai-result" id="shukkaAiResult">
@@ -585,8 +585,8 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
       <button class="btn btn-secondary" style="flex:1;padding:15px;" type="button" onclick="document.getElementById('trFileInput').click()">🖼 アルバム / ファイル</button>
     </div>
     <input type="file" id="trCameraInput" accept="image/*" capture="environment" onchange="handleAiToriokiPhoto(event)" style="display:none;">
-    <input type="file" id="trFileInput" accept="image/*" onchange="handleAiToriokiPhoto(event)" style="display:none;">
-    <div style="font-size:11px;color:var(--ink3);text-align:center;margin-bottom:14px;">端末内のアルバム・ファイルからも選べます</div>
+    <input type="file" id="trFileInput" accept="image/*,application/pdf,.pdf,.csv,.tsv,.txt" onchange="handleAiToriokiPhoto(event)" style="display:none;">
+    <div style="font-size:11px;color:var(--ink3);text-align:center;margin-bottom:14px;">写真・PDF・CSVファイルから読み取れます</div>
     <img id="trAiPreview" class="ai-preview">
     <div id="trAiStatus" class="ai-status" style="display:none;"></div>
     <div class="ai-result" id="trAiResult">
@@ -599,6 +599,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 
   <!-- LIST MODE -->
   <div id="torioki-list-mode" style="display:none;">
+    <button class="btn btn-secondary btn-full" style="margin-bottom:10px;" type="button" onclick="openCustomerManage()">👤 得意先の管理（編集・削除）</button>
     <div class="search-row" style="margin-bottom:10px;">
       <input type="text" class="search-input" placeholder="得意先・型番で絞り込み…" id="trListSearch" oninput="renderToriokiList()">
     </div>
@@ -770,7 +771,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
         <button class="btn btn-secondary" style="flex:1;padding:12px;" type="button" onclick="document.getElementById('rsvFileInput').click()">🖼 アルバム/ファイル</button>
       </div>
       <input type="file" id="rsvCameraInput" accept="image/*" capture="environment" onchange="handleAiReservePhoto(event)" style="display:none;">
-      <input type="file" id="rsvFileInput" accept="image/*" onchange="handleAiReservePhoto(event)" style="display:none;">
+      <input type="file" id="rsvFileInput" accept="image/*,application/pdf,.pdf,.csv,.tsv,.txt" onchange="handleAiReservePhoto(event)" style="display:none;">
       <img id="rsvAiPreview" class="ai-preview">
       <div id="rsvAiStatus" class="ai-status" style="display:none;"></div>
       <div class="ai-result" id="rsvAiResult">
@@ -798,7 +799,12 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
     <div class="modal-subtitle">CSV/テキストの貼り付け・ファイル、または画像から複数商品をまとめて登録します（既存の型番はスキップ）。</div>
     <div class="mode-toggle">
       <button class="mode-btn active" id="bulk-mode-text" onclick="setBulkMode('text')">📋 CSV / テキスト</button>
-      <button class="mode-btn" id="bulk-mode-photo" onclick="setBulkMode('photo')">📷 画像で読取り</button>
+      <button class="mode-btn" id="bulk-mode-photo" onclick="setBulkMode('photo')">📷 画像/PDF/CSV</button>
+    </div>
+    <div style="font-size:11px;color:var(--ink2);font-weight:700;margin-bottom:5px;">登録する内容</div>
+    <div class="seg-toggle" style="margin-bottom:12px;">
+      <button id="bulk-stock-off" class="active" type="button" onclick="setBulkStock(false)">商品情報のみ</button>
+      <button id="bulk-stock-on" type="button" onclick="setBulkStock(true)">在庫数も登録</button>
     </div>
     <div id="bulk-text-mode">
       <div style="font-size:11px;color:var(--ink3);margin-bottom:6px;line-height:1.7;">
@@ -817,7 +823,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
         <button class="btn btn-secondary" style="flex:1;padding:12px;" type="button" onclick="document.getElementById('bulkPhotoInput').click()">🖼 アルバム/ファイル</button>
       </div>
       <input type="file" id="bulkCameraInput" accept="image/*" capture="environment" onchange="handleBulkPhoto(event)" style="display:none;">
-      <input type="file" id="bulkPhotoInput" accept="image/*" onchange="handleBulkPhoto(event)" style="display:none;">
+      <input type="file" id="bulkPhotoInput" accept="image/*,application/pdf,.pdf,.csv,.tsv,.txt" onchange="handleBulkPhoto(event)" style="display:none;">
       <img id="bulkAiPreview" class="ai-preview">
     </div>
     <div id="bulkStatus" class="ai-status" style="display:none;"></div>
@@ -828,6 +834,26 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary btn-full" onclick="closeModal('modalBulkImport')">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- CUSTOMER MANAGEMENT -->
+<div class="modal-overlay" id="modalCustomers">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">👤 得意先の管理</div>
+    <div class="modal-subtitle">登録済みの得意先名を編集・削除できます。出荷・取り置きの入力候補に使われます。</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <input type="text" class="form-input" id="custNewName" placeholder="新しい得意先名を追加" style="flex:1;">
+      <button class="btn btn-green" style="flex:none;padding:10px 16px;" type="button" onclick="addCustomerManual()">＋追加</button>
+    </div>
+    <div class="search-row" style="margin-bottom:10px;">
+      <input type="text" class="search-input" id="custMgmtSearch" placeholder="得意先を検索…" oninput="renderCustomerManageList()">
+    </div>
+    <div id="custMgmtBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary btn-full" onclick="closeModal('modalCustomers')">閉じる</button>
     </div>
   </div>
 </div>
@@ -848,28 +874,44 @@ const PK='zaiko_pw_v1';
 // APIキーはサイトに埋め込まず、Supabase Edge Function (gemini-proxy) 経由で安全に呼び出す。
 const AI_PROXY_URL = SUPA_URL + '/functions/v1/gemini-proxy';
 const AI_MODEL = 'gemini-2.5-flash';
+// 混雑時に切り替える予備モデル（順番に試行）
+const AI_MODELS = ['gemini-2.5-flash','gemini-2.0-flash','gemini-flash-latest'];
+function aiSleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+
 async function callGemini(geminiBody){
-  var resp;
-  try{
-    resp = await fetch(AI_PROXY_URL, {
-      method:'POST',
-      headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY},
-      body: JSON.stringify({model:AI_MODEL, body:geminiBody})
-    });
-  }catch(e){
-    throw new Error('AIサーバーに接続できません。Supabaseの Edge Function「gemini-proxy」が未設定の可能性があります。');
+  var maxAttempts = 5;
+  var lastErr = null;
+  for(var attempt=0; attempt<maxAttempts; attempt++){
+    // 1〜2回目は主モデル、3回目以降は予備モデルへ切替
+    var model = AI_MODELS[Math.min(attempt>=2?attempt-1:0, AI_MODELS.length-1)];
+    var resp;
+    try{
+      resp = await fetch(AI_PROXY_URL, {
+        method:'POST',
+        headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY},
+        body: JSON.stringify({model:model, body:geminiBody})
+      });
+    }catch(e){
+      lastErr = new Error('AIサーバーに接続できません。ネットワークをご確認ください。');
+      await aiSleep(700*(attempt+1)); continue;  // 通信エラーは再試行
+    }
+    if(resp.status===404){
+      throw new Error('AI機能が未設定です。Supabaseに Edge Function「gemini-proxy」を作成してください。');
+    }
+    var txt = await resp.text();
+    var json;
+    try{ json = txt ? JSON.parse(txt) : {}; }
+    catch(e){ json = {}; lastErr = new Error('AI応答の解析に失敗しました'); }
+    if(resp.ok && !(json && json.error)) return json;  // 成功
+    var msg = (json && json.error && json.error.message) ? json.error.message : ('HTTP '+resp.status);
+    lastErr = new Error(msg);
+    // 混雑・一時エラーは自動リトライ対象
+    var retryable = resp.status===503 || resp.status===429 || resp.status===500 || resp.status===502
+      || /high demand|overload|unavailable|try again|temporar|rate.?limit|quota|busy|not found|not support|503|429/i.test(msg);
+    if(!retryable) throw lastErr;            // 設定ミス等は即終了
+    if(attempt < maxAttempts-1) await aiSleep(900*(attempt+1));  // 指数的バックオフ
   }
-  if(resp.status===404){
-    throw new Error('AI機能が未設定です。Supabaseに Edge Function「gemini-proxy」を作成してください。');
-  }
-  var txt = await resp.text();
-  var json;
-  try{ json = txt ? JSON.parse(txt) : {}; }
-  catch(e){ throw new Error('AI応答の解析に失敗しました: '+txt.slice(0,150)); }
-  if(!resp.ok || (json && json.error)){
-    throw new Error((json && json.error && json.error.message) ? json.error.message : ('HTTP '+resp.status));
-  }
-  return json;
+  throw new Error('AIが混雑しています。少し時間をおいて、もう一度お試しください。'+(lastErr?'（'+lastErr.message+'）':''));
 }
 // Geminiレスポンスからテキスト（=JSON文字列）を取り出す
 function geminiText(resp){
@@ -883,6 +925,28 @@ function geminiText(resp){
 }
 const WH_LABELS={ni:'\u306b\u5009\u5eab',ho:'\u307b\u5009\u5eab',go:'5\u756a\u5009\u5eab',roku:'6\u756a\u5009\u5eab',jisha:'\u81ea\u793e\u5009\u5eab'};
 const WH_KEYS=['ni','ho','go','roku','jisha'];
+
+// 画像/PDF/CSV(テキスト) いずれのファイルもGeminiへ渡せる形に変換
+async function fileToAiParts(file, promptText){
+  var type=(file.type||'').toLowerCase();
+  var name=(file.name||'').toLowerCase();
+  var isText = type.indexOf('csv')>=0 || type.indexOf('text')>=0 || name.endsWith('.csv') || name.endsWith('.tsv') || name.endsWith('.txt');
+  if(isText){
+    var txt=''; try{ txt=await file.text(); }catch(e){ txt=''; }
+    return [{text: promptText + '\n\n--- アップロードされた表データ（CSV/テキスト） ---\n' + txt}];
+  }
+  var b64=await new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result.split(',')[1]);};r.onerror=rej;r.readAsDataURL(file);});
+  var mime = type;
+  if(name.endsWith('.pdf')) mime='application/pdf';
+  if(!mime) mime='image/jpeg';
+  return [{inline_data:{mime_type:mime,data:b64}},{text:promptText}];
+}
+// 画像のときだけプレビュー表示（PDF/CSVは非表示）
+function setAiPreview(imgEl, file){
+  if(!imgEl) return;
+  if((file.type||'').startsWith('image/')){ imgEl.src=URL.createObjectURL(file); imgEl.style.display='block'; }
+  else { imgEl.style.display='none'; }
+}
 
 // ─── Supabase REST helper ─────────────────────────────────────────
 function supaFetch(path, method, body, extra){
@@ -1012,6 +1076,78 @@ function getAllCustomers(){
     });
   });
   return Array.from(new Set(customersCache.concat(fromReserves))).sort();
+}
+
+// ─── 一括登録：登録内容モード（商品情報のみ / 在庫数も） ───────────
+let bulkStockMode = false; // false=商品情報のみ
+function setBulkStock(on){
+  bulkStockMode=on;
+  document.getElementById('bulk-stock-on').classList.toggle('active',on);
+  document.getElementById('bulk-stock-off').classList.toggle('active',!on);
+  if(bulkItems.length) renderBulkItems();
+}
+
+// ─── 得意先の管理 ─────────────────────────────────────────────
+let custMgmtList = [];
+function openCustomerManage(){ renderCustomerManageList(); openModal('modalCustomers'); }
+function renderCustomerManageList(){
+  var q=(document.getElementById('custMgmtSearch')||{value:''}).value.toLowerCase();
+  custMgmtList=getAllCustomers().filter(function(c){return !q||c.toLowerCase().indexOf(q)>=0;});
+  var el=document.getElementById('custMgmtBody');
+  if(!custMgmtList.length){ el.innerHTML='<div class="empty-state">該当する得意先はありません</div>'; return; }
+  el.innerHTML=custMgmtList.map(function(c,i){
+    var cnt=0; data.products.forEach(function(p){(p.reserves||[]).forEach(function(r){if((r.customer||r.name||'')===c)cnt++;});});
+    return '<div style="display:flex;align-items:center;gap:6px;background:var(--surface);border-radius:9px;padding:8px;margin-bottom:6px;box-shadow:0 1px 2px var(--shadow);">'
+      +'<input type="text" class="form-input" id="cust-edit-'+i+'" value="'+(c||'').replace(/"/g,'&quot;')+'" style="flex:1;font-size:13px;padding:7px 8px;">'
+      +(cnt>0?'<span style="font-size:10px;color:var(--ink3);white-space:nowrap;">取置'+cnt+'</span>':'')
+      +'<button class="btn btn-blue" style="flex:none;padding:7px 11px;font-size:12px;" type="button" onclick="renameCustomer('+i+')">保存</button>'
+      +'<button class="btn btn-danger" style="flex:none;padding:7px 11px;font-size:12px;" type="button" onclick="deleteCustomerByName('+i+')">削除</button>'
+      +'</div>';
+  }).join('');
+}
+async function renameCustomer(i){
+  var oldName=custMgmtList[i];
+  var newName=((document.getElementById('cust-edit-'+i)||{value:''}).value||'').trim();
+  if(!newName){ alert('得意先名を入力してください'); return; }
+  if(newName===oldName){ return; }
+  showLoading(true);
+  try{
+    if(HAS_CUSTOMERS){ try{ await supaFetch('customers?name=eq.'+encodeURIComponent(oldName),'PATCH',{name:newName},{'Prefer':'return=minimal'}); }catch(e){} }
+    var idx=customersCache.indexOf(oldName); if(idx>=0) customersCache[idx]=newName; else if(customersCache.indexOf(newName)<0) customersCache.push(newName);
+    for(var k=0;k<data.products.length;k++){
+      var p=data.products[k], changed=false;
+      (p.reserves||[]).forEach(function(r){ if((r.customer||r.name)===oldName){ r.customer=newName; if(r.name) r.name=newName; changed=true; } });
+      if(changed) await upsertProduct(p);
+    }
+    renderSummary(); renderList();
+    if(currentScreen==='torioki') renderToriokiList();
+    if(document.getElementById('modalReserveList').classList.contains('open')) renderReserveList();
+    renderCustomerManageList();
+    alert('✅ 得意先名を更新しました\n'+oldName+' → '+newName);
+  }catch(e){ alert('更新エラー: '+e.message); }
+  finally{ showLoading(false); }
+}
+async function deleteCustomerByName(i){
+  var name=custMgmtList[i];
+  var hasReserve=false; data.products.forEach(function(p){(p.reserves||[]).forEach(function(r){if((r.customer||r.name||'')===name)hasReserve=true;});});
+  var msg='得意先「'+name+'」を候補リストから削除しますか？';
+  if(hasReserve) msg+='\n\n※この得意先には取り置きが残っているため、候補からは消えても取り置きが残っている限り再表示されます。取り置きを先に処理してください。';
+  if(!confirm(msg)) return;
+  showLoading(true);
+  try{
+    if(HAS_CUSTOMERS){ try{ await supaFetch('customers?name=eq.'+encodeURIComponent(name),'DELETE',null,{'Prefer':'return=minimal'}); }catch(e){} }
+    var idx=customersCache.indexOf(name); if(idx>=0) customersCache.splice(idx,1);
+    renderCustomerManageList();
+  }catch(e){ alert('削除エラー: '+e.message); }
+  finally{ showLoading(false); }
+}
+async function addCustomerManual(){
+  var name=((document.getElementById('custNewName')||{value:''}).value||'').trim();
+  if(!name){ return; }
+  showLoading(true);
+  try{ await addCustomerIfNew(name); document.getElementById('custNewName').value=''; renderCustomerManageList(); }
+  catch(e){ alert('追加エラー: '+e.message); }
+  finally{ showLoading(false); }
 }
 
 // ─── Seed initial data (first time only) ─────────────────────────
@@ -1421,7 +1557,7 @@ function openOpForm(type){
   }else if(type==='torioki'){
     const reserves=p.reserves||[];
     const rList=reserves.length>0?`<div class="reserve-info"><div class="reserve-info-title">🔒 現在の取り置き</div>
-      ${reserves.map((r,i)=>`<div class="reserve-info-item">・<strong>${r.customer||r.name||'未記入'}</strong>（${WH_LABELS[r.wh]}）${r.qty}台 <span class="rsv-deduct-badge ${r.deducted===false?'off':'on'}">${r.deducted===false?'在庫未引':'在庫引済'}</span>
+      ${reserves.map((r,i)=>`<div class="reserve-info-item">・<strong>${r.customer||r.name||'未記入'}</strong>（${WH_LABELS[r.wh]}）${r.qty}台
         <button onclick="shipReserveById('${p.id}',${i})" style="margin-left:6px;background:var(--blue);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:11px;cursor:pointer;">出荷確定</button>
         <button onclick="cancelReserveById('${p.id}',${i})" style="margin-left:4px;background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:11px;cursor:pointer;">解除</button></div>`).join('')}
       </div>`:'';
@@ -1501,23 +1637,15 @@ function updateNyukoStockInfo(){
 async function handleAiPhoto(event){
   const file=event.target.files[0];if(!file)return;
   const img=document.getElementById('aiPreviewImg');
-  img.src=URL.createObjectURL(file);img.style.display='block';
+  setAiPreview(img,file);
   document.getElementById('aiResult').style.display='none';
   document.getElementById('aiStatus').style.display='block';
   document.getElementById('aiStatus').className='ai-status loading';
-  document.getElementById('aiStatus').innerHTML='<span class="spinner"></span>AIが画像を読み取り中…';
-  // Convert to base64
-  const base64=await new Promise((res,rej)=>{
-    const r=new FileReader();
-    r.onload=()=>res(r.result.split(',')[1]);
-    r.onerror=rej;
-    r.readAsDataURL(file);
-  });
-  const mediaType=file.type||'image/jpeg';
+  document.getElementById('aiStatus').innerHTML='<span class="spinner"></span>AIが読み取り中…';
   const existingList=data.products.map(p=>`${p.maker||''}　${p.name}`).join('\n');
   const prompt=`あなたは倉庫在庫管理の専門家です。
-この画像は手書きの在庫メモや納品書、在庫表です。
-画像から商品名（型番）、メーカー、倉庫（に/ほ/5番/6番/自社）、数量を読み取ってください。
+入力（画像・PDF・CSV）は手書きの在庫メモや納品書、在庫表です。
+商品名（型番）、メーカー、倉庫（に/ほ/5番/6番/自社）、数量を読み取ってください。
 
 既存の登録商品リスト（参考）:
 ${existingList}
@@ -1543,11 +1671,9 @@ ${existingList}
   ]
 }`;
   try{
+    const parts=await fileToAiParts(file,prompt);
     const result=await callGemini({
-      contents:[{parts:[
-        {inline_data:{mime_type:mediaType,data:base64}},
-        {text:prompt}
-      ]}],
+      contents:[{parts:parts}],
       generationConfig:{responseMimeType:'application/json',temperature:0}
     });
     const text=geminiText(result);
@@ -1648,23 +1774,16 @@ function updateShukkaStock(){
 async function handleAiShukkaPhoto(event){
   const file=event.target.files[0];if(!file)return;
   const img=document.getElementById('shukkaAiPreview');
-  img.src=URL.createObjectURL(file);img.style.display='block';
+  setAiPreview(img,file);
   document.getElementById('shukkaAiResult').style.display='none';
   const statusEl=document.getElementById('shukkaAiStatus');
   statusEl.style.display='block';
   statusEl.className='ai-status loading';
-  statusEl.innerHTML='<span class="spinner"></span>AIが画像を読み取り中…';
-  const base64=await new Promise((res,rej)=>{
-    const r=new FileReader();
-    r.onload=()=>res(r.result.split(',')[1]);
-    r.onerror=rej;
-    r.readAsDataURL(file);
-  });
-  const mediaType=file.type||'image/jpeg';
+  statusEl.innerHTML='<span class="spinner"></span>AIが読み取り中…';
   const existingList=data.products.map(p=>`${p.maker||''}　${p.name}`).join('\n');
   const prompt=`あなたは倉庫在庫管理の専門家です。
-この画像は出荷指示メモ・受注票・納品書です。
-画像から出荷する商品名（型番）、メーカー、出荷元倉庫（に/ほ/5番/6番/自社）、数量、納品先（得意先）を読み取ってください。
+入力（画像・PDF・CSV）は出荷指示メモ・受注票・納品書です。
+出荷する商品名（型番）、メーカー、出荷元倉庫（に/ほ/5番/6番/自社）、数量、納品先（得意先）を読み取ってください。
 
 既存の登録商品リスト（参考・できるだけこの型番に一致させる）:
 ${existingList}
@@ -1691,11 +1810,9 @@ ${existingList}
   ]
 }`;
   try{
+    const parts=await fileToAiParts(file,prompt);
     const result=await callGemini({
-      contents:[{parts:[
-        {inline_data:{mime_type:mediaType,data:base64}},
-        {text:prompt}
-      ]}],
+      contents:[{parts:parts}],
       generationConfig:{responseMimeType:'application/json',temperature:0}
     });
     const text=geminiText(result);
@@ -2063,7 +2180,6 @@ function reserveRowsHtml(rows){
       +'<div class="rsv-card-maker">'+(p.category?p.category+' ・ ':'')+(p.maker||'メーカー未設定')+'</div>'
       +'</div><div class="rsv-card-qty">'+r.qty+'<span style="font-size:11px;color:var(--ink3);font-family:\'Noto Sans JP\',sans-serif;"> 台</span></div></div>'
       +'<div class="rsv-card-meta"><span class="wh-badge '+r.wh+'"><span class="wh-dot"></span>'+WH_LABELS[r.wh]+'</span>'
-      +'<span class="rsv-deduct-badge '+(ded?'on':'off')+'">'+(ded?'在庫引済':'在庫未引')+'</span>'
       +'<span>得意先: <span class="rsv-customer">'+(r.customer||r.name||'未記入')+'</span></span></div>'
       +'<div class="rsv-actions">'
       +'<button class="btn btn-blue" style="flex:1;" onclick="shipReserveById(\''+p.id+'\','+x.idx+')">📤 出荷確定</button>'
@@ -2167,22 +2283,21 @@ async function execTorioki(){
 // ─── 取り置きスクリーン：写真モード ──────────────────────────────
 async function handleAiToriokiPhoto(event){
   const file=event.target.files[0]; if(!file)return;
-  const img=document.getElementById('trAiPreview'); img.src=URL.createObjectURL(file); img.style.display='block';
+  const img=document.getElementById('trAiPreview'); setAiPreview(img,file);
   document.getElementById('trAiResult').style.display='none';
   const statusEl=document.getElementById('trAiStatus');
   statusEl.style.display='block'; statusEl.className='ai-status loading';
-  statusEl.innerHTML='<span class="spinner"></span>AIが画像を読み取り中…';
-  const base64=await new Promise(function(res,rej){const r=new FileReader();r.onload=function(){res(r.result.split(',')[1]);};r.onerror=rej;r.readAsDataURL(file);});
-  const mediaType=file.type||'image/jpeg';
+  statusEl.innerHTML='<span class="spinner"></span>AIが読み取り中…';
   const existingList=data.products.map(function(p){return (p.maker||'')+'　'+p.name;}).join('\n');
-  const prompt=`あなたは倉庫在庫管理の専門家です。この画像は取り置き依頼のメモ・受注票です。
+  const prompt=`あなたは倉庫在庫管理の専門家です。入力（画像・PDF・CSV）は取り置き依頼のメモ・受注票です。
 商品名（型番）、メーカー、倉庫（に/ほ/5番/6番/自社）、数量、得意先を読み取ってください。
 既存商品リスト（できるだけこの型番に一致）:
 ${existingList}
 倉庫: 「に」→ni 「ほ」→ho 「5番」→go 「6番」→roku 「自社」→jisha 記載なし→空文字
 必ず次のJSONのみ: {"items":[{"maker":"","name":"","warehouse":"ni/ho/go/roku/jisha/空","qty":数値,"customer":"","note":""}]}`;
   try{
-    const result=await callGemini({contents:[{parts:[{inline_data:{mime_type:mediaType,data:base64}},{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0}});
+    const parts=await fileToAiParts(file,prompt);
+    const result=await callGemini({contents:[{parts:parts}],generationConfig:{responseMimeType:'application/json',temperature:0}});
     const parsed=JSON.parse(geminiText(result).replace(/```json|```/g,'').trim());
     aiToriokiItems=parsed.items||[];
     if(!aiToriokiItems.length){statusEl.className='ai-status error';statusEl.innerHTML='⚠️ 読み取れませんでした。別の写真をお試しください。';return;}
@@ -2458,6 +2573,9 @@ function openBulkImport(){
   document.getElementById('bulkStatus').style.display='none';
   document.getElementById('bulkAiPreview').style.display='none';
   bulkItems=[];
+  bulkStockMode=false;
+  document.getElementById('bulk-stock-on').classList.remove('active');
+  document.getElementById('bulk-stock-off').classList.add('active');
   openModal('modalBulkImport');
 }
 function setBulkMode(m){
@@ -2495,19 +2613,18 @@ function parseBulkText(){
 }
 async function handleBulkPhoto(event){
   const file=event.target.files[0]; if(!file) return;
-  const img=document.getElementById('bulkAiPreview'); img.src=URL.createObjectURL(file); img.style.display='block';
+  const img=document.getElementById('bulkAiPreview'); setAiPreview(img,file);
   document.getElementById('bulkResult').style.display='none';
   const statusEl=document.getElementById('bulkStatus'); statusEl.style.display='block'; statusEl.className='ai-status loading';
-  statusEl.innerHTML='<span class="spinner"></span>AIが画像を読み取り中…';
-  const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
-  const mediaType=file.type||'image/jpeg';
+  statusEl.innerHTML='<span class="spinner"></span>AIが読み取り中…';
   const prompt=`あなたは電材総合商社の商品マスタ登録担当です。
-この画像は商品一覧表・在庫表です。各商品について、メーカー、ジャンル（商品分類）、型番・商品名、各倉庫の在庫数を読み取ってください。
+入力（画像・PDF・CSV）は商品一覧表・カタログ・在庫表です。各商品について、メーカー、ジャンル（商品分類）、型番・商品名、各倉庫の在庫数を読み取ってください。
 倉庫列がある場合: 「に」→ni 「ほ」→ho 「5番」→go 「6番」→roku 「自社」→jisha
-ジャンルが不明なら空文字。数量が不明なら0。
+倉庫・在庫の記載がない（商品情報のみ）の場合は在庫を全て0にしてください。ジャンルが不明なら空文字。
 必ず次のJSONのみ: {"items":[{"maker":"","category":"","name":"","ni":0,"ho":0,"go":0,"roku":0,"jisha":0}]}`;
   try{
-    const result=await callGemini({contents:[{parts:[{inline_data:{mime_type:mediaType,data:base64}},{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0}});
+    const parts=await fileToAiParts(file,prompt);
+    const result=await callGemini({contents:[{parts:parts}],generationConfig:{responseMimeType:'application/json',temperature:0}});
     const parsed=JSON.parse(geminiText(result).replace(/```json|```/g,'').trim());
     bulkItems=(parsed.items||[]).map(function(it){return {maker:it.maker||'',category:it.category||'',name:it.name||'',ni:parseInt(it.ni)||0,ho:parseInt(it.ho)||0,go:parseInt(it.go)||0,roku:parseInt(it.roku)||0,jisha:parseInt(it.jisha)||0};}).filter(function(it){return it.name;});
     if(!bulkItems.length){statusEl.className='ai-status error';statusEl.innerHTML='⚠️ 商品を読み取れませんでした。';return;}
@@ -2521,6 +2638,7 @@ function renderBulkItems(){
   el.innerHTML=bulkItems.map(function(it,i){
     var exists=data.products.find(function(p){return p.name.toLowerCase().trim()===(it.name||'').toLowerCase().trim();});
     var whInputs=WH_KEYS.map(function(w){return `<div style="text-align:center;"><div style="font-size:9px;color:var(--ink3);">${WH_LABELS[w].replace('倉庫','')}</div><input type="number" id="bulk-${w}-${i}" value="${it[w]||0}" min="0" class="form-input" style="width:46px;padding:5px 2px;font-size:12px;text-align:center;"></div>`;}).join('');
+    var whBlock = bulkStockMode ? `<div style="display:flex;gap:4px;justify-content:space-between;">${whInputs}</div>` : '';
     return `<div class="ai-item" id="bulk-item-${i}"${exists?' style="border-color:var(--accent2);"':''}>
       <div class="ai-item-header">
         <div style="flex:1;">
@@ -2530,7 +2648,7 @@ function renderBulkItems(){
         <label style="display:flex;align-items:center;gap:5px;cursor:pointer;margin-left:8px;"><input type="checkbox" id="bulk-check-${i}" ${exists?'':'checked'} style="width:18px;height:18px;"><span style="font-size:11px;color:var(--ink2);">登録</span></label>
       </div>
       <input type="text" id="bulk-cat-${i}" value="${(it.category||'').replace(/"/g,'&quot;')}" placeholder="ジャンル" class="form-input" style="font-size:11px;padding:4px 6px;margin-bottom:6px;">
-      <div style="display:flex;gap:4px;justify-content:space-between;">${whInputs}</div>
+      ${whBlock}
       ${exists?'<div style="font-size:11px;color:var(--accent2);margin-top:5px;">⚠️ 同じ型番が登録済み（チェックを入れると在庫を上書き更新）</div>':''}
     </div>`;
   }).join('');
@@ -2546,10 +2664,14 @@ async function registerBulkItems(){
       if(!name){skipped++;continue;}
       var maker=((document.getElementById('bulk-maker-'+i)||{value:''}).value||'').trim();
       var category=((document.getElementById('bulk-cat-'+i)||{value:''}).value||'').trim();
-      var qo={}; WH_KEYS.forEach(function(w){qo[w]=parseInt((document.getElementById('bulk-'+w+'-'+i)||{value:0}).value)||0;});
+      var qo={}; WH_KEYS.forEach(function(w){
+        qo[w]= bulkStockMode ? (parseInt((document.getElementById('bulk-'+w+'-'+i)||{value:0}).value)||0) : 0;
+      });
       var existing=data.products.find(function(p){return p.name.toLowerCase().trim()===name.toLowerCase().trim();});
       if(existing){
-        Object.assign(existing,{maker:maker||existing.maker,category:category||existing.category},qo);
+        // 商品情報のみモードでは既存の在庫は変更しない
+        if(bulkStockMode){ Object.assign(existing,{maker:maker||existing.maker,category:category||existing.category},qo); }
+        else { existing.maker=maker||existing.maker; existing.category=category||existing.category; }
         await upsertProduct(existing); updated++;
       }else{
         var newP=Object.assign({id:uid(),maker:maker,category:category,name:name},qo,{teika:0,cost:0,sell:0,note:'',reserves:[]});
