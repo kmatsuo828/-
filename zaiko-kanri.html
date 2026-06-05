@@ -816,6 +816,32 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
   </div>
 </div>
 
+<!-- MODAL: CHANGE RESERVE CUSTOMER -->
+<div class="modal-overlay" id="modalChangeReserveCust">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">👤 得意先を変更</div>
+    <div style="font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-bottom:2px;" id="chgCustProduct"></div>
+    <div style="font-size:12px;color:var(--ink3);margin-bottom:14px;" id="chgCustInfo"></div>
+    <div class="form-group">
+      <label class="form-label">新しい得意先</label>
+      <div class="maker-combo">
+        <input type="text" class="maker-combo-input" id="chgCustInput"
+          placeholder="得意先を入力 or ▼で選択" autocomplete="off"
+          oninput="filterCustomerDropdown('chgCustInput','chgCustDD')"
+          onfocus="openCustomerDropdown('chgCustInput','chgCustDD')">
+        <button class="maker-combo-toggle" type="button"
+          onclick="toggleCustomerDropdown('chgCustInput','chgCustDD')">▼</button>
+        <div class="maker-dropdown" id="chgCustDD"></div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal('modalChangeReserveCust')">キャンセル</button>
+      <button class="btn btn-primary" onclick="execChangeReserveCust()">👤 変更する</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: MOVE RESERVE WAREHOUSE -->
 <div class="modal-overlay" id="modalMoveReserve">
   <div class="modal">
@@ -1412,6 +1438,42 @@ async function saveAutoCategories(){
 
 // ═══ 取り置き倉庫変更 ═════════════════════════════════════════
 let moveReserveData = null;
+let changeReserveCustData = null;
+
+function openChangeReserveCust(productId, idx){
+  var p=data.products.find(function(x){return x.id===productId;});
+  if(!p||!p.reserves||!p.reserves[idx]) return;
+  var r=p.reserves[idx];
+  changeReserveCustData={productId:productId,idx:idx};
+  document.getElementById('chgCustProduct').textContent=p.name;
+  document.getElementById('chgCustInfo').textContent=
+    '現在の得意先: '+(r.customer||r.name||'未記入')+' / '+WH_LABELS[r.wh]+' / '+r.qty+'台';
+  document.getElementById('chgCustInput').value=r.customer||r.name||'';
+  openModal('modalChangeReserveCust');
+}
+async function execChangeReserveCust(){
+  if(!changeReserveCustData) return;
+  var {productId,idx}=changeReserveCustData;
+  var newCust=document.getElementById('chgCustInput').value.trim();
+  if(!newCust){ alert('得意先名を入力してください'); return; }
+  var p=data.products.find(function(x){return x.id===productId;});
+  if(!p||!p.reserves||!p.reserves[idx]) return;
+  var r=p.reserves[idx];
+  var oldCust=r.customer||r.name||'未記入';
+  if(newCust===oldCust){ closeModal('modalChangeReserveCust'); return; }
+  showLoading(true);
+  try{
+    r.customer=newCust; if(r.name) r.name=newCust;
+    await upsertProduct(p);
+    await addCustomerIfNew(newCust);
+    await addHistoryDB('torioki',p.name,'得意先変更: '+oldCust+' → '+newCust+' ('+WH_LABELS[r.wh]+' '+r.qty+'台)');
+    renderSummary(); renderList();
+    if(currentScreen==='torioki') renderToriokiList();
+    if(document.getElementById('modalReserveList').classList.contains('open')) renderReserveList();
+    closeModal('modalChangeReserveCust');
+  }catch(e){ alert('エラー: '+e.message); }
+  finally{ showLoading(false); }
+}
 function openMoveReserve(productId, idx){
   var p=data.products.find(function(x){return x.id===productId;});
   if(!p||!p.reserves||!p.reserves[idx]) return;
@@ -2488,10 +2550,13 @@ function reserveRowsHtml(rows){
       +'</div><div class="rsv-card-qty">'+r.qty+'<span style="font-size:11px;color:var(--ink3);font-family:\'Noto Sans JP\',sans-serif;"> 台</span></div></div>'
       +'<div class="rsv-card-meta"><span class="wh-badge '+r.wh+'"><span class="wh-dot"></span>'+WH_LABELS[r.wh]+'</span>'
       +'<span>得意先: <span class="rsv-customer">'+(r.customer||r.name||'未記入')+'</span></span></div>'
-      +'<div class="rsv-actions">'
-      +'<button class="btn btn-blue" style="flex:1;" onclick="shipReserveById(\''+p.id+'\','+x.idx+')">📤 出荷確定</button>'
-      +'<button class="btn btn-secondary" style="flex:none;padding:8px 11px;" title="倉庫を変更" onclick="openMoveReserve(\''+p.id+'\','+x.idx+')">🔄 倉庫変更</button>'
-      +'<button class="btn btn-danger" style="flex:1;" onclick="cancelReserveById(\''+p.id+'\','+x.idx+')">↩ 解除</button>'
+      +'<div class="rsv-actions" style="flex-direction:column;gap:5px;">'
+      +'<button class="btn btn-blue" style="width:100%;padding:9px;" onclick="shipReserveById(\''+p.id+'\','+x.idx+')">📤 出荷確定</button>'
+      +'<div style="display:flex;gap:5px;">'
+      +'<button class="btn btn-secondary" style="flex:1;padding:7px 4px;font-size:11px;" onclick="openMoveReserve(\''+p.id+'\','+x.idx+')">🔄 倉庫変更</button>'
+      +'<button class="btn btn-blue" style="flex:1;padding:7px 4px;font-size:11px;background:var(--ink2);" onclick="openChangeReserveCust(\''+p.id+'\','+x.idx+')">👤 得意先変更</button>'
+      +'<button class="btn btn-danger" style="flex:1;padding:7px 4px;font-size:11px;" onclick="cancelReserveById(\''+p.id+'\','+x.idx+')">↩ 解除</button>'
+      +'</div>'
       +'</div></div>';
   }).join('');
 }
