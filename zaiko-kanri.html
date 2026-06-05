@@ -252,7 +252,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
     <div class="reserve-banner-left">🔒 取り置き中 <span id="reserveBannerCount">0</span></div>
     <div class="reserve-banner-arrow">一覧を見る ›</div>
   </div>
-  <div class="section-hd"><h2>商品一覧</h2><span id="product-count" style="font-size:12px;color:var(--ink3)"></span></div>
+  <div class="section-hd"><h2>商品一覧</h2><span id="product-count" style="font-size:12px;color:var(--ink3)"></span><button id="btnAutoCategory" onclick="openAutoCategory()" style="background:var(--blue);color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;display:none;">🤖 未分類を自動分類</button></div>
   <div class="search-row">
     <input type="text" class="search-input" placeholder="型番・メーカーで検索…" id="searchInput" oninput="renderList()">
     <select class="filter-select" id="filterWh" onchange="renderList()">
@@ -816,6 +816,60 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
   </div>
 </div>
 
+<!-- MODAL: MOVE RESERVE WAREHOUSE -->
+<div class="modal-overlay" id="modalMoveReserve">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🔄 取り置き倉庫を変更</div>
+    <div style="font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-bottom:3px;" id="moveRsvProduct"></div>
+    <div style="font-size:12px;color:var(--ink3);margin-bottom:14px;" id="moveRsvInfo"></div>
+    <div class="form-group">
+      <label class="form-label">移動先の倉庫</label>
+      <select class="form-select" id="moveRsvWh"></select>
+    </div>
+    <div id="moveRsvNote" style="display:none;font-size:12px;color:var(--accent);background:#fdf0ec;border-radius:8px;padding:9px 11px;margin-bottom:8px;line-height:1.6;"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal('modalMoveReserve')">キャンセル</button>
+      <button class="btn btn-blue" onclick="execMoveReserve()">🔄 変更する</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: AUTO CATEGORY -->
+<div class="modal-overlay" id="modalAutoCategory">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🤖 ジャンル自動設定</div>
+
+    <!-- スタートパネル -->
+    <div id="autoCatStart">
+      <div class="form-group" style="margin-bottom:10px;">
+        <label class="form-label">対象商品</label>
+        <div class="seg-toggle">
+          <button id="acat-mode-unclass" class="active" type="button" onclick="setAutoCatMode('unclassified')">未分類のみ</button>
+          <button id="acat-mode-all" type="button" onclick="setAutoCatMode('all')">全商品を再分類</button>
+        </div>
+      </div>
+      <div id="autoCatModeNote" style="font-size:12px;color:var(--ink2);background:var(--surface2);border-radius:8px;padding:9px 11px;margin-bottom:14px;line-height:1.7;"></div>
+      <button class="btn btn-blue btn-full" onclick="startAutoCategory()" style="padding:13px;font-size:15px;">🤖 AI解析を開始</button>
+    </div>
+
+    <!-- 解析中・結果 -->
+    <div id="autoCatStatus" class="ai-status" style="display:none;"></div>
+    <div id="autoCatBody"></div>
+    <div id="autoCatActions" style="display:none;">
+      <div style="display:flex;gap:6px;margin-bottom:4px;">
+        <button class="btn btn-blue" style="flex:1;" type="button" onclick="checkAllAutoCategories(true)">全選択</button>
+        <button class="btn btn-secondary" style="flex:1;" type="button" onclick="checkAllAutoCategories(false)">全解除</button>
+      </div>
+      <button class="btn btn-green btn-full" onclick="saveAutoCategories()" style="padding:14px;font-size:15px;">💾 チェックした商品に保存</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary btn-full" onclick="closeModal('modalAutoCategory')">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: BULK IMPORT -->
 <div class="modal-overlay" id="modalBulkImport">
   <div class="modal">
@@ -1230,6 +1284,187 @@ function renderSummary(){
 
 function getMakers(){return[...new Set(data.products.map(p=>p.maker||'').filter(Boolean))].sort();}
 
+// ═══ AI ジャンル一括自動設定 ═══════════════════════════════════
+let autoCatItems = [];
+let autoCatMode  = 'unclassified'; // 'unclassified' | 'all'
+
+function setAutoCatMode(mode){
+  autoCatMode=mode;
+  document.getElementById('acat-mode-unclass').classList.toggle('active',mode==='unclassified');
+  document.getElementById('acat-mode-all').classList.toggle('active',mode==='all');
+  _updateAutoCatNote();
+}
+function _updateAutoCatNote(){
+  var unclassCount=data.products.filter(function(p){return !(p.category||'').trim();}).length;
+  var allCount=data.products.length;
+  var note;
+  if(autoCatMode==='unclassified'){
+    note=unclassCount>0?'未分類の商品が <b>'+unclassCount+'件</b> あります。AIがジャンルを提案します。確認・修正してから保存してください。':'✅ 未分類の商品はありません。「全商品を再分類」で既存ジャンルの見直しもできます。';
+  }else{
+    note='全商品 <b>'+allCount+'件</b> のジャンルをAIが提案します。<br>現在のジャンルも表示されますので、変更したい商品だけチェックして保存できます。';
+  }
+  document.getElementById('autoCatModeNote').innerHTML=note;
+}
+function openAutoCategory(){
+  autoCatItems=[];
+  document.getElementById('autoCatStart').style.display='block';
+  document.getElementById('autoCatStatus').style.display='none';
+  document.getElementById('autoCatBody').innerHTML='';
+  document.getElementById('autoCatActions').style.display='none';
+  setAutoCatMode(autoCatMode); // refresh note
+  openModal('modalAutoCategory');
+}
+async function startAutoCategory(){
+  var products = autoCatMode==='all'
+    ? data.products
+    : data.products.filter(function(p){ return !(p.category||'').trim(); });
+  if(!products.length){
+    document.getElementById('autoCatModeNote').innerHTML='<span style="color:var(--green);">✅ 対象商品がありません。</span>';
+    return;
+  }
+  document.getElementById('autoCatStart').style.display='none';
+  document.getElementById('autoCatStatus').style.display='block';
+  document.getElementById('autoCatStatus').className='ai-status loading';
+  document.getElementById('autoCatStatus').innerHTML='<span class="spinner"></span>AIがジャンルを解析中…（'+products.length+'件）';
+  await runAutoCategoryAI(products);
+}
+async function runAutoCategoryAI(products){
+  var list=products.map(function(p,i){ return {idx:i,id:p.id,maker:p.maker||'',name:p.name,currentCategory:p.category||''}; });
+  var prompt=[
+    'あなたは電材・設備機器商社の商品管理担当です。',
+    '以下の商品リスト（型番・メーカー・現在のジャンル）に対して、最も適切なジャンル（商品分類）を割り当ててください。',
+    '現在のジャンルが既に適切な場合はそのままにしてください。',
+    '',
+    '優先して使うジャンル一覧:',
+    PRESET_CATEGORIES.map(function(c){ return '- '+c; }).join('\n'),
+    '',
+    'これらに当てはまらない場合は最も適切な日本語カテゴリを1つ提案してください。',
+    '',
+    '商品リスト:',
+    JSON.stringify(list,null,0),
+    '',
+    '必ず以下のJSON形式のみで返答してください:',
+    '{"items":[{"id":"商品ID","category":"ジャンル名"}]}'
+  ].join('\n');
+  try{
+    var result=await callGemini({contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0}});
+    var parsed=JSON.parse(geminiText(result).replace(/```json|```/g,'').trim());
+    var suggested={};
+    (parsed.items||[]).forEach(function(it){ if(it.id) suggested[it.id]=it.category||''; });
+    autoCatItems=products.map(function(p){
+      return {id:p.id,name:p.name,maker:p.maker||'',currentCategory:p.category||'',category:suggested[p.id]||p.category||''};
+    });
+    document.getElementById('autoCatStatus').style.display='none';
+    renderAutoCategoryItems();
+    document.getElementById('autoCatActions').style.display='block';
+  }catch(e){
+    document.getElementById('autoCatStatus').className='ai-status error';
+    document.getElementById('autoCatStatus').innerHTML='❌ AI解析に失敗しました: '+e.message;
+  }
+}
+function renderAutoCategoryItems(){
+  var allCats=[...new Set(PRESET_CATEGORIES.concat(data.products.map(function(p){return (p.category||'').trim();}).filter(Boolean)))].sort();
+  document.getElementById('autoCatBody').innerHTML=autoCatItems.map(function(item,i){
+    var changed=item.category&&item.category!==item.currentCategory;
+    var opts='<option value="">─ 未設定 ─</option>'+allCats.map(function(c){
+      return '<option value="'+c+'"'+(c===item.category?' selected':'')+'>'+c+'</option>';
+    }).join('');
+    var currentLabel=item.currentCategory
+      ?'<span style="font-size:10px;background:var(--surface2);color:var(--ink2);padding:2px 6px;border-radius:4px;">現在: '+item.currentCategory+'</span>'
+      :'<span style="font-size:10px;color:var(--ink3);">未分類</span>';
+    var aiLabel=changed?'<span style="font-size:10px;color:var(--blue);margin-left:4px;">→ AI提案</span>':'';
+    return '<div class="ai-item" id="acat-item-'+i+'">'
+      +'<div class="ai-item-header"><div style="flex:1;min-width:0;">'
+      +'<div class="ai-item-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+item.name+'</div>'
+      +'<div class="ai-item-maker">'+item.maker+'</div>'
+      +'</div>'
+      +'<label style="display:flex;align-items:center;gap:5px;cursor:pointer;margin-left:8px;">'
+      +'<input type="checkbox" id="acat-check-'+i+'" '+(changed?'checked':'')+'style="width:18px;height:18px;">'
+      +'</label></div>'
+      +'<div style="display:flex;align-items:center;gap:6px;margin:4px 0 5px;">'+currentLabel+aiLabel+'</div>'
+      +'<select class="form-select" id="acat-cat-'+i+'" style="width:100%;font-size:13px;padding:7px 8px;'+(changed?'border-color:var(--blue);':'')+'" onchange="this.style.borderColor=this.value?\'var(--blue)\':\' var(--border)\'">'
+      +opts+'</select>'
+      +'</div>';
+  }).join('');
+}
+function checkAllAutoCategories(checked){
+  autoCatItems.forEach(function(_,i){ var el=document.getElementById('acat-check-'+i); if(el) el.checked=checked; });
+}
+async function saveAutoCategories(){
+  var saved=0,skipped=0;
+  showLoading(true);
+  try{
+    for(var i=0;i<autoCatItems.length;i++){
+      var chk=document.getElementById('acat-check-'+i); if(!chk||!chk.checked){skipped++;continue;}
+      var cat=((document.getElementById('acat-cat-'+i)||{value:''}).value||'').trim();
+      if(!cat){skipped++;continue;}
+      var p=data.products.find(function(x){return x.id===autoCatItems[i].id;});
+      if(!p){skipped++;continue;}
+      p.category=cat; await upsertProduct(p); saved++;
+    }
+    renderMakerFilter();renderSummary();renderList();
+    if(priceUnlocked) renderPriceList();
+    closeModal('modalAutoCategory');
+    alert('✅ ジャンル設定完了\n'+saved+'件を保存'+(skipped>0?' / '+skipped+'件スキップ':''));
+  }catch(e){ alert('保存エラー: '+e.message); }
+  finally{ showLoading(false); }
+}
+
+// ═══ 取り置き倉庫変更 ═════════════════════════════════════════
+let moveReserveData = null;
+function openMoveReserve(productId, idx){
+  var p=data.products.find(function(x){return x.id===productId;});
+  if(!p||!p.reserves||!p.reserves[idx]) return;
+  var r=p.reserves[idx];
+  moveReserveData={productId:productId,idx:idx};
+  document.getElementById('moveRsvProduct').textContent=p.name;
+  document.getElementById('moveRsvInfo').textContent=
+    '得意先: '+(r.customer||r.name||'未記入')+' / '+WH_LABELS[r.wh]+' / '+r.qty+'台';
+  var ded=(r.deducted!==false);
+  var opts=WH_KEYS.map(function(w){
+    var label=WH_LABELS[w]+'（在庫 '+(p[w]||0)+'台）';
+    if(w===r.wh) label+=' ← 現在';
+    return '<option value="'+w+'"'+(w===r.wh?' disabled':'')+'>'+label+'</option>';
+  }).join('');
+  document.getElementById('moveRsvWh').innerHTML=opts;
+  // 現在以外でデフォルト選択
+  var def=WH_KEYS.find(function(w){ return w!==r.wh&&(!ded||(p[w]||0)>=r.qty); })||WH_KEYS.find(function(w){return w!==r.wh;});
+  if(def) document.getElementById('moveRsvWh').value=def;
+  var noteEl=document.getElementById('moveRsvNote');
+  if(ded){
+    noteEl.style.display='block';
+    noteEl.textContent='※ 在庫引き済みの取り置きです。移動先倉庫から '+r.qty+' 台を引き、元の倉庫に返却します。移動先に十分な在庫が必要です。';
+  }else{
+    noteEl.style.display='none';
+  }
+  openModal('modalMoveReserve');
+}
+async function execMoveReserve(){
+  if(!moveReserveData) return;
+  var {productId,idx}=moveReserveData;
+  var p=data.products.find(function(x){return x.id===productId;});
+  if(!p||!p.reserves||!p.reserves[idx]) return;
+  var r=p.reserves[idx];
+  var newWh=document.getElementById('moveRsvWh').value;
+  if(!newWh||newWh===r.wh){ alert('移動先の倉庫を選択してください'); return; }
+  var ded=(r.deducted!==false);
+  if(ded&&(p[newWh]||0)<r.qty){ alert(WH_LABELS[newWh]+'の在庫が不足しています（在庫: '+(p[newWh]||0)+'台 / 必要: '+r.qty+'台）'); return; }
+  showLoading(true);
+  try{
+    var oldWh=r.wh;
+    if(ded){ p[oldWh]=(p[oldWh]||0)+r.qty; p[newWh]=(p[newWh]||0)-r.qty; }
+    r.wh=newWh;
+    await upsertProduct(p);
+    await addHistoryDB('idou',p.name,'取り置き倉庫変更: '+WH_LABELS[oldWh]+' → '+WH_LABELS[newWh]+' ('+(r.customer||r.name||'')+'分 '+r.qty+'台)');
+    renderSummary();renderList();
+    if(currentScreen==='torioki') renderToriokiList();
+    if(document.getElementById('modalReserveList').classList.contains('open')) renderReserveList();
+    if(document.getElementById('modalOperation').classList.contains('open')) openOpForm('torioki');
+    closeModal('modalMoveReserve');
+  }catch(e){ alert('エラー: '+e.message); }
+  finally{ showLoading(false); }
+}
+
 // ─── 倉庫詳細モーダル ─────────────────────────────────────────
 const WH_ICONS={ni:'🔵',ho:'🟢',go:'🔴',roku:'🟤',jisha:'🏢'};
 let currentWhDetail = null;
@@ -1319,6 +1554,9 @@ function renderList(){
     return mq&&mwh&&mmk&&mct;
   });
   document.getElementById('product-count').textContent=items.length+' 件';
+  // 商品が1件以上あればAIジャンル整理ボタンを常時表示
+  var btnAuto=document.getElementById('btnAutoCategory');
+  if(btnAuto) btnAuto.style.display=data.products.length>0?'inline-block':'none';
   renderReserveBanner();
   const el=document.getElementById('productList');
   if(!items.length){el.innerHTML='<div class="empty-state">商品が見つかりません</div>';return;}
@@ -2252,6 +2490,7 @@ function reserveRowsHtml(rows){
       +'<span>得意先: <span class="rsv-customer">'+(r.customer||r.name||'未記入')+'</span></span></div>'
       +'<div class="rsv-actions">'
       +'<button class="btn btn-blue" style="flex:1;" onclick="shipReserveById(\''+p.id+'\','+x.idx+')">📤 出荷確定</button>'
+      +'<button class="btn btn-secondary" style="flex:none;padding:8px 11px;" title="倉庫を変更" onclick="openMoveReserve(\''+p.id+'\','+x.idx+')">🔄 倉庫変更</button>'
       +'<button class="btn btn-danger" style="flex:1;" onclick="cancelReserveById(\''+p.id+'\','+x.idx+')">↩ 解除</button>'
       +'</div></div>';
   }).join('');
