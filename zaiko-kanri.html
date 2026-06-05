@@ -24,7 +24,8 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 .pb-safe{padding-bottom:86px;}
 /* SUMMARY */
 .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
-.summary-card{background:var(--surface);border-radius:10px;padding:12px;border-left:3px solid var(--ni);box-shadow:0 1px 4px var(--shadow);}
+.summary-card{background:var(--surface);border-radius:10px;padding:12px;border-left:3px solid var(--ni);box-shadow:0 1px 4px var(--shadow);cursor:pointer;transition:transform .12s,box-shadow .12s;}
+.summary-card:active{transform:scale(.97);box-shadow:0 2px 8px var(--shadow);}
 .summary-card.ho{border-color:var(--ho);}.summary-card.go{border-color:var(--go);}.summary-card.roku{border-color:var(--roku);}.summary-card.jisha{border-color:var(--jisha);}
 .summary-card-label{font-size:11px;color:var(--ink3);font-weight:500;}
 .summary-card-num{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--ink);margin-top:2px;}
@@ -215,6 +216,11 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 .reserve-banner:active{transform:scale(.99);}
 .reserve-banner-left{font-size:13px;font-weight:700;color:var(--accent2);}
 .reserve-banner-arrow{font-size:13px;color:var(--accent2);}
+.wh-detail-item{background:var(--surface);border-radius:9px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 3px var(--shadow);cursor:pointer;transition:transform .1s;}
+.wh-detail-item:active{transform:scale(.98);}
+.wh-detail-qty{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--accent);white-space:nowrap;}
+.wh-detail-name{font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.wh-detail-meta{font-size:11px;color:var(--ink3);margin-top:2px;}
 .rsv-card{background:var(--surface);border-radius:10px;padding:11px 12px;margin-bottom:8px;border-left:3px solid var(--accent2);box-shadow:0 1px 3px var(--shadow);}
 .rsv-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;}
 .rsv-card-name{font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;}
@@ -236,11 +242,11 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 <!-- ══ HOME ══ -->
 <div id="screen-home" class="screen active pb-safe">
   <div class="summary-grid">
-    <div class="summary-card ni"><div class="summary-card-label">🔵 に倉庫</div><div class="summary-card-num" id="sum-ni">0<span class="summary-card-unit"> 台</span></div></div>
-    <div class="summary-card ho"><div class="summary-card-label">🟢 ほ倉庫</div><div class="summary-card-num" id="sum-ho">0<span class="summary-card-unit"> 台</span></div></div>
-    <div class="summary-card go"><div class="summary-card-label">🔴 5番倉庫</div><div class="summary-card-num" id="sum-go">0<span class="summary-card-unit"> 台</span></div></div>
-    <div class="summary-card roku"><div class="summary-card-label">🟤 6番倉庫</div><div class="summary-card-num" id="sum-roku">0<span class="summary-card-unit"> 台</span></div></div>
-    <div class="summary-card jisha"><div class="summary-card-label">🏢 自社倉庫</div><div class="summary-card-num" id="sum-jisha">0<span class="summary-card-unit"> 台</span></div></div>
+    <div class="summary-card ni"    onclick="openWhDetail('ni')"><div class="summary-card-label">🔵 に倉庫</div><div class="summary-card-num" id="sum-ni">0<span class="summary-card-unit"> 台</span></div></div>
+    <div class="summary-card ho"    onclick="openWhDetail('ho')"><div class="summary-card-label">🟢 ほ倉庫</div><div class="summary-card-num" id="sum-ho">0<span class="summary-card-unit"> 台</span></div></div>
+    <div class="summary-card go"    onclick="openWhDetail('go')"><div class="summary-card-label">🔴 5番倉庫</div><div class="summary-card-num" id="sum-go">0<span class="summary-card-unit"> 台</span></div></div>
+    <div class="summary-card roku"  onclick="openWhDetail('roku')"><div class="summary-card-label">🟤 6番倉庫</div><div class="summary-card-num" id="sum-roku">0<span class="summary-card-unit"> 台</span></div></div>
+    <div class="summary-card jisha" onclick="openWhDetail('jisha')"><div class="summary-card-label">🏢 自社倉庫</div><div class="summary-card-num" id="sum-jisha">0<span class="summary-card-unit"> 台</span></div></div>
   </div>
   <div id="reserveBanner" class="reserve-banner" style="display:none;" onclick="openReserveList()">
     <div class="reserve-banner-left">🔒 取り置き中 <span id="reserveBannerCount">0</span></div>
@@ -753,6 +759,25 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
   </div>
 </div>
 
+<!-- MODAL: WAREHOUSE DETAIL -->
+<div class="modal-overlay" id="modalWhDetail">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
+      <div class="modal-title" id="whDetailTitle">倉庫詳細</div>
+      <div id="whDetailTotal" style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--accent);"></div>
+    </div>
+    <div class="modal-subtitle" id="whDetailSubtitle"></div>
+    <div class="search-row" style="margin-bottom:10px;">
+      <input type="text" class="search-input" id="whDetailSearch" placeholder="型番・メーカーで絞り込み…" oninput="renderWhDetailList()">
+    </div>
+    <div id="whDetailBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary btn-full" onclick="closeModal('modalWhDetail')">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: RESERVE LIST -->
 <div class="modal-overlay" id="modalReserveList">
   <div class="modal">
@@ -1198,10 +1223,54 @@ function renderSummary(){
   const t={};WH_KEYS.forEach(w=>t[w]=0);
   data.products.forEach(p=>WH_KEYS.forEach(w=>t[w]+=(p[w]||0)));
   WH_KEYS.forEach(w=>{const el=document.getElementById('sum-'+w);if(el)el.innerHTML=t[w]+'<span class="summary-card-unit"> 台</span>';});
+  // 倉庫詳細モーダルが開いていれば更新
+  if(currentWhDetail && document.getElementById('modalWhDetail').classList.contains('open')) renderWhDetailList();
 }
 
 
 function getMakers(){return[...new Set(data.products.map(p=>p.maker||'').filter(Boolean))].sort();}
+
+// ─── 倉庫詳細モーダル ─────────────────────────────────────────
+const WH_ICONS={ni:'🔵',ho:'🟢',go:'🔴',roku:'🟤',jisha:'🏢'};
+let currentWhDetail = null;
+function openWhDetail(wh){
+  currentWhDetail=wh;
+  document.getElementById('whDetailSearch').value='';
+  var total=data.products.reduce(function(s,p){return s+(p[wh]||0);},0);
+  document.getElementById('whDetailTitle').textContent=WH_ICONS[wh]+' '+WH_LABELS[wh];
+  document.getElementById('whDetailTotal').textContent=total+' 台';
+  var rCnt=0; data.products.forEach(function(p){(p.reserves||[]).forEach(function(r){if(r.wh===wh)rCnt+=(r.qty||0);});});
+  document.getElementById('whDetailSubtitle').textContent='在庫合計 '+total+' 台'+(rCnt>0?' / うち取り置き '+rCnt+' 台':'');
+  renderWhDetailList();
+  openModal('modalWhDetail');
+}
+function renderWhDetailList(){
+  var wh=currentWhDetail; if(!wh)return;
+  var q=(document.getElementById('whDetailSearch').value||'').toLowerCase();
+  var items=data.products.filter(function(p){
+    if((p[wh]||0)===0) return false;
+    if(!q) return true;
+    return p.name.toLowerCase().indexOf(q)>=0||(p.maker||'').toLowerCase().indexOf(q)>=0||(p.category||'').toLowerCase().indexOf(q)>=0;
+  }).sort(function(a,b){return (b[wh]||0)-(a[wh]||0);});
+  var el=document.getElementById('whDetailBody');
+  if(!items.length){
+    el.innerHTML='<div class="empty-state">'+(q?'該当商品なし':WH_LABELS[wh]+'に在庫のある商品はありません')+'</div>';
+    return;
+  }
+  el.innerHTML=items.map(function(p){
+    var rqty=(p.reserves||[]).filter(function(r){return r.wh===wh;}).reduce(function(s,r){return s+(r.qty||0);},0);
+    var rsv=rqty>0?'<span style="font-size:10px;background:#fff8e8;color:var(--accent2);padding:1px 6px;border-radius:10px;font-weight:700;margin-left:4px;">取置 '+rqty+'台</span>':'';
+    var tags=(p.category?'<span style="font-size:10px;background:#eef4fb;color:var(--blue);padding:1px 5px;border-radius:3px;margin-right:3px;">'+p.category+'</span>':'')+(p.maker?'<span style="font-size:10px;color:var(--ink3);">'+p.maker+'</span>':'');
+    return '<div class="wh-detail-item" onclick="closeModal(\'modalWhDetail\');openOperation(\''+p.id+'\')">'
+      +'<div style="flex:1;min-width:0;">'
+      +'<div class="wh-detail-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+p.name+rsv+'</div>'
+      +'<div class="wh-detail-meta">'+tags+'</div>'
+      +(p.note?'<div style="font-size:10px;color:var(--ink3);margin-top:2px;">📝 '+p.note+'</div>':'')
+      +'</div>'
+      +'<div class="wh-detail-qty" style="margin-left:12px;">'+p[wh]+'<span style="font-size:11px;color:var(--ink3);font-weight:400;font-family:\'Noto Sans JP\',sans-serif;"> 台</span></div>'
+      +'</div>';
+  }).join('');
+}
 
 
 function renderMakerFilter(){
