@@ -1099,7 +1099,6 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
     <div class="form-group" style="margin-bottom:4px;">
       <label class="form-label" style="margin:0 0 6px;">率の設定方法</label>
       <select id="srRateMode" class="form-select" onchange="setSrRateMode(this.value)" style="margin-bottom:8px;">
-        <option value="global">全体一律</option>
         <option value="cat">ジャンル別</option>
         <option value="maker">メーカー別</option>
         <option value="catmaker">ジャンル × メーカー別（最も細かい）</option>
@@ -2351,20 +2350,20 @@ async function saveBPriceItems(){
 const SR_LS_KEY = 'sell_rate_settings_v2';
 let srBase   = 'teika';   // 'teika' | 'cost'
 let srTarget = 'nosell';  // 'nosell' | 'all'
-let srRateMode = 'global'; // 'global'|'cat'|'maker'|'catmaker'
+let srRateMode = 'cat'; // 'cat'|'maker'|'catmaker'（全体一律は廃止）
 let srPreviewItems = [];
-let srRates = {global:85, cat:{}, maker:{}, catmaker:{}};
+let srRates = {cat:{}, maker:{}, catmaker:{}};
 
 function _srKey(s){ return (s||'').replace(/[^a-zA-Z0-9一-龠ぁ-んァ-ヶ]/g,'_'); }
 function _srLoad(){
   try{ var s=JSON.parse(localStorage.getItem(SR_LS_KEY)||'{}');
     if(s.base) srBase=s.base;
-    srRates={global:s.global||85, cat:s.cat||{}, maker:s.maker||{}, catmaker:s.catmaker||{}};
-  }catch(e){ srRates={global:85,cat:{},maker:{},catmaker:{}}; }
+    srRates={cat:s.cat||{}, maker:s.maker||{}, catmaker:s.catmaker||{}};
+  }catch(e){ srRates={cat:{},maker:{},catmaker:{}}; }
 }
 function _srSave(){
   _srReadInputs();
-  localStorage.setItem(SR_LS_KEY, JSON.stringify({base:srBase, global:srRates.global, cat:srRates.cat, maker:srRates.maker, catmaker:srRates.catmaker}));
+  localStorage.setItem(SR_LS_KEY, JSON.stringify({base:srBase, cat:srRates.cat, maker:srRates.maker, catmaker:srRates.catmaker}));
 }
 function openSellRate(){
   srPreviewItems=[];
@@ -2378,7 +2377,7 @@ function openSellRate(){
 }
 function setSrBase(b){ _srReadInputs(); srBase=b; document.getElementById('sr-base-teika').classList.toggle('active',b==='teika'); document.getElementById('sr-base-cost').classList.toggle('active',b==='cost'); renderSrRateDetail(); }
 function setSrTarget(t){ _srReadInputs(); srTarget=t; document.getElementById('sr-target-nosell').classList.toggle('active',t==='nosell'); document.getElementById('sr-target-all').classList.toggle('active',t==='all'); renderSrRateDetail(); }
-function setSrRateMode(m){ _srReadInputs(); srRateMode=m; renderSrRateDetail(); }
+function setSrRateMode(m){ _srReadInputs(); srRateMode=m; renderSrRateDetail(); renderSrPreview(); }
 
 // 現在の対象商品からジャンル/メーカー/組合せを抽出
 function _srTargetProducts(){
@@ -2391,12 +2390,6 @@ function _srTargetProducts(){
 function renderSrRateDetail(){
   var el=document.getElementById('sr-rate-detail');
   var targets=_srTargetProducts();
-  if(srRateMode==='global'){
-    el.innerHTML='<div style="display:flex;align-items:center;gap:8px;">'
-      +'<input type="number" id="srr-global" class="form-input" value="'+(srRates.global||85)+'" min="1" max="300" style="width:90px;text-align:center;font-size:18px;font-weight:700;" oninput="renderSrPreview()">'
-      +'<span style="font-size:15px;color:var(--ink2);">% を売値に設定</span></div>';
-    return;
-  }
   var keys=[], labelOf={}, cntOf={};
   if(srRateMode==='cat'){
     targets.forEach(function(p){ var k=(p.category||'未分類').trim()||'未分類'; if(keys.indexOf(k)<0){keys.push(k);labelOf[k]=k;cntOf[k]=0;} cntOf[k]++; });
@@ -2408,36 +2401,30 @@ function renderSrRateDetail(){
   keys.sort();
   if(!keys.length){ el.innerHTML='<div style="font-size:12px;color:var(--ink3);padding:8px;">対象商品がありません（ベース価格・対象条件をご確認ください）</div>'; return; }
   var store=srRates[srRateMode]||{};
-  el.innerHTML='<div style="font-size:11px;color:var(--ink3);margin-bottom:6px;">各区分に適用する率（%）。空欄や未設定は全体一律('+(srRates.global||85)+'%)を使用。</div>'
+  el.innerHTML='<div style="font-size:11px;color:var(--ink3);margin-bottom:6px;">各区分に適用する率（%）を入力。空欄の区分は計算対象外（売値を変更しません）。</div>'
     +keys.map(function(k){
       var val=(store[k]!=null)?store[k]:'';
       return '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--surface);border-radius:8px;margin-bottom:4px;">'
         +'<span style="flex:1;font-size:12px;overflow:hidden;">'+labelOf[k]+' <span style="color:var(--ink3);">('+cntOf[k]+'件)</span></span>'
-        +'<input type="number" data-srkey="'+k.replace(/"/g,'&quot;')+'" class="srr-input form-input" value="'+val+'" placeholder="'+(srRates.global||85)+'" min="1" max="300" style="width:64px;text-align:center;font-size:14px;font-weight:700;" oninput="renderSrPreview()">'
+        +'<input type="number" data-srkey="'+k.replace(/"/g,'&quot;')+'" class="srr-input form-input" value="'+val+'" placeholder="―" min="1" max="300" style="width:64px;text-align:center;font-size:14px;font-weight:700;" oninput="renderSrPreview()">'
         +'<span style="font-size:13px;color:var(--ink2);">%</span></div>';
     }).join('');
 }
 function _srReadInputs(){
-  if(srRateMode==='global'){
-    var g=document.getElementById('srr-global'); if(g) srRates.global=parseInt(g.value)||85;
-  }else{
-    var store={};
-    document.querySelectorAll('#sr-rate-detail .srr-input').forEach(function(inp){
-      var k=inp.getAttribute('data-srkey'); var v=inp.value.trim();
-      if(v!=='') store[k]=parseInt(v)||srRates.global;
-    });
-    srRates[srRateMode]=store;
-  }
+  var store={};
+  document.querySelectorAll('#sr-rate-detail .srr-input').forEach(function(inp){
+    var k=inp.getAttribute('data-srkey'); var v=inp.value.trim();
+    if(v!=='') store[k]=parseInt(v)||0;
+  });
+  srRates[srRateMode]=store;
 }
 function _getSrRate(p){
-  var g=srRates.global||85;
-  if(srRateMode==='global') return g;
   var k;
   if(srRateMode==='cat') k=(p.category||'未分類').trim()||'未分類';
   else if(srRateMode==='maker') k=(p.maker||'メーカー未設定').trim()||'メーカー未設定';
   else k=((p.category||'未分類').trim()||'未分類')+'｜'+((p.maker||'メーカー未設定').trim()||'メーカー未設定');
   var store=srRates[srRateMode]||{};
-  return (store[k]!=null)?store[k]:g;
+  return (store[k]!=null&&store[k]>0)?store[k]:null; // 未設定はnull＝計算対象外
 }
 function renderSrPreview(){
   _srReadInputs();
@@ -2912,7 +2899,9 @@ function selectMaker(name){
 // ═══ CATEGORY COMBO ══════════════════════════════════════════════
 function getAllCategories(){
   const fromData=data.products.map(p=>(p.category||'').trim()).filter(Boolean);
-  const roomYears=[...new Set([...getRoomACYearCats(),...fromData.filter(isRoomAC)])].sort().reverse();
+  // ルームエアコンの年式は有効範囲（現在年から2年以内）のみ表示。古い年式（21年等）は一覧に出さない。
+  const validYearCats=getRoomACYearCats();
+  const roomYears=[...new Set([...validYearCats,...fromData.filter(function(c){return isRoomAC(c)&&validYearCats.indexOf(c)>=0;})])].sort().reverse();
   const others=[...new Set([...PRESET_CATEGORIES_BASE,...fromData.filter(function(c){return !isRoomAC(c);})])].sort();
   return roomYears.concat(others);
 }
@@ -2993,6 +2982,9 @@ function autoCalcSell(){
   }else{
     if(note)note.style.display='none';
   }
+}
+function updateYearModelVisibility(){
+  var grp=document.getElementById('yearModelGroup');if(grp) grp.style.display='none';
 }
 function getAllYearModels(){
   var fromData=data.products.map(function(p){return (p.yearmodel||'').trim();}).filter(Boolean);
