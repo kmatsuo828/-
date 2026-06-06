@@ -1102,7 +1102,9 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
         <option value="cat">ジャンル別</option>
         <option value="maker">メーカー別</option>
         <option value="catmaker">ジャンル × メーカー別</option>
-        <option value="series">📡 ルームエアコン・シリーズ別</option>
+        <option value="series">📡 シリーズ別（ルームエアコン）</option>
+        <option value="makerSeries">📡 メーカー × シリーズ別（ルームエアコン）</option>
+        <option value="makerCatSeries">📡 メーカー × 年式 × シリーズ別（最細分）</option>
       </select>
       <div id="sr-rate-detail"></div>
     </div>
@@ -1283,7 +1285,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 <!-- PDF PREVIEW -->
 <div id="pdf-preview">
   <button class="pdf-print-btn" onclick="window.print()">🖨 印刷/PDF保存</button>
-  <button class="pdf-close" onclick="document.getElementById('pdf-preview').style.display='none'">✕ 閉じる</button>
+  <button class="pdf-close" onclick="document.getElementById('pdf-preview').style.display='none';document.title='在庫管理'">✕ 閉じる</button>
   <div class="pdf-doc" id="pdf-content"></div>
 </div>
 
@@ -2353,18 +2355,18 @@ let srBase   = 'teika';   // 'teika' | 'cost'
 let srTarget = 'nosell';  // 'nosell' | 'all'
 let srRateMode = 'cat'; // 'cat'|'maker'|'catmaker'（全体一律は廃止）
 let srPreviewItems = [];
-let srRates = {cat:{}, maker:{}, catmaker:{}, series:{}};
+let srRates = {cat:{}, maker:{}, catmaker:{}, series:{}, makerSeries:{}, makerCatSeries:{}};
 
 function _srKey(s){ return (s||'').replace(/[^a-zA-Z0-9一-龠ぁ-んァ-ヶ]/g,'_'); }
 function _srLoad(){
   try{ var s=JSON.parse(localStorage.getItem(SR_LS_KEY)||'{}');
     if(s.base) srBase=s.base;
-    srRates={cat:s.cat||{}, maker:s.maker||{}, catmaker:s.catmaker||{}, series:s.series||{}};
+    srRates={cat:s.cat||{}, maker:s.maker||{}, catmaker:s.catmaker||{}, series:s.series||{}, makerSeries:s.makerSeries||{}, makerCatSeries:s.makerCatSeries||{}};
   }catch(e){ srRates={cat:{},maker:{},catmaker:{}}; }
 }
 function _srSave(){
   _srReadInputs();
-  localStorage.setItem(SR_LS_KEY, JSON.stringify({base:srBase, cat:srRates.cat, maker:srRates.maker, catmaker:srRates.catmaker, series:srRates.series}));
+  localStorage.setItem(SR_LS_KEY, JSON.stringify({base:srBase, cat:srRates.cat, maker:srRates.maker, catmaker:srRates.catmaker, series:srRates.series, makerSeries:srRates.makerSeries, makerCatSeries:srRates.makerCatSeries}));
 }
 function openSellRate(){
   srPreviewItems=[];
@@ -2392,24 +2394,66 @@ function renderSrRateDetail(){
   var el=document.getElementById('sr-rate-detail');
   var targets=_srTargetProducts();
   var keys=[], labelOf={}, cntOf={};
-  if(srRateMode==='cat'){
-    targets.forEach(function(p){ var k=(p.category||'未分類').trim()||'未分類'; if(keys.indexOf(k)<0){keys.push(k);labelOf[k]=k;cntOf[k]=0;} cntOf[k]++; });
-  }else if(srRateMode==='maker'){
-    targets.forEach(function(p){ var k=(p.maker||'メーカー未設定').trim()||'メーカー未設定'; if(keys.indexOf(k)<0){keys.push(k);labelOf[k]=k;cntOf[k]=0;} cntOf[k]++; });
-  }else if(srRateMode==='series'){
-    // ルームエアコンのみ・シリーズ別（シリーズ未設定は「シリーズ未設定」としてまとめる）
-    var roomTargets=targets.filter(function(p){return isRoomAC(p.category);});
-    if(!roomTargets.length){ el.innerHTML='<div style="font-size:12px;color:var(--ink3);padding:8px;">ルームエアコンが対象商品にありません。</div>'; return; }
-    roomTargets.forEach(function(p){
-      var s=(p.series||'').trim()||'シリーズ未設定';
-      var mk=(p.maker||'').trim();
-      var k=s+'｜'+mk;
-      if(keys.indexOf(k)<0){keys.push(k);labelOf[k]='<span style="color:#8b5cf6;font-weight:700;">📡 '+s+'</span>'+(mk?' ／ '+mk:'');cntOf[k]=0;}
-      cntOf[k]++;
-    });
-  }else{ // catmaker
-    targets.forEach(function(p){ var c=(p.category||'未分類').trim()||'未分類'; var m=(p.maker||'メーカー未設定').trim()||'メーカー未設定'; var k=c+'｜'+m; if(keys.indexOf(k)<0){keys.push(k);labelOf[k]='<span style="color:var(--blue);">'+c+'</span> ／ '+m;cntOf[k]=0;} cntOf[k]++; });
+  // ルームエアコン専用モードかどうか
+  var isAcMode=(srRateMode==='series'||srRateMode==='makerSeries'||srRateMode==='makerCatSeries');
+  var workTargets=isAcMode?targets.filter(function(p){return isRoomAC(p.category);}):targets;
+
+  if(!workTargets.length && isAcMode){
+    el.innerHTML='<div style="font-size:12px;color:var(--ink3);padding:8px;">ルームエアコンが対象商品にありません。</div>';
+    return;
   }
+  if(!workTargets.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--ink3);padding:8px;">対象商品がありません。</div>';
+    return;
+  }
+
+  function acKey(p){
+    var s=(p.series||'').trim()||'シリーズ未設定';
+    var m=(p.maker||'メーカー未設定').trim();
+    var c=(p.category||'未分類').trim();
+    if(srRateMode==='series')        return s;
+    if(srRateMode==='makerSeries')   return m+'｜'+s;
+    if(srRateMode==='makerCatSeries')return m+'｜'+c+'｜'+s;
+    return '';
+  }
+  function acLabel(k){
+    var parts=k.split('｜');
+    if(srRateMode==='series')
+      return '<span style="color:#8b5cf6;font-weight:700;">📡 '+parts[0]+'</span>';
+    if(srRateMode==='makerSeries')
+      return '<span style="color:var(--ink2);">'+parts[0]+'</span> ／ <span style="color:#8b5cf6;font-weight:700;">📡 '+parts[1]+'</span>';
+    // makerCatSeries
+    return '<span style="color:var(--ink2);">'+parts[0]+'</span>'
+      +' ／ <span style="color:var(--blue);">'+parts[1]+'</span>'
+      +' ／ <span style="color:#8b5cf6;font-weight:700;">📡 '+parts[2]+'</span>';
+  }
+
+  workTargets.forEach(function(p){
+    var k;
+    if(isAcMode){
+      k=acKey(p);
+    }else if(srRateMode==='cat'){
+      k=(p.category||'未分類').trim()||'未分類';
+    }else if(srRateMode==='maker'){
+      k=(p.maker||'メーカー未設定').trim()||'メーカー未設定';
+    }else{ // catmaker
+      var c=(p.category||'未分類').trim()||'未分類'; var m=(p.maker||'メーカー未設定').trim()||'メーカー未設定';
+      k=c+'｜'+m;
+    }
+    if(keys.indexOf(k)<0){
+      keys.push(k);
+      if(isAcMode) labelOf[k]=acLabel(k);
+      else if(srRateMode==='cat') labelOf[k]=k;
+      else if(srRateMode==='maker') labelOf[k]=k;
+      else{
+        var parts=k.split('｜');
+        labelOf[k]='<span style="color:var(--blue);">'+parts[0]+'</span> ／ '+parts[1];
+      }
+      cntOf[k]=0;
+    }
+    cntOf[k]++;
+  });
+  keys.sort();
   keys.sort();
   if(!keys.length){ el.innerHTML='<div style="font-size:12px;color:var(--ink3);padding:8px;">対象商品がありません（ベース価格・対象条件をご確認ください）</div>'; return; }
   var store=srRates[srRateMode]||{};
@@ -2432,17 +2476,24 @@ function _srReadInputs(){
 }
 function _getSrRate(p){
   var k;
-  if(srRateMode==='cat') k=(p.category||'未分類').trim()||'未分類';
-  else if(srRateMode==='maker') k=(p.maker||'メーカー未設定').trim()||'メーカー未設定';
-  else if(srRateMode==='series'){
-    if(!isRoomAC(p.category)) return null; // シリーズモードは非ルームエアコンをスキップ
+  var isAcMode=(srRateMode==='series'||srRateMode==='makerSeries'||srRateMode==='makerCatSeries');
+  if(isAcMode){
+    if(!isRoomAC(p.category)) return null; // AC専用モードは非ルームエアコンをスキップ
     var s=(p.series||'').trim()||'シリーズ未設定';
-    var mk=(p.maker||'').trim();
-    k=s+'｜'+mk;
+    var m=(p.maker||'メーカー未設定').trim();
+    var c=(p.category||'未分類').trim();
+    if(srRateMode==='series')         k=s;
+    else if(srRateMode==='makerSeries')   k=m+'｜'+s;
+    else                              k=m+'｜'+c+'｜'+s;
+  }else if(srRateMode==='cat'){
+    k=(p.category||'未分類').trim()||'未分類';
+  }else if(srRateMode==='maker'){
+    k=(p.maker||'メーカー未設定').trim()||'メーカー未設定';
+  }else{ // catmaker
+    k=((p.category||'未分類').trim()||'未分類')+'｜'+((p.maker||'メーカー未設定').trim()||'メーカー未設定');
   }
-  else k=((p.category||'未分類').trim()||'未分類')+'｜'+((p.maker||'メーカー未設定').trim()||'メーカー未設定');
   var store=srRates[srRateMode]||{};
-  return (store[k]!=null&&store[k]>0)?store[k]:null; // 未設定はnull＝計算対象外
+  return (store[k]!=null&&store[k]>0)?store[k]:null;
 }
 function renderSrPreview(){
   _srReadInputs();
@@ -3760,6 +3811,32 @@ function renderQuoteTotal(){
     +'<div style="display:flex;justify-content:space-between;padding:4px 0 0;border-top:1px solid var(--border);margin-top:4px;font-weight:700;font-size:15px;"><span>合計(税込)</span><span style="color:var(--accent);">'+fmt(tot)+'</span></div>'
     +'</div>';
 }
+// ─── 見積書PDFファイル名生成 ──────────────────────────────────
+function getQuotePdfFilename(subject, dateVal){
+  // 日付を YYYYMMDD 形式に
+  var dateStr;
+  if(dateVal && dateVal.match(/\d{4}-\d{2}-\d{2}/)){
+    dateStr=dateVal.replace(/-/g,'');
+  }else{
+    var n=new Date();
+    dateStr=n.getFullYear().toString()+String(n.getMonth()+1).padStart(2,'0')+String(n.getDate()).padStart(2,'0');
+  }
+  // 件名から「お見積り」→「御見積書」変換
+  var base;
+  if(!subject||!subject.trim()){
+    base='御見積書';
+  }else{
+    var s=subject.trim();
+    if(s.includes('お見積り')){
+      base=s.replace(/お見積り/g,'御見積書');  // "ルームエアコンお見積り" → "ルームエアコン御見積書"
+    }else if(s.includes('御見積書')||s.includes('見積書')){
+      base=s;  // すでに「見積書」が含まれている場合はそのまま
+    }else{
+      base=s+'御見積書';  // 件名末尾に「御見積書」を追加
+    }
+  }
+  return base+dateStr;  // 例: "ルームエアコン御見積書20260607"
+}
 function generateQuotePdf(){
   if(!quoteLines.length){ alert('明細を1件以上追加してください'); return; }
   var title=document.getElementById('quote-title').value.trim();
@@ -3803,15 +3880,14 @@ function generateQuotePdf(){
     ? footerNote.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>')
     : '・お見積有効期限：発行日より30日間<br>・お支払条件：末締め翌月末払い<br>・納期：ご注文後 約2〜3週間<br>・納入場所：貴社ご指定場所';
   document.getElementById('pdf-content').innerHTML=
-    '<div style="position:relative;">'
-    +'<img src="'+LOGO_BIG+'" alt="マツオ" style="position:absolute;top:-8px;right:0;height:80px;width:auto;">'
-    +'<div style="text-align:center;font-size:22px;font-weight:700;letter-spacing:.3em;margin-bottom:14px;">御 見 積 書</div></div>'
+    '<div style="text-align:center;font-size:22px;font-weight:700;letter-spacing:.3em;margin-bottom:14px;">御 見 積 書</div>'
     +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">'
     +'<div style="font-size:12px;line-height:1.8;">'
     +'<div>発行日: '+dispDate+'</div>'
     +'<div style="font-size:15px;font-weight:700;margin-top:10px;border-bottom:2px solid #1a1714;padding-bottom:2px;display:inline-block;">'+(cust||'　　　　　　')+'　御中</div>'
     +'</div>'
-    +'<div style="font-size:11px;line-height:1.7;text-align:left;">'
+    +'<div style="font-size:11px;line-height:1.7;text-align:right;">'
+    +'<img src="'+LOGO_BIG+'" alt="マツオ" style="height:64px;width:auto;display:block;margin-left:auto;margin-bottom:6px;">'
     +'<div style="font-size:14px;font-weight:700;">'+c.name+'</div>'
     +'<div>担当者: '+(staff||'')+'</div><div>'+c.zip+'</div><div>'+c.addr+'</div><div>'+c.tel+'</div>'
     +'</div></div>'
@@ -3832,6 +3908,9 @@ function generateQuotePdf(){
     +'<div style="font-size:11px;color:#555;margin-top:16px;line-height:1.9;border-top:1px solid #ddd;padding-top:10px;">'
     +'<div style="font-weight:700;color:#333;margin-bottom:3px;">備考</div>'+footerHtml+'</div>';
   closeModal('modalQuote');
+  // document.title をPDFファイル名に設定（Safariでは印刷時のファイル名になる）
+  var pdfFilename=getQuotePdfFilename(title, dateVal);
+  document.title=pdfFilename;
   document.getElementById('pdf-preview').style.display='block';
 }
 
