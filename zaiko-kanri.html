@@ -21,7 +21,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 .header-date{font-family:'JetBrains Mono',monospace;font-size:11px;color:#b0a898;text-align:right;}
 .screen{display:none;padding:12px;}
 .screen.active{display:block;}
-.pb-safe{padding-bottom:86px;}
+.pb-safe{padding-bottom:108px;}
 /* SUMMARY */
 .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
 .summary-card{background:var(--surface);border-radius:10px;padding:12px;border-left:3px solid var(--ni);box-shadow:0 1px 4px var(--shadow);cursor:pointer;transition:transform .12s,box-shadow .12s;}
@@ -54,13 +54,13 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 .maker-badge{display:inline-flex;align-items:center;padding:2px 8px;background:var(--surface2);color:var(--ink2);border-radius:4px;font-size:11px;font-weight:700;margin-bottom:4px;}
 .reserve-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;background:#fff8e8;color:var(--accent2);border-radius:20px;font-size:10px;font-weight:700;margin-top:4px;}
 /* FAB */
-.fab{position:fixed;bottom:86px;right:16px;width:52px;height:52px;background:var(--accent);color:#fff;border:none;border-radius:50%;font-size:24px;cursor:pointer;box-shadow:0 4px 14px rgba(200,75,47,.4);display:flex;align-items:center;justify-content:center;transition:transform .15s;z-index:50;}
+.fab{position:fixed;bottom:108px;right:16px;width:52px;height:52px;background:var(--accent);color:#fff;border:none;border-radius:50%;font-size:24px;cursor:pointer;box-shadow:0 4px 14px rgba(200,75,47,.4);display:flex;align-items:center;justify-content:center;transition:transform .15s;z-index:50;}
 .fab:active{transform:scale(.93);}
 /* BOTTOM NAV */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--ink);display:flex;padding:6px 0 max(6px,env(safe-area-inset-bottom));z-index:100;box-shadow:0 -2px 8px var(--shadow);}
-.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;color:#6a6460;font-family:'Noto Sans JP',sans-serif;font-size:9px;cursor:pointer;padding:4px 0;transition:color .15s;}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--ink);display:flex;padding:11px 0 max(11px,env(safe-area-inset-bottom));z-index:100;box-shadow:0 -2px 8px var(--shadow);}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;color:#6a6460;font-family:'Noto Sans JP',sans-serif;font-size:10px;cursor:pointer;padding:8px 0;transition:color .15s;}
 .nav-btn.active{color:var(--accent);}
-.nav-btn svg{width:19px;height:19px;}
+.nav-btn svg{width:23px;height:23px;}
 /* MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(26,23,20,.55);z-index:200;align-items:flex-end;justify-content:center;}
 .modal-overlay.open{display:flex;}
@@ -237,7 +237,10 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 <body>
 
 <div class="header">
-  <div><div class="header-title">📦 在庫管理</div><div class="header-sub">4倉庫一括管理システム</div></div>
+  <div onclick="forceReload()" style="cursor:pointer;" title="タップで最新版に更新">
+    <div class="header-title">📦 在庫管理 <span style="font-size:12px;color:#8a8278;">🔄</span></div>
+    <div class="header-sub">4倉庫一括管理システム ・ タップで更新</div>
+  </div>
   <div class="header-date" id="headerDate"></div>
 </div>
 
@@ -3054,14 +3057,32 @@ function addQuoteLine(){
   if(!p) return;
   var teika=p.teika||0, tanka=p.sell||0;
   var rate=(teika>0&&tanka>0)?Math.round(tanka/teika*100):0;
-  quoteLines.push({pid:p.id,maker:p.maker||'その他',name:p.name,hinmei:(p.note||p.category||''),qty:qty,teika:teika,rate:rate,tanka:tanka});
+  quoteLines.push({pid:p.id,maker:p.maker||'その他',name:p.name,hinmei:(p.note||p.category||''),qty:qty,teika:teika,rate:rate,tanka:tanka,bikou:''});
   renderQuoteLines();
 }
 function addQuoteLineManual(){
-  quoteLines.push({pid:null,maker:'その他',name:'',hinmei:'',qty:1,teika:0,rate:0,tanka:0});
+  quoteLines.push({pid:null,maker:'その他',name:'',hinmei:'',qty:1,teika:0,rate:0,tanka:0,bikou:''});
   renderQuoteLines();
 }
 function removeQuoteLine(i){ quoteLines.splice(i,1); renderQuoteLines(); }
+function insertQuoteStock(i){
+  var L=quoteLines[i];
+  var total=0;
+  // 行に紐づく商品があれば全倉庫合計、なければ型番一致で検索
+  var p = L.pid ? data.products.find(function(x){return x.id===L.pid;}) : (L.name?findProductByName(L.name):null);
+  if(p){ total=WH_KEYS.reduce(function(s,w){return s+(p[w]||0);},0); }
+  var phrase='マツオ在庫'+total+'台';
+  var el=document.getElementById('q-bikou-'+i);
+  var cur=(el?el.value:'')||'';
+  // 既存の「マツオ在庫○台」があれば置換、なければ追記
+  if(/マツオ在庫\d+台/.test(cur)){
+    cur=cur.replace(/マツオ在庫\d+台/, phrase);
+  }else{
+    cur=cur?(cur+' '+phrase):phrase;
+  }
+  if(el){ el.value=cur; }
+  quoteLines[i].bikou=cur;
+}
 function _quoteRecalc(i){
   var teika=parseFloat((document.getElementById('q-teika-'+i)||{value:0}).value)||0;
   var tanka=parseFloat((document.getElementById('q-tanka-'+i)||{value:0}).value)||0;
@@ -3070,6 +3091,7 @@ function _quoteRecalc(i){
   quoteLines[i].name=(document.getElementById('q-name-'+i)||{value:''}).value;
   quoteLines[i].hinmei=(document.getElementById('q-hinmei-'+i)||{value:''}).value;
   quoteLines[i].maker=(document.getElementById('q-maker-'+i)||{value:''}).value||'その他';
+  quoteLines[i].bikou=(document.getElementById('q-bikou-'+i)||{value:''}).value;
   quoteLines[i].rate=(teika>0&&tanka>0)?Math.round(tanka/teika*100):0;
   // 金額だけ即時更新
   var amt=quoteLines[i].qty*tanka;
@@ -3093,6 +3115,10 @@ function renderQuoteLines(){
       +'<div style="flex:1;"><div style="font-size:9px;color:var(--ink3);">定価</div><input type="number" id="q-teika-'+i+'" value="'+L.teika+'" min="0" class="form-input" style="padding:5px 3px;font-size:12px;text-align:right;" oninput="_quoteRecalc('+i+')"></div>'
       +'<div style="flex:1;"><div style="font-size:9px;color:var(--green);">単価(売値)</div><input type="number" id="q-tanka-'+i+'" value="'+L.tanka+'" min="0" class="form-input" style="padding:5px 3px;font-size:12px;text-align:right;" oninput="_quoteRecalc('+i+')"></div>'
       +'<div style="flex:1;text-align:right;"><div style="font-size:9px;color:var(--ink3);">金額</div><div id="q-amt-'+i+'" style="font-size:13px;font-weight:700;padding:5px 0;">'+fmt(amt)+'</div></div>'
+      +'</div>'
+      +'<div style="display:flex;gap:6px;align-items:center;margin-top:6px;">'
+      +'<input type="text" id="q-bikou-'+i+'" value="'+(L.bikou||'').replace(/"/g,'&quot;')+'" placeholder="備考・記号（任意）" class="form-input" style="flex:1;font-size:11px;padding:4px 6px;" oninput="_quoteRecalc('+i+')">'
+      +'<button type="button" onclick="insertQuoteStock('+i+')" style="border:none;background:var(--jisha);color:#fff;border-radius:6px;padding:6px 9px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex:none;">🏢 マツオ在庫</button>'
       +'</div>'
       +'</div>';
   }).join('');
@@ -3128,7 +3154,7 @@ function generateQuotePdf(){
   var no=0, rowsHtml='';
   groups.forEach(function(g,gi){
     var color=QUOTE_MAKER_COLORS[gi%QUOTE_MAKER_COLORS.length];
-    rowsHtml+='<tr><td colspan="8" style="background:'+color+';font-weight:700;text-align:left;padding:6px 8px;border-bottom:1px solid #ccc;">【'+g.maker+'】</td></tr>';
+    rowsHtml+='<tr><td colspan="9" style="background:'+color+';font-weight:700;text-align:left;padding:6px 8px;border-bottom:1px solid #ccc;">【'+g.maker+'】</td></tr>';
     g.lines.forEach(function(L){
       no++;
       var amt=L.qty*L.tanka;
@@ -3141,6 +3167,7 @@ function generateQuotePdf(){
         +'<td>'+(L.rate>0?L.rate+'%':'')+'</td>'
         +'<td style="text-align:right;">'+(L.tanka>0?Number(L.tanka).toLocaleString():'')+'</td>'
         +'<td style="text-align:right;font-weight:700;">'+(amt>0?Number(amt).toLocaleString():'')+'</td>'
+        +'<td style="text-align:left;font-size:10px;">'+(L.bikou||'')+'</td>'
         +'</tr>';
     });
   });
@@ -3162,7 +3189,7 @@ function generateQuotePdf(){
     +'<span style="font-size:13px;">合計金額(税込) <b style="font-size:18px;">¥'+tot.toLocaleString()+'</b></span></div>'
     +'<table class="pdf-table quote-table"><thead><tr>'
     +'<th style="width:28px;">No.</th><th style="min-width:90px;">品番</th><th style="text-align:left;min-width:140px;">品名</th>'
-    +'<th style="width:36px;">数量</th><th style="width:60px;">定価</th><th style="width:40px;">掛率</th><th style="width:64px;">単価</th><th style="width:74px;">金額</th>'
+    +'<th style="width:36px;">数量</th><th style="width:60px;">定価</th><th style="width:40px;">掛率</th><th style="width:64px;">単価</th><th style="width:74px;">金額</th><th style="text-align:left;min-width:90px;">記号(備考)</th>'
     +'</tr></thead><tbody>'+rowsHtml+'</tbody></table>'
     +'<div style="display:flex;justify-content:flex-end;margin-top:10px;">'
     +'<table style="font-size:13px;border-collapse:collapse;min-width:240px;">'
@@ -4064,6 +4091,15 @@ function saveNewPassword(){
 }
 
 // ─── Date ────────────────────────────────────────────────────────
+function forceReload(){
+  // キャッシュを回避して最新版を取得（iPhone Safari対策）
+  try{
+    var base = location.href.split('?')[0].split('#')[0];
+    location.replace(base + '?v=' + Date.now());
+  }catch(e){
+    location.reload();
+  }
+}
 function updateDate(){
   var n=new Date();
   document.getElementById('headerDate').innerHTML=
