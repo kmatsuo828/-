@@ -283,6 +283,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
   </div>
   <div class="section-hd" style="flex-wrap:wrap;gap:6px;"><h2>商品一覧</h2><span id="product-count" style="font-size:12px;color:var(--ink3)"></span>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;">
+      <button id="btnSeriesDetect" onclick="openSeriesDetect()" style="background:#8b5cf6;color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;display:none;">📡 シリーズを自動判定</button>
       <button id="btnYearDetect" onclick="openYearDetect()" style="background:#3e7d52;color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;display:none;">🗓 エアコン年式で自動分類</button>
       <button id="btnMakerUnify" onclick="openMakerUnify()" style="background:var(--ho);color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;display:none;">🏭 メーカー名を統一</button>
       <button id="btnAutoCategory" onclick="openAutoCategory()" style="background:var(--blue);color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;display:none;">🤖 未分類を自動分類</button>
@@ -722,6 +723,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
         <button class="maker-combo-toggle" onclick="toggleSeriesDropdown()" type="button">▼</button>
         <div class="maker-dropdown" id="seriesDropdown"></div>
       </div>
+      <button class="btn btn-secondary" style="width:100%;margin-top:6px;padding:7px;font-size:12px;" type="button" onclick="aiDetectSeriesSingle()">🤖 この型番のシリーズをAIで判定</button>
       <div style="font-size:11px;color:var(--ink3);margin-top:3px;">価格ページ・見積書で絞り込みできます（任意）</div>
     </div>
     <div class="form-group"><label class="form-label">型番・商品名</label><input type="text" class="form-input" id="inp-name" placeholder="例: CS225DFL" list="productNameList" autocomplete="off"></div>
@@ -945,20 +947,20 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 <div class="modal-overlay" id="modalYearDetect">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">🗓 ルームエアコンを年式で自動分類</div>
-    <div class="modal-subtitle">型番の命名規則からAIが発売年を推定し「25年ルームエアコン」等のジャンルに自動分類します。結果は必ず確認してから保存してください（推定のため誤りの可能性あり）。</div>
+    <div class="modal-title" id="ydModalTitle">🗓 ルームエアコンを年式で自動分類</div>
+    <div class="modal-subtitle" id="ydModalSubtitle">型番の命名規則からAIが発売年を推定し「25年ルームエアコン」等のジャンルに自動分類します。結果は必ず確認してから保存してください（推定のため誤りの可能性あり）。</div>
     <div style="margin-bottom:10px;">
       <div class="seg-toggle">
-        <button id="yd-mode-missing" class="active" type="button" onclick="setYearDetectMode('missing')">年式が未分類のみ</button>
+        <button id="yd-mode-missing" class="active" type="button" onclick="setYearDetectMode('missing')" id="ydModeMissing">未設定のみ</button>
         <button id="yd-mode-all" type="button" onclick="setYearDetectMode('all')">全ルームエアコン</button>
       </div>
     </div>
-    <button id="ydStartBtn" class="btn btn-blue btn-full" onclick="startYearDetect()" style="padding:12px;margin-bottom:10px;">🤖 AIで年式を判定</button>
+    <button id="ydStartBtn" class="btn btn-blue btn-full" onclick="startYearDetect()" style="padding:12px;margin-bottom:10px;">🤖 AIで判定開始</button>
     <div id="yearDetectStatus" class="ai-status" style="display:none;"></div>
     <div id="yearDetectBody"></div>
     <div id="yearDetectActions" style="display:none;">
-      <div style="font-size:11px;color:var(--ink3);margin-bottom:8px;">各商品のジャンルは修正できます。チェックした商品のみ分類を保存します。</div>
-      <button class="btn btn-green btn-full" onclick="saveYearDetect()" style="padding:14px;font-size:15px;">💾 チェックした商品を年式ジャンルに分類</button>
+      <div style="font-size:11px;color:var(--ink3);margin-bottom:8px;" id="ydSaveNote">チェックした商品のみ保存します。</div>
+      <button class="btn btn-green btn-full" onclick="saveYearDetect()" style="padding:14px;font-size:15px;" id="ydSaveBtn">💾 保存</button>
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary btn-full" onclick="closeModal('modalYearDetect')">閉じる</button>
@@ -1408,11 +1410,13 @@ let HAS_CUSTOMERS = false;
 let HAS_YEARMODEL = false;
 let HAS_SERIES = false;
 const PRESET_CATEGORIES_BASE=['業務用エアコン','配管・部材','コンセント','スイッチ','ケーブル・電線','分電盤・ブレーカー','照明器具','換気・送風機','給湯・温水','その他'];
-// ルームエアコンは年式付きジャンル（25年ルームエアコン 等）。2025年〜当年まで自動生成され、年が進むと自動で追加される。
+// ルームエアコンは年式付きジャンル（25年ルームエアコン 等）。
+// 現在年から2年以内（3年分）のみ生成し、3年以上古い年式は登録させない。
+// 年が進むと自動でスライドする（例: 2026年 → 24/25/26年, 2027年 → 25/26/27年）
 function getRoomACYearCats(){
   var cy=new Date().getFullYear();
   var arr=[];
-  for(var y=2025;y<=cy;y++){ arr.push((y%100)+'年ルームエアコン'); }
+  for(var y=cy-2;y<=cy;y++){ arr.push((y%100)+'年ルームエアコン'); }
   return arr.reverse(); // 新しい年を上に
 }
 function getPresetCategories(){
@@ -1438,7 +1442,7 @@ const MAKER_DOMAINS={
   'アイホン':'aiphone.co.jp',
   '日東工業':'nitto-kogyo.co.jp',
   'パナソニック産機システムズ':'panasonic.com',
-  '日本キャリア':'hitachi.co.jp',
+  '日本キャリア':'carrier.com','Carrier':'carrier.com','キャリア':'carrier.com',
 };
 const MAKER_COLORS={
   'パナソニック':'#0063CC','Panasonic':'#0063CC',
@@ -1451,19 +1455,26 @@ const MAKER_COLORS={
   'コロナ':'#003087',
   '未来工業':'#E87000',
 };
+const LOGO_MIRAI='data:image/png;base64,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';
+const MAKER_LOGO_OVERRIDES={
+  '未来工業':LOGO_MIRAI,
+};
 function getMakerDomain(maker){
   if(!maker) return null;
   return MAKER_DOMAINS[maker] || MAKER_DOMAINS[maker.replace(/\s/g,'')] || null;
 }
 function makerLogoHtml(maker, size){
   size=size||16;
+  if(MAKER_LOGO_OVERRIDES[maker]){
+    return '<img src="'+MAKER_LOGO_OVERRIDES[maker]+'" alt="" style="width:auto;height:'+size+'px;object-fit:contain;vertical-align:middle;border-radius:2px;flex-shrink:0;">';
+  }
   var domain=getMakerDomain(maker);
   var color=MAKER_COLORS[maker]||'#666';
   var initial=(maker||'?').charAt(0);
   if(domain){
     return '<img src="https://www.google.com/s2/favicons?domain='+domain+'&sz=32"'
       +' alt="" style="width:'+size+'px;height:'+size+'px;object-fit:contain;vertical-align:middle;border-radius:2px;flex-shrink:0;"'
-      +' onerror="this.replaceWith((function(){var s=document.createElement(\'span\');s.textContent=\''+initial+'\';s.style=\'display:inline-flex;align-items:center;justify-content:center;width:'+size+'px;height:'+size+'px;background:'+color+';border-radius:50%;font-size:'+(size<=16?8:10)+'px;font-weight:700;color:#fff;flex-shrink:0;\';return s;})())">';
+      +' onerror="this.style.display=\'none\'">';
   }
   return '<span style="display:inline-flex;align-items:center;justify-content:center;width:'+size+'px;height:'+size+'px;background:'+color+';border-radius:50%;font-size:'+(size<=16?8:10)+'px;font-weight:700;color:#fff;flex-shrink:0;">'+initial+'</span>';
 }
@@ -1933,55 +1944,94 @@ async function saveMakerUnify(){
 }
 
 // ═══ AI ルームエアコン年式判定 ═══════════════════════════════
-let yearDetectItems = [];   // [{id,maker,name,yearmodel,confidence}]
+let yearDetectItems = [];
 let yearDetectMode = 'missing';
+let ydType = 'year'; // 'year' | 'series'
+
 function setYearDetectMode(m){
   yearDetectMode=m;
   document.getElementById('yd-mode-missing').classList.toggle('active',m==='missing');
   document.getElementById('yd-mode-all').classList.toggle('active',m==='all');
 }
 function openYearDetect(){
+  ydType='year';
+  _openYearSeriesDetect('🗓 年式で自動分類','型番の命名規則からAIが発売年を推定し「25年ルームエアコン」等のジャンルに自動分類します。',
+    '未分類のみ','💾 チェックした商品を年式ジャンルに分類');
+}
+function openSeriesDetect(){
+  ydType='series';
+  _openYearSeriesDetect('📡 シリーズを自動判定','型番からAIがシリーズ名（FZ・AXV・LXなど）を推定します。確認・修正後に保存してください（推定のため誤りあり）。',
+    'シリーズ未設定のみ','💾 チェックした商品のシリーズを保存');
+}
+function _openYearSeriesDetect(title, subtitle, missingLabel, saveLabel){
   yearDetectItems=[];
   setYearDetectMode('missing');
   document.getElementById('yearDetectStatus').style.display='none';
   document.getElementById('yearDetectBody').innerHTML='';
   document.getElementById('yearDetectActions').style.display='none';
   document.getElementById('ydStartBtn').style.display='block';
+  var t=document.getElementById('ydModalTitle'); if(t) t.textContent=title;
+  var s=document.getElementById('ydModalSubtitle'); if(s) s.textContent=subtitle;
+  var mm=document.getElementById('yd-mode-missing'); if(mm) mm.textContent=missingLabel;
+  var sn=document.getElementById('ydSaveNote'); if(sn) sn.textContent='各商品は修正できます。チェックした商品のみ保存します。';
+  var sb=document.getElementById('ydSaveBtn'); if(sb) sb.textContent=saveLabel;
   openModal('modalYearDetect');
 }
 async function startYearDetect(){
   var targets=data.products.filter(function(p){
     if(!isRoomAC(p.category)) return false;
-    if(yearDetectMode==='missing') return !/\d+年ルームエアコン/.test(p.category||''); // 年が付いていないもの
+    if(yearDetectMode==='missing'){
+      if(ydType==='year') return !/\d+年ルームエアコン/.test(p.category||'');
+      else return !(p.series||'').trim();
+    }
     return true;
   });
   if(!targets.length){ alert('対象のルームエアコンがありません。'); return; }
   var statusEl=document.getElementById('yearDetectStatus');
   statusEl.style.display='block'; statusEl.className='ai-status loading';
-  statusEl.innerHTML='<span class="spinner"></span>AIが型番から年式を推定中…（'+targets.length+'件）';
+  statusEl.innerHTML='<span class="spinner"></span>AIが型番から'+(ydType==='year'?'年式':'シリーズ名')+'を推定中…（'+targets.length+'件）';
   document.getElementById('ydStartBtn').style.display='none';
   var listText=targets.map(function(p){return p.id+' | '+(p.maker||'不明')+' | '+p.name;}).join('\n');
-  var prompt=[
-    'あなたはルームエアコンの型番に詳しい専門家です。',
-    '各メーカーの型番命名規則から「発売年（西暦下2桁）」を推定してください。',
-    '例: パナソニックCS-225DFL→25, 三菱MSZ-GV2225→25, ダイキンS225ATES→25 等（末尾や中間の数字・記号で年を表すことが多い）。',
-    '確信が持てない場合はyear2を空文字にし、confidenceを"低"としてください。',
-    'year2は西暦下2桁の数値文字列（例: "25"）で返してください。',
-    '',
-    '対象（id | メーカー | 型番）:',
-    listText,
-    '',
-    '必ず以下のJSONのみで返答:',
-    '{"items":[{"id":"","year2":"25","confidence":"高/中/低"}]}'
-  ].join('\n');
+
+  var prompt;
+  if(ydType==='year'){
+    prompt=[
+      'あなたはルームエアコンの型番に詳しい専門家です。',
+      '各メーカーの型番命名規則から「発売年（西暦下2桁）」を推定してください。',
+      '例: パナソニックCS-225DFL→25, 三菱MSZ-GV2225→25, ダイキンS225ATES→25',
+      '確信が持てない場合はyear2を空文字にし、confidenceを"低"としてください。',
+      'year2は西暦下2桁の数値文字列（例: "25"）で返してください。',
+      '','対象（id | メーカー | 型番）:',listText,'',
+      '必ず以下のJSONのみで返答:',
+      '{"items":[{"id":"","year2":"25","confidence":"高/中/低"}]}'
+    ].join('\n');
+  }else{
+    prompt=[
+      'あなたはルームエアコンのシリーズ名に詳しい専門家です。',
+      '型番からシリーズ名（グレード名）を推定してください。',
+      '例: 三菱MSZ-FZ2525→FZ, MSZ-AXV2525→AXV, MSZ-GV2225→GV',
+      '  パナソニックCS-X225D→X, CS-LX225D→LX, CS-EX225D→EX',
+      '  ダイキンS225ATEX→AX, S225ATES→ATE(Eシリーズ), S225ATEP→ATP',
+      'シリーズ名は英数字のみ（例: "FZ","AXV","X","LX","AX"）で返してください。',
+      '不明な場合はseriesを空文字にし、confidenceを"低"としてください。',
+      '','対象（id | メーカー | 型番）:',listText,'',
+      '必ず以下のJSONのみで返答:',
+      '{"items":[{"id":"","series":"FZ","confidence":"高/中/低"}]}'
+    ].join('\n');
+  }
+
   try{
     var result=await callGemini({contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0}});
     var parsed=JSON.parse(geminiText(result).replace(/```json|```/g,'').trim());
-    var byId={}; (parsed.items||[]).forEach(function(it){ byId[it.id]={year2:(it.year2||'').toString().trim(),confidence:it.confidence||'中'}; });
+    var byId={};
+    (parsed.items||[]).forEach(function(it){
+      if(ydType==='year') byId[it.id]={value:(it.year2||'').toString().trim(),confidence:it.confidence||'中'};
+      else byId[it.id]={value:(it.series||'').toString().trim(),confidence:it.confidence||'中'};
+    });
     yearDetectItems=targets.map(function(p){
-      var r=byId[p.id]||{year2:'',confidence:'低'};
-      var cat=r.year2?(r.year2+'年ルームエアコン'):'';
-      return {id:p.id,maker:p.maker||'',name:p.name,category:cat,confidence:r.confidence};
+      var r=byId[p.id]||{value:'',confidence:'低'};
+      var proposed = ydType==='year' ? (r.value ? r.value+'年ルームエアコン' : '') : r.value;
+      return {id:p.id,maker:p.maker||'',name:p.name,proposed:proposed,confidence:r.confidence};
     });
     statusEl.style.display='none';
     renderYearDetectItems();
@@ -1992,20 +2042,26 @@ async function startYearDetect(){
   }
 }
 function renderYearDetectItems(){
-  var cats=getRoomACYearCats(); // 年付きルームエアコン候補
   document.getElementById('yearDetectBody').innerHTML=yearDetectItems.map(function(it,i){
     var confColor=it.confidence==='高'?'#3e7d52':it.confidence==='低'?'#c84b2f':'#b3893a';
-    var allOpts=cats.slice();
-    if(it.category && allOpts.indexOf(it.category)<0) allOpts.unshift(it.category);
-    var opts=['<option value="">（分類しない）</option>'].concat(allOpts.map(function(c){return '<option value="'+c+'"'+(c===it.category?' selected':'')+'>'+c+'</option>';}));
+    var inputHtml;
+    if(ydType==='year'){
+      var cats=getRoomACYearCats();
+      var allOpts=cats.slice();
+      if(it.proposed && allOpts.indexOf(it.proposed)<0) allOpts.unshift(it.proposed);
+      var opts=['<option value="">（分類しない）</option>'].concat(allOpts.map(function(c){return '<option value="'+c+'"'+(c===it.proposed?' selected':'')+'>'+c+'</option>';}));
+      inputHtml='<select id="yd-val-'+i+'" class="form-select" style="margin-top:6px;font-size:13px;">'+opts.join('')+'</select>';
+    }else{
+      inputHtml='<input type="text" id="yd-val-'+i+'" class="form-input" value="'+(it.proposed||'').replace(/"/g,'&quot;')+'" placeholder="シリーズ名（例: FZ, AXV, X）" style="margin-top:6px;font-size:13px;">';
+    }
     return '<div class="ai-item" style="margin-bottom:6px;">'
       +'<div class="ai-item-header"><div style="flex:1;">'
       +'<div style="font-size:13px;font-weight:700;font-family:\'JetBrains Mono\',monospace;">'+it.name+'</div>'
       +'<div style="font-size:10px;color:var(--ink3);">'+it.maker+' ・ <span style="color:'+confColor+';">確信度: '+it.confidence+'</span></div>'
       +'</div>'
-      +'<label style="display:flex;align-items:center;gap:5px;margin-left:8px;"><input type="checkbox" id="yd-check-'+i+'" '+(it.category?'checked':'')+' style="width:18px;height:18px;"></label>'
+      +'<label style="display:flex;align-items:center;gap:5px;margin-left:8px;"><input type="checkbox" id="yd-check-'+i+'" '+(it.proposed?'checked':'')+' style="width:18px;height:18px;"></label>'
       +'</div>'
-      +'<select id="yd-year-'+i+'" class="form-select" style="margin-top:6px;font-size:13px;">'+opts.join('')+'</select>'
+      +inputHtml
       +'</div>';
   }).join('');
 }
@@ -2015,15 +2071,18 @@ async function saveYearDetect(){
   try{
     for(var i=0;i<yearDetectItems.length;i++){
       var chk=document.getElementById('yd-check-'+i); if(!chk||!chk.checked){skipped++;continue;}
-      var cat=((document.getElementById('yd-year-'+i)||{value:''}).value||'').trim();
-      if(!cat){skipped++;continue;}
+      var val=((document.getElementById('yd-val-'+i)||{value:''}).value||'').trim();
+      if(!val){skipped++;continue;}
       var p=data.products.find(function(x){return x.id===yearDetectItems[i].id;});
       if(!p){skipped++;continue;}
-      p.category=cat; await upsertProduct(p); saved++;
+      if(ydType==='year') p.category=val;
+      else p.series=val;
+      await upsertProduct(p); saved++;
     }
     renderMakerFilter();renderSummary();renderList();
     closeModal('modalYearDetect');
-    alert('✅ 年式ジャンルに分類しました\n'+saved+'件を更新'+(skipped>0?' / '+skipped+'件スキップ':''));
+    var label=ydType==='year'?'年式ジャンル':'シリーズ';
+    alert('✅ '+label+'を保存しました\n'+saved+'件を更新'+(skipped>0?' / '+skipped+'件スキップ':''));
   }catch(e){ alert('保存エラー: '+e.message); }
   finally{ showLoading(false); }
 }
@@ -2607,6 +2666,8 @@ function renderList(){
   const yrEl=document.getElementById('filterYear');
   const yr=(yrEl && document.getElementById('yearFilterRow').style.display!=='none')?yrEl.value:'all';
   let items=data.products.filter(p=>{
+    const totalStock=WH_KEYS.reduce((s,w)=>s+(p[w]||0),0);
+    if(totalStock===0) return false; // 在庫ゼロは非表示
     const mq=!q||p.name.toLowerCase().includes(q)||(p.maker||'').toLowerCase().includes(q)||(p.category||'').toLowerCase().includes(q)||(p.note||'').toLowerCase().includes(q);
     const mwh=wh==='all'||(p[wh]||0)>0;
     const mmk=mk==='all'||(p.maker||'')===mk;
@@ -2622,6 +2683,8 @@ function renderList(){
   if(btnMk) btnMk.style.display=getMakers().length>=2?'inline-block':'none';
   var btnYr=document.getElementById('btnYearDetect');
   if(btnYr) btnYr.style.display=data.products.some(function(p){return isRoomAC(p.category);})?'inline-block':'none';
+  var btnSr=document.getElementById('btnSeriesDetect');
+  if(btnSr) btnSr.style.display=data.products.some(function(p){return isRoomAC(p.category);})?'inline-block':'none';
   renderReserveBanner();
   const el=document.getElementById('productList');
   if(!items.length){el.innerHTML='<div class="empty-state">商品が見つかりません</div>';return;}
@@ -2888,7 +2951,33 @@ function toggleSeriesDropdown(){var dd=document.getElementById('seriesDropdown')
 function filterSeriesDropdown(){populateSeriesDropdown(document.getElementById('inp-series').value);document.getElementById('seriesDropdown').classList.add('open');}
 function selectSeries(name){document.getElementById('inp-series').value=name;document.getElementById('seriesDropdown').classList.remove('open');}
 
-// ─── ルームエアコン 売値自動計算（仕入掛率 + 3% = 売値掛率） ──────
+// ─── 単品シリーズAI判定（編集モーダル内） ─────────────────────
+async function aiDetectSeriesSingle(){
+  var maker=document.getElementById('inp-maker').value.trim();
+  var name=document.getElementById('inp-name').value.trim();
+  if(!name){ alert('先に型番を入力してください'); return; }
+  var btn=event.target;
+  var orig=btn.textContent;
+  btn.textContent='判定中…'; btn.disabled=true;
+  try{
+    var prompt='型番「'+name+'」（メーカー: '+(maker||'不明')+'）のルームエアコンのシリーズ名（グレード名）を教えてください。'
+      +'例: 三菱MSZ-FZ→FZ, MSZ-AXV→AXV, パナソニックCS-X→X, CS-LX→LX, ダイキンS-AX→AX '
+      +'シリーズ名のみをJSONで返してください: {"series":"FZ","confidence":"高/中/低"}';
+    var result=await callGemini({contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0}});
+    var parsed=JSON.parse(geminiText(result).replace(/```json|```/g,'').trim());
+    if(parsed.series){
+      document.getElementById('inp-series').value=parsed.series;
+      btn.textContent='✅ '+parsed.series+' (確信度: '+(parsed.confidence||'?')+')';
+    }else{
+      btn.textContent='❓ 判定できませんでした';
+    }
+  }catch(e){
+    btn.textContent='❌ エラー: '+e.message.slice(0,30);
+  }finally{
+    btn.disabled=false;
+    setTimeout(function(){ btn.textContent=orig; }, 4000);
+  }
+}
 function autoCalcSell(){
   var cat=document.getElementById('inp-category').value||'';
   var note=document.getElementById('autoCalcNote');
@@ -3023,7 +3112,15 @@ function applyTeika(val){
 }
 
 
-function editPriceProduct(id){currentProductId=id;openProductEdit();}
+function editPriceProduct(id){
+  try{
+    currentProductId=id;
+    openProductEdit();
+  }catch(e){
+    console.error('editPriceProduct error:',e);
+    alert('編集画面を開けませんでした: '+e.message);
+  }
+}
 
 
 function openOperation(id){
@@ -4612,6 +4709,18 @@ function saveNewPassword(){
 }
 
 // ─── Date ────────────────────────────────────────────────────────
+// ─── 年式カテゴリ一括変換（旧→新） ────────────────────────────
+async function migrateOldYearCategory(oldCat, newCat){
+  var targets=data.products.filter(function(p){return (p.category||'').trim()===oldCat;});
+  if(!targets.length) return; // 対象なし
+  console.log('[migrate] '+oldCat+' → '+newCat+' : '+targets.length+'件');
+  for(var i=0;i<targets.length;i++){
+    targets[i].category=newCat;
+    await upsertProduct(targets[i]);
+  }
+  console.log('[migrate] 完了');
+}
+
 function forceReload(){
   // キャッシュを回避して最新版を取得（iPhone Safari対策）
   try{
@@ -4663,6 +4772,9 @@ document.addEventListener('DOMContentLoaded', async function(){
     await detectCapabilities();
     await seedIfEmpty();
     await loadProducts();
+    // ─── 一括年式移行: 21年ルームエアコン → 25年ルームエアコン ──────
+    await migrateOldYearCategory('21年ルームエアコン','25年ルームエアコン');
+    // ─────────────────────────────────────────────────────────────
     await loadHistoryDB();
     await loadCustomers();
     renderMakerFilter(); renderSummary(); renderList();
