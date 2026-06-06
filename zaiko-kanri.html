@@ -518,9 +518,15 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
     </div>
     <button class="btn btn-blue btn-full" onclick="openBulkPrice()" style="margin-bottom:6px;padding:11px;font-size:13px;">💴 価格・情報を一括更新 / AI検索</button>
     <button class="btn btn-amber btn-full" onclick="openSellRate()" style="margin-bottom:10px;padding:11px;font-size:13px;">📊 売値を一括計算（定価・仕入値の %）</button>
-    <div class="search-row" style="margin-bottom:8px;">
+    <div class="search-row" style="margin-bottom:4px;">
       <input type="text" class="search-input" placeholder="型番・メーカーで検索…" id="priceSearchInput" oninput="renderPriceList()">
       <select class="filter-select" id="priceMakerFilter" onchange="renderPriceList()"><option value="all">全メーカー</option></select>
+    </div>
+    <div class="search-row" style="margin-bottom:4px;">
+      <select class="filter-select" id="priceCatFilter" onchange="onPriceCatChange()" style="flex:1;font-size:13px;"><option value="all">全ジャンル</option></select>
+    </div>
+    <div class="search-row" id="priceSeriesRow" style="display:none;margin-bottom:4px;">
+      <select class="filter-select" id="priceSeriesFilter" onchange="renderPriceList()" style="flex:1;font-size:13px;"><option value="all">全シリーズ</option></select>
     </div>
     <div id="priceList"></div>
   </div>
@@ -709,6 +715,15 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
       </div>
     </div>
     <div class="form-group" id="yearModelGroup" style="display:none;"></div>
+    <div class="form-group" id="seriesGroup" style="display:none;">
+      <label class="form-label">シリーズ（ルームエアコン用）</label>
+      <div class="maker-combo" id="seriesCombo">
+        <input type="text" class="maker-combo-input" id="inp-series" placeholder="入力 or ▼（例: FZV, AXV, LX）" oninput="filterSeriesDropdown()" onfocus="openSeriesDropdown()" autocomplete="off">
+        <button class="maker-combo-toggle" onclick="toggleSeriesDropdown()" type="button">▼</button>
+        <div class="maker-dropdown" id="seriesDropdown"></div>
+      </div>
+      <div style="font-size:11px;color:var(--ink3);margin-top:3px;">価格ページ・見積書で絞り込みできます（任意）</div>
+    </div>
     <div class="form-group"><label class="form-label">型番・商品名</label><input type="text" class="form-input" id="inp-name" placeholder="例: CS225DFL" list="productNameList" autocomplete="off"></div>
     <div class="form-group">
       <label class="form-label">在庫数（台）</label>
@@ -734,17 +749,18 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px;">
         <div>
           <div style="font-size:11px;color:var(--ink3);font-weight:700;margin-bottom:4px;">📋 税別定価</div>
-          <input type="number" class="form-input" id="inp-teika" placeholder="0" min="0" style="font-size:14px;">
+          <input type="number" class="form-input" id="inp-teika" placeholder="0" min="0" style="font-size:14px;" oninput="autoCalcSell()">
         </div>
         <div>
           <div style="font-size:11px;color:var(--blue);font-weight:700;margin-bottom:4px;">💰 仕入値</div>
-          <input type="number" class="form-input" id="inp-cost" placeholder="0" min="0" style="font-size:14px;">
+          <input type="number" class="form-input" id="inp-cost" placeholder="0" min="0" style="font-size:14px;" oninput="autoCalcSell()">
         </div>
         <div>
           <div style="font-size:11px;color:var(--green);font-weight:700;margin-bottom:4px;">💴 売値</div>
           <input type="number" class="form-input" id="inp-sell" placeholder="0" min="0" style="font-size:14px;">
         </div>
       </div>
+      <div id="autoCalcNote" style="display:none;font-size:11px;color:var(--green);margin-top:5px;"></div>
       <div style="font-size:11px;color:var(--ink3);margin-top:5px;">※価格は在庫一覧・PDFには表示されません</div>
     </div>
     <div class="form-group"><label class="form-label">備考</label><textarea class="form-textarea" id="inp-note" placeholder="メモ（任意）"></textarea></div>
@@ -1390,6 +1406,7 @@ let bulkMode = 'text';
 let HAS_CATEGORY = false;
 let HAS_CUSTOMERS = false;
 let HAS_YEARMODEL = false;
+let HAS_SERIES = false;
 const PRESET_CATEGORIES_BASE=['業務用エアコン','配管・部材','コンセント','スイッチ','ケーブル・電線','分電盤・ブレーカー','照明器具','換気・送風機','給湯・温水','その他'];
 // ルームエアコンは年式付きジャンル（25年ルームエアコン 等）。2025年〜当年まで自動生成され、年が進むと自動で追加される。
 function getRoomACYearCats(){
@@ -1416,7 +1433,7 @@ function savePassword(pw){ localStorage.setItem(PK,pw); }
 async function loadProducts(){
   var rows = await supaFetch('products?select=*&order=maker,name');
   data.products = (rows||[]).map(function(r){
-    return Object.assign({category:'',yearmodel:''}, r, {reserves: r.reserves||[], category: r.category||'', yearmodel: r.yearmodel||''});
+    return Object.assign({category:'',yearmodel:'',series:''}, r, {reserves: r.reserves||[], category: r.category||'', yearmodel: r.yearmodel||'', series: r.series||''});
   });
 }
 
@@ -1429,6 +1446,7 @@ async function upsertProduct(p){
   };
   if(HAS_CATEGORY) row.category = p.category||'';
   if(HAS_YEARMODEL) row.yearmodel = p.yearmodel||'';
+  if(HAS_SERIES) row.series = p.series||'';
   return supaFetch('products?on_conflict=id','POST',row,{
     'Prefer':'resolution=merge-duplicates,return=minimal'
   });
@@ -1463,6 +1481,8 @@ async function detectCapabilities(){
   catch(e){ HAS_CATEGORY = false; }
   try{ await supaFetch('products?select=yearmodel&limit=1'); HAS_YEARMODEL = true; }
   catch(e){ HAS_YEARMODEL = false; }
+  try{ await supaFetch('products?select=series&limit=1'); HAS_SERIES = true; }
+  catch(e){ HAS_SERIES = false; }
   try{ await supaFetch('customers?select=id&limit=1'); HAS_CUSTOMERS = true; }
   catch(e){ HAS_CUSTOMERS = false; }
 }
@@ -2509,6 +2529,7 @@ function renderMakerFilter(){
   });
   renderCategoryFilter();
   renderYearFilter();
+  renderPriceCatFilter();
   refreshProductNameList();
 }
 
@@ -2564,12 +2585,13 @@ function renderList(){
     const badges=WH_KEYS.map(w=>p[w]>0?`<span class="wh-badge ${w}"><span class="wh-dot"></span>${WH_LABELS[w].replace('倉庫','')} ${p[w]}台</span>`:'').join('');
     const rCount=(p.reserves||[]).reduce((s,r)=>s+(r.qty||0),0);
     const rHtml=rCount>0?`<div><span class="reserve-badge">🔒 取り置き ${rCount}台</span></div>`:'';
+    const sellBadge=p.sell>0?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);font-weight:700;margin-top:3px;display:inline-block;">💴 ¥${Number(p.sell).toLocaleString()}</span>`:'';
     const tags=`${p.category?`<span class="cat-badge">${p.category}</span>`:''}${p.maker?`<span class="maker-badge">🏭 ${p.maker}</span>`:''}`;
     return`<div class="product-card" onclick="openOperation('${p.id}')">
       ${tags?`<div>${tags}</div>`:''}
       <div class="pc-top"><div class="pc-name">${p.name}</div><div class="pc-total">${total}<span> 台</span></div></div>
       <div class="pc-warehouses">${badges||'<span style="font-size:12px;color:var(--ink3)">在庫なし</span>'}</div>
-      ${rHtml}${p.note?`<div style="font-size:11px;color:var(--ink3);margin-top:4px;">📝 ${p.note}</div>`:''}
+      ${rHtml}${sellBadge}${p.note?`<div style="font-size:11px;color:var(--ink3);margin-top:4px;">📝 ${p.note}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -2593,24 +2615,75 @@ function renderReserveBanner(){
 }
 
 
+// ─── 価格ページ用カテゴリ/シリーズフィルター ─────────────────
+function renderPriceCatFilter(){
+  var sel=document.getElementById('priceCatFilter');if(!sel)return;
+  var cur=sel.value;
+  var cats=getAllCategories();
+  var html='<option value="all">全ジャンル</option>'+cats.map(function(c){return '<option value="'+c+'"'+(c===cur?' selected':'')+'>'+c+'</option>';}).join('');
+  sel.innerHTML=html;
+  onPriceCatChange();
+}
+function onPriceCatChange(){
+  renderPriceSeriesFilter();
+  renderPriceList();
+}
+function renderPriceSeriesFilter(){
+  var cat=(document.getElementById('priceCatFilter')||{value:'all'}).value;
+  var row=document.getElementById('priceSeriesRow');
+  var sel=document.getElementById('priceSeriesFilter');
+  if(!row||!sel) return;
+  var isRoom=isRoomAC(cat);
+  row.style.display=isRoom?'block':'none';
+  if(!isRoom){sel.value='all';return;}
+  var cur=sel.value;
+  var seriesList=[...new Set(data.products.filter(function(p){return isRoomAC(p.category)&&(p.series||'').trim();}).map(function(p){return p.series.trim();}))].sort();
+  var html='<option value="all">全シリーズ</option>'+seriesList.map(function(s){return '<option value="'+s+'"'+(s===cur?' selected':'')+'>'+s+'</option>';}).join('');
+  if(data.products.some(function(p){return isRoomAC(p.category)&&!(p.series||'').trim();})){
+    html+='<option value="__none__"'+(cur==='__none__'?' selected':'')+'>シリーズ未設定</option>';
+  }
+  sel.innerHTML=html;
+}
 function renderPriceList(){
   const q=document.getElementById('priceSearchInput').value.toLowerCase();
   const mk=document.getElementById('priceMakerFilter').value;
+  const cat=(document.getElementById('priceCatFilter')||{value:'all'}).value;
+  const ser=(document.getElementById('priceSeriesFilter')||{value:'all'}).value;
   let items=data.products.filter(p=>{
-    const mq=!q||p.name.toLowerCase().includes(q)||(p.maker||'').toLowerCase().includes(q);
-    return mq&&(mk==='all'||(p.maker||'')===mk);
+    const mq=!q||p.name.toLowerCase().includes(q)||(p.maker||'').toLowerCase().includes(q)||(p.series||'').toLowerCase().includes(q);
+    const mmk=mk==='all'||(p.maker||'')===mk;
+    const mcat=cat==='all'||(p.category||'')===cat;
+    const mser=ser==='all'||(!isRoomAC(p.category))||(ser==='__none__'?!(p.series||'').trim():(p.series||'').trim()===ser);
+    return mq&&mmk&&mcat&&mser;
   });
   const el=document.getElementById('priceList');
   if(!items.length){el.innerHTML='<div class="empty-state">該当商品なし</div>';return;}
   el.innerHTML=items.map(p=>{
     const teika=p.teika||0,cost=p.cost||0,sell=p.sell||0;
+    const isRoom=isRoomAC(p.category);
     const mp=marginPct(cost,sell);
     const mpHtml=mp!==null?`<span class="margin-badge ${mp>=30?'good':mp>=15?'mid':'low'}">${mp}%</span>`:'';
     const diff=(sell&&cost)?sell-cost:null;
     const hasPrice=teika||cost||sell;
+    // ルームエアコン × 定価あり → 仕入掛率・売値掛率を表示
+    const costRate=(isRoom&&teika>0&&cost>0)?Math.round(cost/teika*100):null;
+    const sellRate=(isRoom&&teika>0&&sell>0)?Math.round(sell/teika*100):null;
+    const ratesHtml=(isRoom&&teika>0&&(costRate||sellRate))?
+      `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+        ${costRate!=null?`<span style="background:#e8f0f8;color:var(--blue);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">仕入掛率 ${costRate}%</span>`:''}
+        ${sellRate!=null?`<span style="background:#e8f4ec;color:var(--green);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">売値掛率 ${sellRate}%</span>`:''}
+        ${(costRate!=null&&sellRate!=null)?`<span style="background:#fff8e8;color:var(--accent2);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">差 +${sellRate-costRate}%</span>`:''}
+      </div>` : '';
+    const seriesBadge=(isRoom&&(p.series||'').trim())?`<span style="background:#fdf0ec;color:var(--accent);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;margin-left:6px;">📡 ${p.series}</span>`:'';
+    const teikaStatus=isRoom&&!teika?`<span style="font-size:11px;color:var(--ink3);margin-left:4px;">(オープン価格)</span>`:'';
     return`<div class="price-card">
       <div class="price-card-header">
-        <div><div class="price-card-name">${p.name}</div><div class="price-card-maker">🏭 ${p.maker||'―'}</div></div>
+        <div>
+          <div style="display:flex;align-items:center;flex-wrap:wrap;">
+            <div class="price-card-name">${p.name}</div>${seriesBadge}${teikaStatus}
+          </div>
+          <div class="price-card-maker">🏭 ${p.maker||'―'} ${p.category?'・ '+p.category:''}</div>
+        </div>
         <div style="text-align:right;">${mpHtml}<button onclick="editPriceProduct('${p.id}')" style="display:block;margin-top:4px;background:var(--surface2);border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;color:var(--ink2);">✏️ 編集</button></div>
       </div>
       ${hasPrice?`<div class="price-row">
@@ -2619,6 +2692,7 @@ function renderPriceList(){
         ${sell?`<div class="price-box"><div class="price-box-label">売値</div><div class="price-box-val sell">${fmt(sell)}</div></div>`:''}
         ${diff!==null?`<div class="price-box"><div class="price-box-label">粗利</div><div class="price-box-val margin">${fmt(diff)}</div></div>`:''}
       </div>`:'<div class="no-price">価格未設定 — 編集から入力できます</div>'}
+      ${ratesHtml}
       ${p.note?`<div style="font-size:11px;color:var(--ink3);margin-top:8px;">📝 ${p.note}</div>`:''}
     </div>`;
   }).join('');
@@ -2651,6 +2725,8 @@ function closeModal(id){document.getElementById(id).classList.remove('open');}
 function openAddModal(){
   document.getElementById('modalProductTitle').textContent='商品を追加';
   ['inp-maker','inp-name','inp-note','inp-category'].forEach(id=>document.getElementById(id).value='');
+  var si=document.getElementById('inp-series'); if(si) si.value='';
+  document.getElementById('autoCalcNote').style.display='none';
   WH_KEYS.forEach(w=>document.getElementById('inp-'+w).value=0);
   document.getElementById('inp-teika').value='';
   document.getElementById('inp-cost').value='';
@@ -2661,6 +2737,7 @@ function openAddModal(){
   populateMakerDropdown('');
   populateCategoryDropdown('');
   updateYearModelVisibility();
+  updateSeriesVisibility();
   openModal('modalProduct');
 }
 
@@ -2676,12 +2753,15 @@ function openProductEdit(){
   document.getElementById('inp-cost').value=p.cost||'';
   document.getElementById('inp-sell').value=p.sell||'';
   document.getElementById('inp-note').value=p.note||'';
+  var si=document.getElementById('inp-series'); if(si) si.value=p.series||'';
   document.getElementById('inp-edit-id').value=p.id;
   document.getElementById('delete-btn-wrap').style.display='block';
   document.getElementById('aiPriceBox').style.display='none';
+  document.getElementById('autoCalcNote').style.display='none';
   populateMakerDropdown(p.maker||'');
   populateCategoryDropdown(p.category||'');
   updateYearModelVisibility();
+  updateSeriesVisibility();
   openModal('modalProduct');
 }
 // ═══ MAKER COMBO ═════════════════════════════════════════════════
@@ -2738,11 +2818,47 @@ function populateCategoryDropdown(currentVal){
 function openCategoryDropdown(){populateCategoryDropdown(document.getElementById('inp-category').value);document.getElementById('categoryDropdown').classList.add('open');}
 function toggleCategoryDropdown(){const dd=document.getElementById('categoryDropdown');if(dd.classList.contains('open')){dd.classList.remove('open');}else{populateCategoryDropdown(document.getElementById('inp-category').value);dd.classList.add('open');}}
 function filterCategoryDropdown(){populateCategoryDropdown(document.getElementById('inp-category').value);document.getElementById('categoryDropdown').classList.add('open');}
-function selectCategory(name){document.getElementById('inp-category').value=name;document.getElementById('categoryDropdown').classList.remove('open');}
+function selectCategory(name){document.getElementById('inp-category').value=name;document.getElementById('categoryDropdown').classList.remove('open');updateSeriesVisibility();autoCalcSell();}
 
-// 年式モデル欄は廃止（年はジャンルに含めるため）。常に非表示。
-function updateYearModelVisibility(){
-  var grp=document.getElementById('yearModelGroup');if(grp) grp.style.display='none';
+// ═══ シリーズ COMBO（ルームエアコン専用） ═════════════════════
+function updateSeriesVisibility(){
+  var grp=document.getElementById('seriesGroup');if(!grp)return;
+  var cat=document.getElementById('inp-category').value||'';
+  grp.style.display=isRoomAC(cat)?'block':'none';
+}
+function getAllSeries(){
+  var fromData=data.products.filter(function(p){return isRoomAC(p.category)&&(p.series||'').trim();}).map(function(p){return p.series.trim();});
+  return[...new Set(fromData)].sort();
+}
+function populateSeriesDropdown(currentVal){
+  var dd=document.getElementById('seriesDropdown');if(!dd)return;
+  var list=getAllSeries();
+  var q=(currentVal||'').toLowerCase();
+  var filtered=q?list.filter(function(c){return c.toLowerCase().includes(q);}):list;
+  if(!filtered.length){ dd.innerHTML='<div class="maker-dropdown-item" style="color:var(--ink3);cursor:default;">登録済みシリーズなし</div>'; return; }
+  dd.innerHTML=filtered.map(function(c){return '<div class="maker-dropdown-item'+(c===currentVal?' selected':'')+'" onclick="selectSeries(\''+c.replace(/'/g,"\\'")+'\')">' +c+'</div>';}).join('');
+}
+function openSeriesDropdown(){populateSeriesDropdown(document.getElementById('inp-series').value);document.getElementById('seriesDropdown').classList.add('open');}
+function toggleSeriesDropdown(){var dd=document.getElementById('seriesDropdown');if(dd.classList.contains('open')){dd.classList.remove('open');}else{populateSeriesDropdown(document.getElementById('inp-series').value);dd.classList.add('open');}}
+function filterSeriesDropdown(){populateSeriesDropdown(document.getElementById('inp-series').value);document.getElementById('seriesDropdown').classList.add('open');}
+function selectSeries(name){document.getElementById('inp-series').value=name;document.getElementById('seriesDropdown').classList.remove('open');}
+
+// ─── ルームエアコン 売値自動計算（仕入掛率 + 3% = 売値掛率） ──────
+function autoCalcSell(){
+  var cat=document.getElementById('inp-category').value||'';
+  var note=document.getElementById('autoCalcNote');
+  if(!isRoomAC(cat)){if(note)note.style.display='none';return;}
+  var teika=parseFloat(document.getElementById('inp-teika').value)||0;
+  var cost=parseFloat(document.getElementById('inp-cost').value)||0;
+  if(teika>0&&cost>0){
+    var costRate=Math.round(cost/teika*100);
+    var sellRate=costRate+3;
+    var newSell=Math.round(teika*sellRate/100);
+    document.getElementById('inp-sell').value=newSell;
+    if(note){ note.style.display='block'; note.textContent='🤖 自動計算: 仕入掛率'+costRate+'% + 3% = 売値掛率'+sellRate+'% → 売値 ¥'+newSell.toLocaleString(); }
+  }else{
+    if(note)note.style.display='none';
+  }
 }
 function getAllYearModels(){
   var fromData=data.products.map(function(p){return (p.yearmodel||'').trim();}).filter(Boolean);
@@ -3407,7 +3523,8 @@ function addQuoteLine(){
   if(!p) return;
   var teika=p.teika||0, tanka=p.sell||0;
   var rate=(teika>0&&tanka>0)?Math.round(tanka/teika*100):0;
-  quoteLines.push({pid:p.id,maker:p.maker||'その他',name:p.name,hinmei:(p.note||p.category||''),qty:qty,teika:teika,rate:rate,tanka:tanka,bikou:''});
+  var hinmeiParts=[p.category||'',p.series?p.series+'シリーズ':'',p.note||''].filter(Boolean);
+  quoteLines.push({pid:p.id,maker:p.maker||'その他',name:p.name,hinmei:hinmeiParts.join(' '),qty:qty,teika:teika,rate:rate,tanka:tanka,bikou:''});
   renderQuoteLines();
 }
 function addQuoteLineManual(){
@@ -3573,18 +3690,19 @@ async function saveProduct(){
   var cost  = parseFloat(document.getElementById('inp-cost').value)||0;
   var sell  = parseFloat(document.getElementById('inp-sell').value)||0;
   var note  = document.getElementById('inp-note').value.trim();
+  var series = isRoomAC(category) ? ((document.getElementById('inp-series')||{value:''}).value||'').trim() : '';
   var yearmodel = '';
   showLoading(true);
   try{
     if(editId){
       var idx = data.products.findIndex(function(p){return p.id===editId;});
       if(idx>=0){
-        data.products[idx]=Object.assign({},data.products[idx],{maker:maker,category:category,name:name},qty,{teika:teika,cost:cost,sell:sell,note:note,yearmodel:yearmodel});
+        data.products[idx]=Object.assign({},data.products[idx],{maker:maker,category:category,name:name},qty,{teika:teika,cost:cost,sell:sell,note:note,yearmodel:yearmodel,series:series});
         await upsertProduct(data.products[idx]);
         await addHistoryDB('henshu',name,'\u5546\u54c1\u60c5\u5831\u3092\u66f4\u65b0');
       }
     }else{
-      var newP = Object.assign({id:uid(),maker:maker,category:category,name:name},qty,{teika:teika,cost:cost,sell:sell,note:note,yearmodel:yearmodel,reserves:[]});
+      var newP = Object.assign({id:uid(),maker:maker,category:category,name:name},qty,{teika:teika,cost:cost,sell:sell,note:note,yearmodel:yearmodel,series:series,reserves:[]});
       data.products.push(newP);
       await upsertProduct(newP);
       await addHistoryDB('henshu',name,'\u65b0\u898f\u8ffd\u52a0 ['+(maker||'\u30e1\u30fc\u30ab\u30fc\u672a\u8a2d\u5b9a')+']');
