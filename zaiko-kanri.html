@@ -1101,7 +1101,8 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
       <select id="srRateMode" class="form-select" onchange="setSrRateMode(this.value)" style="margin-bottom:8px;">
         <option value="cat">ジャンル別</option>
         <option value="maker">メーカー別</option>
-        <option value="catmaker">ジャンル × メーカー別（最も細かい）</option>
+        <option value="catmaker">ジャンル × メーカー別</option>
+        <option value="series">📡 ルームエアコン・シリーズ別</option>
       </select>
       <div id="sr-rate-detail"></div>
     </div>
@@ -2352,18 +2353,18 @@ let srBase   = 'teika';   // 'teika' | 'cost'
 let srTarget = 'nosell';  // 'nosell' | 'all'
 let srRateMode = 'cat'; // 'cat'|'maker'|'catmaker'（全体一律は廃止）
 let srPreviewItems = [];
-let srRates = {cat:{}, maker:{}, catmaker:{}};
+let srRates = {cat:{}, maker:{}, catmaker:{}, series:{}};
 
 function _srKey(s){ return (s||'').replace(/[^a-zA-Z0-9一-龠ぁ-んァ-ヶ]/g,'_'); }
 function _srLoad(){
   try{ var s=JSON.parse(localStorage.getItem(SR_LS_KEY)||'{}');
     if(s.base) srBase=s.base;
-    srRates={cat:s.cat||{}, maker:s.maker||{}, catmaker:s.catmaker||{}};
+    srRates={cat:s.cat||{}, maker:s.maker||{}, catmaker:s.catmaker||{}, series:s.series||{}};
   }catch(e){ srRates={cat:{},maker:{},catmaker:{}}; }
 }
 function _srSave(){
   _srReadInputs();
-  localStorage.setItem(SR_LS_KEY, JSON.stringify({base:srBase, cat:srRates.cat, maker:srRates.maker, catmaker:srRates.catmaker}));
+  localStorage.setItem(SR_LS_KEY, JSON.stringify({base:srBase, cat:srRates.cat, maker:srRates.maker, catmaker:srRates.catmaker, series:srRates.series}));
 }
 function openSellRate(){
   srPreviewItems=[];
@@ -2395,6 +2396,17 @@ function renderSrRateDetail(){
     targets.forEach(function(p){ var k=(p.category||'未分類').trim()||'未分類'; if(keys.indexOf(k)<0){keys.push(k);labelOf[k]=k;cntOf[k]=0;} cntOf[k]++; });
   }else if(srRateMode==='maker'){
     targets.forEach(function(p){ var k=(p.maker||'メーカー未設定').trim()||'メーカー未設定'; if(keys.indexOf(k)<0){keys.push(k);labelOf[k]=k;cntOf[k]=0;} cntOf[k]++; });
+  }else if(srRateMode==='series'){
+    // ルームエアコンのみ・シリーズ別（シリーズ未設定は「シリーズ未設定」としてまとめる）
+    var roomTargets=targets.filter(function(p){return isRoomAC(p.category);});
+    if(!roomTargets.length){ el.innerHTML='<div style="font-size:12px;color:var(--ink3);padding:8px;">ルームエアコンが対象商品にありません。</div>'; return; }
+    roomTargets.forEach(function(p){
+      var s=(p.series||'').trim()||'シリーズ未設定';
+      var mk=(p.maker||'').trim();
+      var k=s+'｜'+mk;
+      if(keys.indexOf(k)<0){keys.push(k);labelOf[k]='<span style="color:#8b5cf6;font-weight:700;">📡 '+s+'</span>'+(mk?' ／ '+mk:'');cntOf[k]=0;}
+      cntOf[k]++;
+    });
   }else{ // catmaker
     targets.forEach(function(p){ var c=(p.category||'未分類').trim()||'未分類'; var m=(p.maker||'メーカー未設定').trim()||'メーカー未設定'; var k=c+'｜'+m; if(keys.indexOf(k)<0){keys.push(k);labelOf[k]='<span style="color:var(--blue);">'+c+'</span> ／ '+m;cntOf[k]=0;} cntOf[k]++; });
   }
@@ -2422,6 +2434,12 @@ function _getSrRate(p){
   var k;
   if(srRateMode==='cat') k=(p.category||'未分類').trim()||'未分類';
   else if(srRateMode==='maker') k=(p.maker||'メーカー未設定').trim()||'メーカー未設定';
+  else if(srRateMode==='series'){
+    if(!isRoomAC(p.category)) return null; // シリーズモードは非ルームエアコンをスキップ
+    var s=(p.series||'').trim()||'シリーズ未設定';
+    var mk=(p.maker||'').trim();
+    k=s+'｜'+mk;
+  }
   else k=((p.category||'未分類').trim()||'未分類')+'｜'+((p.maker||'メーカー未設定').trim()||'メーカー未設定');
   var store=srRates[srRateMode]||{};
   return (store[k]!=null&&store[k]>0)?store[k]:null; // 未設定はnull＝計算対象外
@@ -2437,11 +2455,15 @@ function renderSrPreview(){
     srPreviewItems=[];
     return;
   }
-  srPreviewItems=targets.map(function(p){
+  srPreviewItems=targets.filter(function(p){
+    var rate=_getSrRate(p);
+    return rate!==null && (p[srBase]||0)>0;
+  }).map(function(p){
     var base=p[srBase]||0;
     var rate=_getSrRate(p);
     var newSell=Math.round(base*rate/100);
-    return {pid:p.id,name:p.name,maker:p.maker||'',cat:p.category||'',base:base,rate:rate,newSell:newSell,oldSell:p.sell||0};
+    var seriesLabel=(srRateMode==='series'&&(p.series||'').trim())?' 📡 '+p.series:'';
+    return {pid:p.id,name:p.name+seriesLabel,maker:p.maker||'',cat:p.category||'',base:base,rate:rate,newSell:newSell,oldSell:p.sell||0};
   });
   _srSave();
   document.getElementById('srPreviewArea').style.display='block';
@@ -2858,6 +2880,8 @@ function openProductEdit(){
   updateYearModelVisibility();
   updateSeriesVisibility();
   openModal('modalProduct');
+  // テイカ＋仕入値が既に入っている場合は開いた瞬間に売値を自動計算
+  setTimeout(autoCalcSell, 50);
 }
 // ═══ MAKER COMBO ═════════════════════════════════════════════════
 const PRESET_MAKERS=['三菱電機','パナソニック','ダイキン','日立','東芝','富士通ゼネラル','シャープ','コロナ'];
