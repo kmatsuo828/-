@@ -283,6 +283,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
   </div>
   <div class="section-hd" style="flex-wrap:wrap;gap:6px;"><h2>商品一覧</h2><span id="product-count" style="font-size:12px;color:var(--ink3)"></span>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;">
+      <button id="btnYearDetect" onclick="openYearDetect()" style="background:#3e7d52;color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;display:none;">🗓 エアコン年式を自動判定</button>
       <button id="btnMakerUnify" onclick="openMakerUnify()" style="background:var(--ho);color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;display:none;">🏭 メーカー名を統一</button>
       <button id="btnAutoCategory" onclick="openAutoCategory()" style="background:var(--blue);color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;display:none;">🤖 未分類を自動分類</button>
     </div>
@@ -296,7 +297,10 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
   </div>
   <div class="search-row">
     <select class="filter-select" id="filterMaker" onchange="renderList()" style="flex:1;font-size:13px;"><option value="all">全メーカー</option></select>
-    <select class="filter-select" id="filterCategory" onchange="renderList()" style="flex:1;font-size:13px;"><option value="all">全ジャンル</option></select>
+    <select class="filter-select" id="filterCategory" onchange="onCategoryFilterChange()" style="flex:1;font-size:13px;"><option value="all">全ジャンル</option></select>
+  </div>
+  <div class="search-row" id="yearFilterRow" style="display:none;">
+    <select class="filter-select" id="filterYear" onchange="renderList()" style="flex:1;font-size:13px;"><option value="all">全年式モデル</option></select>
   </div>
   <div class="product-list" id="productList"></div>
 </div>
@@ -704,6 +708,15 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
         <span id="genreAiStatus" style="font-size:11px;color:var(--ink3);">メーカー＋型番から自動分類</span>
       </div>
     </div>
+    <div class="form-group" id="yearModelGroup" style="display:none;">
+      <label class="form-label">年式モデル（ルームエアコン用）</label>
+      <div class="maker-combo" id="yearModelCombo">
+        <input type="text" class="maker-combo-input" id="inp-yearmodel" placeholder="入力 or ▼で選択（例: 2025年モデル）" oninput="filterYearModelDropdown()" onfocus="openYearModelDropdown()" autocomplete="off">
+        <button class="maker-combo-toggle" onclick="toggleYearModelDropdown()" type="button">▼</button>
+        <div class="maker-dropdown" id="yearModelDropdown"></div>
+      </div>
+      <div style="font-size:11px;color:var(--ink3);margin-top:4px;">年モデル別に絞り込めるようになります（空欄でも可）</div>
+    </div>
     <div class="form-group"><label class="form-label">型番・商品名</label><input type="text" class="form-input" id="inp-name" placeholder="例: CS225DFL" list="productNameList" autocomplete="off"></div>
     <div class="form-group">
       <label class="form-label">在庫数（台）</label>
@@ -916,6 +929,31 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary btn-full" onclick="closeModal('modalMakerUnify')">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: YEAR DETECT (ルームエアコン年式) -->
+<div class="modal-overlay" id="modalYearDetect">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🗓 ルームエアコンの年式を自動判定</div>
+    <div class="modal-subtitle">型番の命名規則からAIが年式モデルを推定します。結果は必ず確認してから保存してください（推定のため誤りの可能性あり）。</div>
+    <div style="margin-bottom:10px;">
+      <div class="seg-toggle">
+        <button id="yd-mode-missing" class="active" type="button" onclick="setYearDetectMode('missing')">年式未設定のみ</button>
+        <button id="yd-mode-all" type="button" onclick="setYearDetectMode('all')">全ルームエアコン</button>
+      </div>
+    </div>
+    <button id="ydStartBtn" class="btn btn-blue btn-full" onclick="startYearDetect()" style="padding:12px;margin-bottom:10px;">🤖 AIで年式を判定</button>
+    <div id="yearDetectStatus" class="ai-status" style="display:none;"></div>
+    <div id="yearDetectBody"></div>
+    <div id="yearDetectActions" style="display:none;">
+      <div style="font-size:11px;color:var(--ink3);margin-bottom:8px;">各商品の年式は修正できます。チェックした商品のみ保存します。</div>
+      <button class="btn btn-green btn-full" onclick="saveYearDetect()" style="padding:14px;font-size:15px;">💾 チェックした商品の年式を保存</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary btn-full" onclick="closeModal('modalYearDetect')">閉じる</button>
     </div>
   </div>
 </div>
@@ -1359,7 +1397,10 @@ let bulkMode = 'text';
 // Lets the app run fully even before the (optional) SQL migration is applied.
 let HAS_CATEGORY = false;
 let HAS_CUSTOMERS = false;
+let HAS_YEARMODEL = false;
 const PRESET_CATEGORIES=['ルームエアコン','業務用エアコン','配管・部材','コンセント','スイッチ','ケーブル・電線','分電盤・ブレーカー','照明器具','換気・送風機','給湯・温水','その他'];
+const PRESET_YEARMODELS=['2023年モデル','2024年モデル','2025年モデル','2026年モデル','2027年モデル'];
+function isRoomAC(cat){ return (cat||'').indexOf('ルームエアコン')>=0; }
 
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 function fmt(n){ return n>0?'\u00a5'+Number(n).toLocaleString():'\u2015'; }
@@ -1371,7 +1412,7 @@ function savePassword(pw){ localStorage.setItem(PK,pw); }
 async function loadProducts(){
   var rows = await supaFetch('products?select=*&order=maker,name');
   data.products = (rows||[]).map(function(r){
-    return Object.assign({category:''}, r, {reserves: r.reserves||[], category: r.category||''});
+    return Object.assign({category:'',yearmodel:''}, r, {reserves: r.reserves||[], category: r.category||'', yearmodel: r.yearmodel||''});
   });
 }
 
@@ -1383,6 +1424,7 @@ async function upsertProduct(p){
     note:p.note||'', reserves:p.reserves||[]
   };
   if(HAS_CATEGORY) row.category = p.category||'';
+  if(HAS_YEARMODEL) row.yearmodel = p.yearmodel||'';
   return supaFetch('products?on_conflict=id','POST',row,{
     'Prefer':'resolution=merge-duplicates,return=minimal'
   });
@@ -1415,6 +1457,8 @@ async function clearHistoryDB(){
 async function detectCapabilities(){
   try{ await supaFetch('products?select=category&limit=1'); HAS_CATEGORY = true; }
   catch(e){ HAS_CATEGORY = false; }
+  try{ await supaFetch('products?select=yearmodel&limit=1'); HAS_YEARMODEL = true; }
+  catch(e){ HAS_YEARMODEL = false; }
   try{ await supaFetch('customers?select=id&limit=1'); HAS_CUSTOMERS = true; }
   catch(e){ HAS_CUSTOMERS = false; }
 }
@@ -1815,6 +1859,100 @@ async function saveMakerUnify(){
     closeModal('modalMakerUnify');
     alert('✅ メーカー名を統一しました\n'+groupsDone+'グループ / '+changed+'件の商品を更新');
   }catch(e){ alert('統一エラー: '+e.message); }
+  finally{ showLoading(false); }
+}
+
+// ═══ AI ルームエアコン年式判定 ═══════════════════════════════
+let yearDetectItems = [];   // [{id,maker,name,yearmodel,confidence}]
+let yearDetectMode = 'missing';
+function setYearDetectMode(m){
+  yearDetectMode=m;
+  document.getElementById('yd-mode-missing').classList.toggle('active',m==='missing');
+  document.getElementById('yd-mode-all').classList.toggle('active',m==='all');
+}
+function openYearDetect(){
+  yearDetectItems=[];
+  setYearDetectMode('missing');
+  document.getElementById('yearDetectStatus').style.display='none';
+  document.getElementById('yearDetectBody').innerHTML='';
+  document.getElementById('yearDetectActions').style.display='none';
+  document.getElementById('ydStartBtn').style.display='block';
+  openModal('modalYearDetect');
+}
+async function startYearDetect(){
+  var targets=data.products.filter(function(p){
+    if(!isRoomAC(p.category)) return false;
+    if(yearDetectMode==='missing') return !(p.yearmodel||'').trim();
+    return true;
+  });
+  if(!targets.length){ alert('対象のルームエアコンがありません。'); return; }
+  var statusEl=document.getElementById('yearDetectStatus');
+  statusEl.style.display='block'; statusEl.className='ai-status loading';
+  statusEl.innerHTML='<span class="spinner"></span>AIが型番から年式を推定中…（'+targets.length+'件）';
+  document.getElementById('ydStartBtn').style.display='none';
+  var listText=targets.map(function(p){return p.id+' | '+(p.maker||'不明')+' | '+p.name;}).join('\n');
+  var prompt=[
+    'あなたはルームエアコンの型番に詳しい専門家です。',
+    '各メーカーの型番命名規則から「年式モデル（発売年）」を推定してください。',
+    '例: パナソニックCS-225DFL→2025年, 三菱MSZ-GV2225→2025年, ダイキンS225ATES→2025年 等（末尾や中間の数字・記号で年を表すことが多い）。',
+    '確信が持てない場合はyearmodelを空文字にし、confidenceを"低"としてください。',
+    'yearmodelは「2025年モデル」の形式で返してください。',
+    '',
+    '対象（id | メーカー | 型番）:',
+    listText,
+    '',
+    '必ず以下のJSONのみで返答:',
+    '{"items":[{"id":"","yearmodel":"2025年モデル","confidence":"高/中/低"}]}'
+  ].join('\n');
+  try{
+    var result=await callGemini({contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0}});
+    var parsed=JSON.parse(geminiText(result).replace(/```json|```/g,'').trim());
+    var byId={}; (parsed.items||[]).forEach(function(it){ byId[it.id]={yearmodel:it.yearmodel||'',confidence:it.confidence||'中'}; });
+    yearDetectItems=targets.map(function(p){
+      var r=byId[p.id]||{yearmodel:'',confidence:'低'};
+      return {id:p.id,maker:p.maker||'',name:p.name,yearmodel:r.yearmodel,confidence:r.confidence};
+    });
+    statusEl.style.display='none';
+    renderYearDetectItems();
+    document.getElementById('yearDetectActions').style.display='block';
+  }catch(e){
+    statusEl.className='ai-status error'; statusEl.innerHTML='❌ 判定に失敗しました: '+e.message;
+    document.getElementById('ydStartBtn').style.display='block';
+  }
+}
+function renderYearDetectItems(){
+  var yms=getAllYearModels();
+  document.getElementById('yearDetectBody').innerHTML=yearDetectItems.map(function(it,i){
+    var confColor=it.confidence==='高'?'#3e7d52':it.confidence==='低'?'#c84b2f':'#b3893a';
+    var opts=['<option value="">（未設定）</option>'].concat(yms.map(function(y){return '<option value="'+y+'"'+(y===it.yearmodel?' selected':'')+'>'+y+'</option>';}));
+    // AIが提案した値が候補に無い場合は先頭に追加
+    if(it.yearmodel && yms.indexOf(it.yearmodel)<0) opts.splice(1,0,'<option value="'+it.yearmodel+'" selected>'+it.yearmodel+'</option>');
+    return '<div class="ai-item" style="margin-bottom:6px;">'
+      +'<div class="ai-item-header"><div style="flex:1;">'
+      +'<div style="font-size:13px;font-weight:700;font-family:\'JetBrains Mono\',monospace;">'+it.name+'</div>'
+      +'<div style="font-size:10px;color:var(--ink3);">'+it.maker+' ・ <span style="color:'+confColor+';">確信度: '+it.confidence+'</span></div>'
+      +'</div>'
+      +'<label style="display:flex;align-items:center;gap:5px;margin-left:8px;"><input type="checkbox" id="yd-check-'+i+'" '+(it.yearmodel?'checked':'')+' style="width:18px;height:18px;"></label>'
+      +'</div>'
+      +'<select id="yd-year-'+i+'" class="form-select" style="margin-top:6px;font-size:13px;">'+opts.join('')+'</select>'
+      +'</div>';
+  }).join('');
+}
+async function saveYearDetect(){
+  var saved=0,skipped=0;
+  showLoading(true);
+  try{
+    for(var i=0;i<yearDetectItems.length;i++){
+      var chk=document.getElementById('yd-check-'+i); if(!chk||!chk.checked){skipped++;continue;}
+      var ym=((document.getElementById('yd-year-'+i)||{value:''}).value||'').trim();
+      var p=data.products.find(function(x){return x.id===yearDetectItems[i].id;});
+      if(!p){skipped++;continue;}
+      p.yearmodel=ym; await upsertProduct(p); saved++;
+    }
+    renderMakerFilter();renderSummary();renderList();
+    closeModal('modalYearDetect');
+    alert('✅ 年式モデルを保存しました\n'+saved+'件を更新'+(skipped>0?' / '+skipped+'件スキップ':''));
+  }catch(e){ alert('保存エラー: '+e.message); }
   finally{ showLoading(false); }
 }
 
@@ -2338,6 +2476,7 @@ function renderMakerFilter(){
     sel.innerHTML='<option value="all">全メーカー</option>'+makers.map(m=>`<option value="${m}"${m===cur?' selected':''}>${m}</option>`).join('');
   });
   renderCategoryFilter();
+  renderYearFilter();
   refreshProductNameList();
 }
 
@@ -2368,12 +2507,15 @@ function renderList(){
   const mk=document.getElementById('filterMaker').value;
   const ctEl=document.getElementById('filterCategory');
   const ct=ctEl?ctEl.value:'all';
+  const yrEl=document.getElementById('filterYear');
+  const yr=(yrEl && document.getElementById('yearFilterRow').style.display!=='none')?yrEl.value:'all';
   let items=data.products.filter(p=>{
     const mq=!q||p.name.toLowerCase().includes(q)||(p.maker||'').toLowerCase().includes(q)||(p.category||'').toLowerCase().includes(q)||(p.note||'').toLowerCase().includes(q);
     const mwh=wh==='all'||(p[wh]||0)>0;
     const mmk=mk==='all'||(p.maker||'')===mk;
     const mct=ct==='all'||(ct==='__none__'?!(p.category||'').trim():(p.category||'').trim()===ct);
-    return mq&&mwh&&mmk&&mct;
+    const myr=yr==='all'||(yr==='__none__'?!(p.yearmodel||'').trim():(p.yearmodel||'').trim()===yr);
+    return mq&&mwh&&mmk&&mct&&myr;
   });
   document.getElementById('product-count').textContent=items.length+' 件';
   // 商品が1件以上あればAIジャンル整理ボタンを常時表示
@@ -2381,6 +2523,8 @@ function renderList(){
   if(btnAuto) btnAuto.style.display=data.products.length>0?'inline-block':'none';
   var btnMk=document.getElementById('btnMakerUnify');
   if(btnMk) btnMk.style.display=getMakers().length>=2?'inline-block':'none';
+  var btnYr=document.getElementById('btnYearDetect');
+  if(btnYr) btnYr.style.display=data.products.some(function(p){return isRoomAC(p.category);})?'inline-block':'none';
   renderReserveBanner();
   const el=document.getElementById('productList');
   if(!items.length){el.innerHTML='<div class="empty-state">商品が見つかりません</div>';return;}
@@ -2389,7 +2533,8 @@ function renderList(){
     const badges=WH_KEYS.map(w=>p[w]>0?`<span class="wh-badge ${w}"><span class="wh-dot"></span>${WH_LABELS[w].replace('倉庫','')} ${p[w]}台</span>`:'').join('');
     const rCount=(p.reserves||[]).reduce((s,r)=>s+(r.qty||0),0);
     const rHtml=rCount>0?`<div><span class="reserve-badge">🔒 取り置き ${rCount}台</span></div>`:'';
-    const tags=`${p.category?`<span class="cat-badge">${p.category}</span>`:''}${p.maker?`<span class="maker-badge">🏭 ${p.maker}</span>`:''}`;
+    const yrBadge=(isRoomAC(p.category)&&(p.yearmodel||'').trim())?`<span class="cat-badge" style="background:#eaf3ec;color:#3e7d52;">🗓 ${p.yearmodel}</span>`:'';
+    const tags=`${p.category?`<span class="cat-badge">${p.category}</span>`:''}${yrBadge}${p.maker?`<span class="maker-badge">🏭 ${p.maker}</span>`:''}`;
     return`<div class="product-card" onclick="openOperation('${p.id}')">
       ${tags?`<div>${tags}</div>`:''}
       <div class="pc-top"><div class="pc-name">${p.name}</div><div class="pc-total">${total}<span> 台</span></div></div>
@@ -2397,6 +2542,27 @@ function renderList(){
       ${rHtml}${p.note?`<div style="font-size:11px;color:var(--ink3);margin-top:4px;">📝 ${p.note}</div>`:''}
     </div>`;
   }).join('');
+}
+function onCategoryFilterChange(){
+  renderYearFilter();
+  renderList();
+}
+function renderYearFilter(){
+  var ctEl=document.getElementById('filterCategory');
+  var row=document.getElementById('yearFilterRow');
+  var sel=document.getElementById('filterYear');
+  if(!ctEl||!row||!sel) return;
+  var isRoom=isRoomAC(ctEl.value);
+  row.style.display=isRoom?'flex':'none';
+  if(!isRoom){ sel.value='all'; return; }
+  var cur=sel.value;
+  var fromData=data.products.filter(function(p){return isRoomAC(p.category)&&(p.yearmodel||'').trim();}).map(function(p){return p.yearmodel.trim();});
+  var years=[...new Set(fromData)].sort().reverse();
+  var hasNone=data.products.some(function(p){return isRoomAC(p.category)&&!(p.yearmodel||'').trim();});
+  var html='<option value="all">全年式モデル</option>';
+  html+=years.map(function(y){return '<option value="'+y+'"'+(y===cur?' selected':'')+'>'+y+'</option>';}).join('');
+  if(hasNone) html+='<option value="__none__"'+(cur==='__none__'?' selected':'')+'>年式未設定</option>';
+  sel.innerHTML=html;
 }
 
 function renderReserveBanner(){
@@ -2465,7 +2631,7 @@ function closeModal(id){document.getElementById(id).classList.remove('open');}
 
 function openAddModal(){
   document.getElementById('modalProductTitle').textContent='商品を追加';
-  ['inp-maker','inp-name','inp-note','inp-category'].forEach(id=>document.getElementById(id).value='');
+  ['inp-maker','inp-name','inp-note','inp-category','inp-yearmodel'].forEach(id=>document.getElementById(id).value='');
   WH_KEYS.forEach(w=>document.getElementById('inp-'+w).value=0);
   document.getElementById('inp-teika').value='';
   document.getElementById('inp-cost').value='';
@@ -2475,6 +2641,7 @@ function openAddModal(){
   document.getElementById('aiPriceBox').style.display='none';
   populateMakerDropdown('');
   populateCategoryDropdown('');
+  updateYearModelVisibility();
   openModal('modalProduct');
 }
 
@@ -2490,11 +2657,13 @@ function openProductEdit(){
   document.getElementById('inp-cost').value=p.cost||'';
   document.getElementById('inp-sell').value=p.sell||'';
   document.getElementById('inp-note').value=p.note||'';
+  document.getElementById('inp-yearmodel').value=p.yearmodel||'';
   document.getElementById('inp-edit-id').value=p.id;
   document.getElementById('delete-btn-wrap').style.display='block';
   document.getElementById('aiPriceBox').style.display='none';
   populateMakerDropdown(p.maker||'');
   populateCategoryDropdown(p.category||'');
+  updateYearModelVisibility();
   openModal('modalProduct');
 }
 // ═══ MAKER COMBO ═════════════════════════════════════════════════
@@ -2548,8 +2717,30 @@ function populateCategoryDropdown(currentVal){
 }
 function openCategoryDropdown(){populateCategoryDropdown(document.getElementById('inp-category').value);document.getElementById('categoryDropdown').classList.add('open');}
 function toggleCategoryDropdown(){const dd=document.getElementById('categoryDropdown');if(dd.classList.contains('open')){dd.classList.remove('open');}else{populateCategoryDropdown(document.getElementById('inp-category').value);dd.classList.add('open');}}
-function filterCategoryDropdown(){populateCategoryDropdown(document.getElementById('inp-category').value);document.getElementById('categoryDropdown').classList.add('open');}
-function selectCategory(name){document.getElementById('inp-category').value=name;document.getElementById('categoryDropdown').classList.remove('open');}
+function filterCategoryDropdown(){populateCategoryDropdown(document.getElementById('inp-category').value);document.getElementById('categoryDropdown').classList.add('open');updateYearModelVisibility();}
+function selectCategory(name){document.getElementById('inp-category').value=name;document.getElementById('categoryDropdown').classList.remove('open');updateYearModelVisibility();}
+
+// ═══ 年式モデル COMBO（ルームエアコン専用） ═════════════════════
+function updateYearModelVisibility(){
+  var grp=document.getElementById('yearModelGroup');if(!grp)return;
+  var cat=document.getElementById('inp-category').value||'';
+  grp.style.display=isRoomAC(cat)?'block':'none';
+}
+function getAllYearModels(){
+  var fromData=data.products.map(function(p){return (p.yearmodel||'').trim();}).filter(Boolean);
+  return[...new Set([...PRESET_YEARMODELS,...fromData])].sort().reverse();
+}
+function populateYearModelDropdown(currentVal){
+  var dd=document.getElementById('yearModelDropdown');if(!dd)return;
+  var list=getAllYearModels();
+  var q=(currentVal||'').toLowerCase();
+  var filtered=q?list.filter(function(c){return c.toLowerCase().includes(q);}):list;
+  dd.innerHTML=filtered.map(function(c){return '<div class="maker-dropdown-item'+(c===currentVal?' selected':'')+'" onclick="selectYearModel(\''+c.replace(/'/g,"\\'")+'\')">'+c+'</div>';}).join('');
+}
+function openYearModelDropdown(){populateYearModelDropdown(document.getElementById('inp-yearmodel').value);document.getElementById('yearModelDropdown').classList.add('open');}
+function toggleYearModelDropdown(){var dd=document.getElementById('yearModelDropdown');if(dd.classList.contains('open')){dd.classList.remove('open');}else{populateYearModelDropdown(document.getElementById('inp-yearmodel').value);dd.classList.add('open');}}
+function filterYearModelDropdown(){populateYearModelDropdown(document.getElementById('inp-yearmodel').value);document.getElementById('yearModelDropdown').classList.add('open');}
+function selectYearModel(name){document.getElementById('inp-yearmodel').value=name;document.getElementById('yearModelDropdown').classList.remove('open');}
 
 // ═══ CUSTOMER COMBO (得意先・再利用可能) ═════════════════════════
 function populateCustomerDropdown(inputId, ddId){
@@ -3357,17 +3548,18 @@ async function saveProduct(){
   var cost  = parseFloat(document.getElementById('inp-cost').value)||0;
   var sell  = parseFloat(document.getElementById('inp-sell').value)||0;
   var note  = document.getElementById('inp-note').value.trim();
+  var yearmodel = isRoomAC(category) ? (document.getElementById('inp-yearmodel').value.trim()) : '';
   showLoading(true);
   try{
     if(editId){
       var idx = data.products.findIndex(function(p){return p.id===editId;});
       if(idx>=0){
-        data.products[idx]=Object.assign({},data.products[idx],{maker:maker,category:category,name:name},qty,{teika:teika,cost:cost,sell:sell,note:note});
+        data.products[idx]=Object.assign({},data.products[idx],{maker:maker,category:category,name:name},qty,{teika:teika,cost:cost,sell:sell,note:note,yearmodel:yearmodel});
         await upsertProduct(data.products[idx]);
         await addHistoryDB('henshu',name,'\u5546\u54c1\u60c5\u5831\u3092\u66f4\u65b0');
       }
     }else{
-      var newP = Object.assign({id:uid(),maker:maker,category:category,name:name},qty,{teika:teika,cost:cost,sell:sell,note:note,reserves:[]});
+      var newP = Object.assign({id:uid(),maker:maker,category:category,name:name},qty,{teika:teika,cost:cost,sell:sell,note:note,yearmodel:yearmodel,reserves:[]});
       data.products.push(newP);
       await upsertProduct(newP);
       await addHistoryDB('henshu',name,'\u65b0\u898f\u8ffd\u52a0 ['+(maker||'\u30e1\u30fc\u30ab\u30fc\u672a\u8a2d\u5b9a')+']');
