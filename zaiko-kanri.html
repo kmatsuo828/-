@@ -190,6 +190,8 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 .pdf-table td{padding:6px 8px;border-bottom:1px solid #e0ddd8;text-align:center;}
 .pdf-table tr:nth-child(even) td{background:#f7f5f2;}
 .pdf-table .item-name{text-align:left;font-weight:700;font-family:'JetBrains Mono',monospace;font-size:11px;}
+.quote-table td{font-size:11px;padding:5px 6px;border-bottom:1px solid #ddd;}
+.quote-table .q-code{font-family:'JetBrains Mono',monospace;font-weight:700;text-align:left;font-size:11px;}
 .empty-state{text-align:center;padding:32px 16px;color:var(--ink3);font-size:13px;}
 /* AI PRICE SEARCH */
 .ai-price-box{background:#eef4fb;border:1.5px solid #b8d4f0;border-radius:10px;padding:12px;margin-top:10px;}
@@ -513,6 +515,10 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
     </div>
   </div>
   <button class="btn btn-primary btn-full" onclick="generatePdf()" style="padding:15px;font-size:16px;">📄 PDF プレビュー・印刷</button>
+  <div style="height:1px;background:var(--border);margin:18px 0;"></div>
+  <div class="section-hd" style="margin-bottom:10px"><h2>見積書作成</h2></div>
+  <div style="font-size:12px;color:var(--ink3);margin-bottom:10px;line-height:1.6;">得意先と商品を選んで、自社フォーマットの見積書PDFを作成します。</div>
+  <button class="btn btn-amber btn-full" onclick="openQuote()" style="padding:15px;font-size:16px;">📋 見積書を作成する</button>
 </div>
 
 <!-- FAB -->
@@ -723,6 +729,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title" id="modalOpTitle">操作</div>
+    <div id="op-info"></div>
     <div class="op-grid">
       <button class="op-btn nyuko" onclick="openOpForm('nyuko')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>入荷
@@ -1125,6 +1132,52 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary btn-full" onclick="closeBulkPrice()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: QUOTE BUILDER -->
+<div class="modal-overlay" id="modalQuote">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📋 見積書作成</div>
+    <div class="form-group" style="margin-bottom:8px;">
+      <label class="form-label">件名</label>
+      <input type="text" class="form-input" id="quote-title" placeholder="例: (仮称)○○店 新築工事">
+    </div>
+    <div class="form-group" style="margin-bottom:8px;">
+      <label class="form-label">宛先（御中）</label>
+      <div class="maker-combo">
+        <input type="text" class="maker-combo-input" id="quote-customer" placeholder="得意先を入力 or ▼で選択" autocomplete="off"
+          oninput="filterCustomerDropdown('quote-customer','quoteCustDD')" onfocus="openCustomerDropdown('quote-customer','quoteCustDD')">
+        <button class="maker-combo-toggle" type="button" onclick="toggleCustomerDropdown('quote-customer','quoteCustDD')">▼</button>
+        <div class="maker-dropdown" id="quoteCustDD"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <div class="form-group" style="flex:1;margin:0;"><label class="form-label">発行日</label><input type="date" class="form-input" id="quote-date"></div>
+      <div class="form-group" style="flex:1;margin:0;"><label class="form-label">担当者</label><input type="text" class="form-input" id="quote-staff" value="松尾 勇輝"></div>
+    </div>
+
+    <div style="background:var(--surface2);border-radius:10px;padding:10px;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:700;margin-bottom:6px;color:var(--ink2);">明細を追加</div>
+      <select class="form-select" id="quote-add-maker" onchange="updateQuoteProductOptions()" style="margin-bottom:6px;font-size:13px;"><option value="">── メーカー選択 ──</option></select>
+      <select class="form-select" id="quote-add-product" style="margin-bottom:6px;font-size:13px;"><option value="">── 品番選択 ──</option></select>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="number" class="form-input" id="quote-add-qty" value="1" min="1" style="width:80px;text-align:center;">
+        <span style="font-size:13px;color:var(--ink3);">数量</span>
+        <button class="btn btn-blue" style="flex:1;padding:9px;" type="button" onclick="addQuoteLine()">＋ 明細に追加</button>
+      </div>
+      <div style="font-size:11px;color:var(--ink3);margin-top:6px;">※登録済みの定価・売値が自動で入ります。手入力で明細を追加することも可能です。</div>
+      <button class="btn btn-secondary" style="width:100%;margin-top:6px;padding:8px;font-size:12px;" type="button" onclick="addQuoteLineManual()">✏️ 手入力で1行追加</button>
+    </div>
+
+    <div id="quote-lines"></div>
+    <div id="quote-total" style="margin-bottom:10px;"></div>
+
+    <button class="btn btn-amber btn-full" onclick="generateQuotePdf()" style="padding:13px;font-size:15px;margin-bottom:8px;">📄 見積書PDFを作成</button>
+    <div class="modal-actions">
+      <button class="btn btn-secondary btn-full" onclick="closeModal('modalQuote')">閉じる</button>
     </div>
   </div>
 </div>
@@ -2464,6 +2517,31 @@ function openOperation(id){
   currentProductId=id;
   const p=data.products.find(x=>x.id===id);if(!p)return;
   document.getElementById('modalOpTitle').textContent=(p.maker?p.maker+' ':'')+p.name;
+  // 情報表示：売値・取り置き詳細
+  var infoHtml='';
+  var total=WH_KEYS.reduce(function(s,w){return s+(p[w]||0);},0);
+  var stockBadges=WH_KEYS.map(function(w){return p[w]>0?'<span class="wh-badge '+w+'"><span class="wh-dot"></span>'+WH_LABELS[w].replace('倉庫','')+' '+p[w]+'台</span>':'';}).join('');
+  infoHtml+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">'+(stockBadges||'<span style="font-size:12px;color:var(--ink3);">在庫なし</span>')+'</div>';
+  if(p.sell>0||p.teika>0||p.cost>0){
+    var priceBits=[];
+    if(p.teika>0) priceBits.push('<span style="color:var(--ink3);">定価 '+fmt(p.teika)+'</span>');
+    if(p.cost>0)  priceBits.push('<span style="color:var(--blue);">仕入 '+fmt(p.cost)+'</span>');
+    if(p.sell>0)  priceBits.push('<span style="color:var(--green);font-weight:700;">売値 '+fmt(p.sell)+'</span>');
+    infoHtml+='<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:13px;background:var(--surface);border-radius:8px;padding:8px 10px;margin-bottom:8px;">'+priceBits.join('')+'</div>';
+  }
+  var reserves=p.reserves||[];
+  if(reserves.length>0){
+    var rTotal=reserves.reduce(function(s,r){return s+(r.qty||0);},0);
+    infoHtml+='<div style="background:#fff8e8;border:1px solid #f5d080;border-radius:8px;padding:8px 10px;margin-bottom:8px;">'
+      +'<div style="font-size:12px;font-weight:700;color:var(--accent2);margin-bottom:5px;">🔒 取り置き '+reserves.length+'件 / 計'+rTotal+'台</div>'
+      +reserves.map(function(r){
+        return '<div style="font-size:12px;color:var(--ink2);padding:2px 0;display:flex;justify-content:space-between;gap:8px;">'
+          +'<span><strong>'+(r.customer||r.name||'未記入')+'</strong> <span style="color:var(--ink3);">'+WH_LABELS[r.wh]+'</span></span>'
+          +'<span style="font-family:\'JetBrains Mono\',monospace;font-weight:700;">'+r.qty+'台</span></div>';
+      }).join('')
+      +'</div>';
+  }
+  document.getElementById('op-info').innerHTML=infoHtml;
   document.getElementById('op-form').style.display='none';
   document.getElementById('op-form').innerHTML='';
   openModal('modalOperation');
@@ -2942,6 +3020,159 @@ function generatePdf(){
       ${whCols.length>1?'<th>合計</th>':''}
     </tr></thead><tbody>${rows}</tbody></table>
     ${!products.length?'<p style="text-align:center;color:#888;margin-top:20px;">該当商品なし</p>':''}`;
+  document.getElementById('pdf-preview').style.display='block';
+}
+
+// ═══ 見積書作成 ═══════════════════════════════════════════════
+const QUOTE_COMPANY={name:'株式会社マツオ',zip:'〒594-0023',addr:'大阪府和泉市伯太町2丁目33-37',tel:'TEL:0725-41-1306　FAX:0725-41-1308'};
+const QUOTE_MAKER_COLORS=['#e8f0f8','#e8f4ec','#fdf0ec','#f4ede8','#f0ecf8','#fff8e8','#eef4fb'];
+let quoteLines=[]; // {pid,maker,name,hinmei,qty,teika,rate,tanka}
+
+function openQuote(){
+  quoteLines=[];
+  document.getElementById('quote-title').value='';
+  document.getElementById('quote-customer').value='';
+  var n=new Date();
+  document.getElementById('quote-date').value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');
+  // メーカー選択肢
+  var makers=getMakers();
+  document.getElementById('quote-add-maker').innerHTML='<option value="">── メーカー選択 ──</option>'+makers.map(function(m){return '<option value="'+m+'">'+m+'</option>';}).join('');
+  document.getElementById('quote-add-product').innerHTML='<option value="">── 品番選択 ──</option>';
+  renderQuoteLines();
+  openModal('modalQuote');
+}
+function updateQuoteProductOptions(){
+  var mk=document.getElementById('quote-add-maker').value;
+  var prods=data.products.filter(function(p){return (p.maker||'')===mk;});
+  document.getElementById('quote-add-product').innerHTML='<option value="">── 品番選択 ──</option>'+prods.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>';}).join('');
+}
+function addQuoteLine(){
+  var pid=document.getElementById('quote-add-product').value;
+  if(!pid){ alert('品番を選択してください'); return; }
+  var qty=parseInt(document.getElementById('quote-add-qty').value)||1;
+  var p=data.products.find(function(x){return x.id===pid;});
+  if(!p) return;
+  var teika=p.teika||0, tanka=p.sell||0;
+  var rate=(teika>0&&tanka>0)?Math.round(tanka/teika*100):0;
+  quoteLines.push({pid:p.id,maker:p.maker||'その他',name:p.name,hinmei:(p.note||p.category||''),qty:qty,teika:teika,rate:rate,tanka:tanka});
+  renderQuoteLines();
+}
+function addQuoteLineManual(){
+  quoteLines.push({pid:null,maker:'その他',name:'',hinmei:'',qty:1,teika:0,rate:0,tanka:0});
+  renderQuoteLines();
+}
+function removeQuoteLine(i){ quoteLines.splice(i,1); renderQuoteLines(); }
+function _quoteRecalc(i){
+  var teika=parseFloat((document.getElementById('q-teika-'+i)||{value:0}).value)||0;
+  var tanka=parseFloat((document.getElementById('q-tanka-'+i)||{value:0}).value)||0;
+  quoteLines[i].teika=teika; quoteLines[i].tanka=tanka;
+  quoteLines[i].qty=parseInt((document.getElementById('q-qty-'+i)||{value:1}).value)||1;
+  quoteLines[i].name=(document.getElementById('q-name-'+i)||{value:''}).value;
+  quoteLines[i].hinmei=(document.getElementById('q-hinmei-'+i)||{value:''}).value;
+  quoteLines[i].maker=(document.getElementById('q-maker-'+i)||{value:''}).value||'その他';
+  quoteLines[i].rate=(teika>0&&tanka>0)?Math.round(tanka/teika*100):0;
+  // 金額だけ即時更新
+  var amt=quoteLines[i].qty*tanka;
+  var amtEl=document.getElementById('q-amt-'+i); if(amtEl) amtEl.textContent=fmt(amt);
+  renderQuoteTotal();
+}
+function renderQuoteLines(){
+  var el=document.getElementById('quote-lines');
+  if(!quoteLines.length){ el.innerHTML='<div style="text-align:center;color:var(--ink3);font-size:13px;padding:16px;">明細がありません。上から商品を追加してください。</div>'; renderQuoteTotal(); return; }
+  el.innerHTML=quoteLines.map(function(L,i){
+    var amt=L.qty*L.tanka;
+    return '<div class="ai-item" style="margin-bottom:6px;">'
+      +'<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px;">'
+      +'<input type="text" id="q-maker-'+i+'" value="'+(L.maker||'').replace(/"/g,'&quot;')+'" placeholder="メーカー" class="form-input" style="width:90px;font-size:11px;padding:4px 6px;" oninput="_quoteRecalc('+i+')">'
+      +'<input type="text" id="q-name-'+i+'" value="'+(L.name||'').replace(/"/g,'&quot;')+'" placeholder="品番" list="productNameList" class="form-input" style="flex:1;font-size:12px;font-weight:700;padding:4px 6px;" oninput="_quoteRecalc('+i+')">'
+      +'<button onclick="removeQuoteLine('+i+')" style="border:none;background:var(--accent);color:#fff;border-radius:5px;width:26px;height:26px;font-size:14px;cursor:pointer;flex:none;">×</button>'
+      +'</div>'
+      +'<input type="text" id="q-hinmei-'+i+'" value="'+(L.hinmei||'').replace(/"/g,'&quot;')+'" placeholder="品名・仕様" class="form-input" style="width:100%;font-size:11px;padding:4px 6px;margin-bottom:5px;" oninput="_quoteRecalc('+i+')">'
+      +'<div style="display:flex;gap:5px;align-items:flex-end;">'
+      +'<div style="flex:0 0 50px;"><div style="font-size:9px;color:var(--ink3);">数量</div><input type="number" id="q-qty-'+i+'" value="'+L.qty+'" min="1" class="form-input" style="padding:5px 3px;font-size:12px;text-align:center;" oninput="_quoteRecalc('+i+')"></div>'
+      +'<div style="flex:1;"><div style="font-size:9px;color:var(--ink3);">定価</div><input type="number" id="q-teika-'+i+'" value="'+L.teika+'" min="0" class="form-input" style="padding:5px 3px;font-size:12px;text-align:right;" oninput="_quoteRecalc('+i+')"></div>'
+      +'<div style="flex:1;"><div style="font-size:9px;color:var(--green);">単価(売値)</div><input type="number" id="q-tanka-'+i+'" value="'+L.tanka+'" min="0" class="form-input" style="padding:5px 3px;font-size:12px;text-align:right;" oninput="_quoteRecalc('+i+')"></div>'
+      +'<div style="flex:1;text-align:right;"><div style="font-size:9px;color:var(--ink3);">金額</div><div id="q-amt-'+i+'" style="font-size:13px;font-weight:700;padding:5px 0;">'+fmt(amt)+'</div></div>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+  renderQuoteTotal();
+}
+function renderQuoteTotal(){
+  var sub=quoteLines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
+  var tax=Math.round(sub*0.1);
+  var tot=sub+tax;
+  document.getElementById('quote-total').innerHTML='<div style="background:var(--surface);border-radius:8px;padding:10px 12px;font-size:13px;">'
+    +'<div style="display:flex;justify-content:space-between;padding:2px 0;"><span style="color:var(--ink3);">小計</span><span>'+fmt(sub)+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between;padding:2px 0;"><span style="color:var(--ink3);">消費税(10%)</span><span>'+fmt(tax)+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between;padding:4px 0 0;border-top:1px solid var(--border);margin-top:4px;font-weight:700;font-size:15px;"><span>合計(税込)</span><span style="color:var(--accent);">'+fmt(tot)+'</span></div>'
+    +'</div>';
+}
+function generateQuotePdf(){
+  if(!quoteLines.length){ alert('明細を1件以上追加してください'); return; }
+  var title=document.getElementById('quote-title').value.trim();
+  var cust=document.getElementById('quote-customer').value.trim();
+  var staff=document.getElementById('quote-staff').value.trim();
+  var dateVal=document.getElementById('quote-date').value;
+  var dispDate=dateVal?dateVal.replace(/-/g,'/'):'';
+  if(cust) addCustomerIfNew(cust);
+  var sub=quoteLines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
+  var tax=Math.round(sub*0.1), tot=sub+tax;
+  // メーカーごとにグループ化（出現順）
+  var groups=[], gmap={};
+  quoteLines.forEach(function(L){
+    var mk=L.maker||'その他';
+    if(!gmap[mk]){ gmap[mk]={maker:mk,lines:[]}; gmap[mk]._i=groups.length; groups.push(gmap[mk]); }
+    gmap[mk].lines.push(L);
+  });
+  var no=0, rowsHtml='';
+  groups.forEach(function(g,gi){
+    var color=QUOTE_MAKER_COLORS[gi%QUOTE_MAKER_COLORS.length];
+    rowsHtml+='<tr><td colspan="8" style="background:'+color+';font-weight:700;text-align:left;padding:6px 8px;border-bottom:1px solid #ccc;">【'+g.maker+'】</td></tr>';
+    g.lines.forEach(function(L){
+      no++;
+      var amt=L.qty*L.tanka;
+      rowsHtml+='<tr style="background:'+color+'66;">'
+        +'<td>'+no+'</td>'
+        +'<td class="q-code">'+(L.name||'')+'</td>'
+        +'<td style="text-align:left;">'+(L.hinmei||'')+'</td>'
+        +'<td>'+L.qty+'</td>'
+        +'<td style="text-align:right;">'+(L.teika>0?Number(L.teika).toLocaleString():'')+'</td>'
+        +'<td>'+(L.rate>0?L.rate+'%':'')+'</td>'
+        +'<td style="text-align:right;">'+(L.tanka>0?Number(L.tanka).toLocaleString():'')+'</td>'
+        +'<td style="text-align:right;font-weight:700;">'+(amt>0?Number(amt).toLocaleString():'')+'</td>'
+        +'</tr>';
+    });
+  });
+  var c=QUOTE_COMPANY;
+  document.getElementById('pdf-content').innerHTML=
+    '<div style="text-align:center;font-size:22px;font-weight:700;letter-spacing:.3em;margin-bottom:14px;">御 見 積 書</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">'
+    +'<div style="font-size:12px;line-height:1.8;">'
+    +'<div>発行日: '+dispDate+'</div>'
+    +'<div style="font-size:15px;font-weight:700;margin-top:10px;border-bottom:2px solid #1a1714;padding-bottom:2px;display:inline-block;">'+(cust||'　　　　　　')+'　御中</div>'
+    +'</div>'
+    +'<div style="font-size:11px;line-height:1.7;text-align:left;">'
+    +'<div style="font-size:14px;font-weight:700;">'+c.name+'</div>'
+    +'<div>担当者: '+(staff||'')+'</div><div>'+c.zip+'</div><div>'+c.addr+'</div><div>'+c.tel+'</div>'
+    +'</div></div>'
+    +'<div style="border:1px solid #1a1714;padding:6px 10px;margin-bottom:4px;font-size:13px;"><b>件名:</b> '+(title||'')+'</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+    +'<span style="font-size:12px;">下記の通りお見積申し上げます。</span>'
+    +'<span style="font-size:13px;">合計金額(税込) <b style="font-size:18px;">¥'+tot.toLocaleString()+'</b></span></div>'
+    +'<table class="pdf-table quote-table"><thead><tr>'
+    +'<th style="width:28px;">No.</th><th style="min-width:90px;">品番</th><th style="text-align:left;min-width:140px;">品名</th>'
+    +'<th style="width:36px;">数量</th><th style="width:60px;">定価</th><th style="width:40px;">掛率</th><th style="width:64px;">単価</th><th style="width:74px;">金額</th>'
+    +'</tr></thead><tbody>'+rowsHtml+'</tbody></table>'
+    +'<div style="display:flex;justify-content:flex-end;margin-top:10px;">'
+    +'<table style="font-size:13px;border-collapse:collapse;min-width:240px;">'
+    +'<tr><td style="padding:4px 12px;color:#555;">小計</td><td style="padding:4px 12px;text-align:right;">¥'+sub.toLocaleString()+'</td></tr>'
+    +'<tr><td style="padding:4px 12px;color:#555;">消費税(10%)</td><td style="padding:4px 12px;text-align:right;">¥'+tax.toLocaleString()+'</td></tr>'
+    +'<tr style="border-top:2px solid #1a1714;"><td style="padding:5px 12px;font-weight:700;">合計</td><td style="padding:5px 12px;text-align:right;font-weight:700;font-size:16px;">¥'+tot.toLocaleString()+'</td></tr>'
+    +'</table></div>'
+    +'<div style="font-size:11px;color:#555;margin-top:16px;line-height:1.9;">'
+    +'・お見積有効期限：発行日より30日間<br>・お支払条件：末締め翌月末払い<br>・納期：ご注文後 約2〜3週間<br>・納入場所：貴社ご指定場所</div>';
+  closeModal('modalQuote');
   document.getElementById('pdf-preview').style.display='block';
 }
 
