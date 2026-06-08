@@ -1516,7 +1516,8 @@ let historyCache = [];
 let customersCache = [];
 let currentProductId = null;
 let currentOpFormType = null;
-let pdfWhFilter = 'all', pdfType = 'all', pdfCatFilter = 'all';
+let pdfWhFilters = new Set(['all']), pdfType = 'all', pdfCatFilter = 'all';
+// pdfWhFilter: 後方互換用（generatePdfで直接pdfWhFiltersを使う）
 
 function initPdfScreen(){
   var sel=document.getElementById('pdfCatFilter'); if(!sel) return;
@@ -3420,9 +3421,13 @@ function openOpForm(type){
   }else if(type==='torioki'){
     const reserves=p.reserves||[];
     const rList=reserves.length>0?`<div class="reserve-info"><div class="reserve-info-title">🔒 現在の取り置き</div>
-      ${reserves.map((r,i)=>`<div class="reserve-info-item">・<strong>${r.customer||r.name||'未記入'}</strong>（${WH_LABELS[r.wh]}）${r.qty}台
-        <button onclick="shipReserveById('${p.id}',${i})" style="margin-left:6px;background:var(--blue);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:11px;cursor:pointer;">出荷確定</button>
-        <button onclick="cancelReserveById('${p.id}',${i})" style="margin-left:4px;background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:11px;cursor:pointer;">解除</button></div>`).join('')}
+      ${reserves.map((r,i)=>`<div class="reserve-info-item" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:4px 0;">
+        <strong>${r.customer||r.name||'未記入'}</strong>（${WH_LABELS[r.wh]}）
+        <input type="number" id="opRsvQty${i}" value="${r.qty}" min="1" style="width:52px;border:1.5px solid var(--border);border-radius:5px;padding:2px 5px;font-size:13px;text-align:center;font-family:'JetBrains Mono',monospace;">台
+        <button onclick="saveReserveQty('${p.id}',${i},document.getElementById('opRsvQty${i}').value)" style="background:var(--blue);color:#fff;border:none;border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;">変更</button>
+        <button onclick="shipReserveById('${p.id}',${i})" style="background:var(--blue);color:#fff;border:none;border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;">出荷確定</button>
+        <button onclick="cancelReserveById('${p.id}',${i})" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;">解除</button>
+      </div>`).join('')}
       </div>`:'';
     formEl.innerHTML=`<div class="form-group"><label class="form-label">得意先（取り置き先）</label>
         <div class="maker-combo">
@@ -3841,8 +3846,31 @@ async function registerAiShukkaItems(){
 }
 
 function togglePdfWh(el){
-  document.querySelectorAll('.wh-chip').forEach(c=>c.classList.remove('active'));
-  el.classList.add('active');pdfWhFilter=el.dataset.wh;
+  var wh=el.dataset.wh;
+  var chips=document.querySelectorAll('.wh-chip');
+  if(wh==='all'){
+    pdfWhFilters=new Set(['all']);
+    chips.forEach(c=>c.classList.remove('active'));
+    el.classList.add('active');
+    return;
+  }
+  // 個別倉庫クリック: 全倉庫チップを外してトグル
+  pdfWhFilters.delete('all');
+  document.querySelector('.wh-chip[data-wh="all"]').classList.remove('active');
+  if(pdfWhFilters.has(wh)){ pdfWhFilters.delete(wh); el.classList.remove('active'); }
+  else{ pdfWhFilters.add(wh); el.classList.add('active'); }
+  // 何も選択されていない → 全倉庫に戻す
+  if(pdfWhFilters.size===0){
+    pdfWhFilters=new Set(['all']);
+    document.querySelector('.wh-chip[data-wh="all"]').classList.add('active');
+    return;
+  }
+  // 全5倉庫が選択された → 「全倉庫」チップに統合
+  if(WH_KEYS.every(w=>pdfWhFilters.has(w))){
+    pdfWhFilters=new Set(['all']);
+    chips.forEach(c=>c.classList.remove('active'));
+    document.querySelector('.wh-chip[data-wh="all"]').classList.add('active');
+  }
 }
 
 function selectPdfType(el,type){
@@ -3860,10 +3888,10 @@ function generatePdf(){
   if(pdfType!=='reserve'&&pdfCatFilter!=='all'){
     products=products.filter(p=>(p.category||'')=== pdfCatFilter);
   }
-  const whCols=pdfWhFilter==='all'?WH_KEYS:[pdfWhFilter];
+  const whCols=pdfWhFilters.has('all')?WH_KEYS:WH_KEYS.filter(w=>pdfWhFilters.has(w));
   const groupByCat=pdfCatFilter==='all'&&pdfType!=='reserve'
     &&(document.getElementById('pdfGroupByCat')||{checked:false}).checked;
-  const whTitle=pdfWhFilter==='all'?'全倉庫':WH_LABELS[pdfWhFilter];
+  const whTitle=pdfWhFilters.has('all')?'全倉庫':whCols.map(w=>WH_LABELS[w]).join('・');
   const catTitle=pdfCatFilter==='all'?'':' ／ '+pdfCatFilter;
   const typeTitle=pdfType==='reserve'?'取り置き一覧':'在庫一覧';
 
@@ -4224,6 +4252,33 @@ async function execOp(type){
   finally{showLoading(false);}
 }
 
+// ─── 取り置き台数変更 ─────────────────────────────────────────
+async function saveReserveQty(productId, idx, newQtyVal){
+  var newQty=parseInt(newQtyVal)||0;
+  if(newQty<=0){ alert('台数は1以上にしてください'); return; }
+  var p=data.products.find(function(x){return x.id===productId;});
+  if(!p||!p.reserves||!p.reserves[idx]) return;
+  var r=p.reserves[idx];
+  var oldQty=r.qty;
+  if(newQty===oldQty) return;
+  var diff=newQty-oldQty;
+  if(diff>0&&(p[r.wh]||0)<diff){
+    alert('在庫不足です\n追加必要: +'+diff+'台 ／ 利用可能: '+(p[r.wh]||0)+'台');
+    return;
+  }
+  showLoading(true);
+  try{
+    p[r.wh]=(p[r.wh]||0)-diff;
+    p.reserves[idx].qty=newQty;
+    await upsertProduct(p);
+    await addHistoryDB('torioki',p.name,(r.customer||'')+'の取り置き台数を'+oldQty+'台→'+newQty+'台に変更');
+    renderSummary();renderList();
+    if(document.getElementById('modalReserveList').classList.contains('open')) renderReserveList();
+    if(document.getElementById('modalOperation').classList.contains('open')) openOpForm('torioki');
+  }catch(e){ alert('エラー: '+e.message); }
+  finally{ showLoading(false); }
+}
+
 async function cancelReserveById(productId, idx){
   var p = data.products.find(function(x){return x.id===productId;});
   if(!p||!p.reserves||!p.reserves[idx]) return;
@@ -4290,7 +4345,11 @@ function reserveRowsHtml(rows){
       +'<div class="rsv-card-top"><div>'
       +'<div class="rsv-card-name">'+p.name+'</div>'
       +'<div class="rsv-card-maker">'+(p.category?p.category+' ・ ':'')+(p.maker||'メーカー未設定')+'</div>'
-      +'</div><div class="rsv-card-qty">'+r.qty+'<span style="font-size:11px;color:var(--ink3);font-family:\'Noto Sans JP\',sans-serif;"> 台</span></div></div>'
+      +'<div class="rsv-card-qty">'
+      +'<input type="number" id="rsvqty-'+i+'" value="'+r.qty+'" min="1" style="width:56px;border:1.5px solid var(--border);border-radius:6px;padding:3px 6px;font-size:15px;font-family:\'JetBrains Mono\',monospace;font-weight:700;color:var(--accent2);text-align:center;">'
+      +'<span style="font-size:11px;color:var(--ink3);font-family:\'Noto Sans JP\',sans-serif;"> 台</span>'
+      +'<button onclick="saveReserveQty(\''+p.id+'\','+x.idx+',document.getElementById(\'rsvqty-'+i+'\').value)" style="margin-left:4px;background:var(--blue);color:#fff;border:none;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;font-family:\'Noto Sans JP\',sans-serif;">変更</button>'
+      +'</div></div>'
       +'<div class="rsv-card-meta"><span class="wh-badge '+r.wh+'"><span class="wh-dot"></span>'+WH_LABELS[r.wh]+'</span>'
       +'<span>得意先: <span class="rsv-customer">'+(r.customer||r.name||'未記入')+'</span></span></div>'
       +'<div class="rsv-actions" style="flex-direction:column;gap:5px;">'
