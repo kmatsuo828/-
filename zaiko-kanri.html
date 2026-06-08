@@ -1397,15 +1397,24 @@ const PK='zaiko_pw_v1';
 const AI_PROXY_URL = SUPA_URL + '/functions/v1/gemini-proxy';
 const AI_MODEL = 'gemini-2.5-flash';
 // 混雑時に切り替える予備モデル（順番に試行）
-const AI_MODELS = ['gemini-2.5-flash','gemini-2.0-flash','gemini-flash-latest'];
+const AI_MODELS = ['gemini-2.5-flash','gemini-2.0-flash','gemini-2.0-flash-lite','gemini-1.5-flash'];
 function aiSleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
 
+// リトライ中にステータスを更新するコールバック（各呼出し元でセットする）
+var _aiStatusCb = null;
+function _aiStatus(msg){ if(typeof _aiStatusCb==='function') _aiStatusCb(msg); }
+
 async function callGemini(geminiBody){
-  var maxAttempts = 5;
+  var maxAttempts = 9;          // 最大9回試行
   var lastErr = null;
   for(var attempt=0; attempt<maxAttempts; attempt++){
-    // 1〜2回目は主モデル、3回目以降は予備モデルへ切替
-    var model = AI_MODELS[Math.min(attempt>=2?attempt-1:0, AI_MODELS.length-1)];
+    // 最初の2回は最上位モデル、以降は順番に予備モデルへ
+    var modelIdx = Math.min(attempt<2?0:Math.floor((attempt-2)/2)+1, AI_MODELS.length-1);
+    var model = AI_MODELS[modelIdx];
+    // リトライ時はステータスを更新
+    if(attempt>0){
+      _aiStatus('🔄 AI再試行中 ('+attempt+'/'+(maxAttempts-1)+'回目・'+model+')…');
+    }
     var resp;
     try{
       resp = await fetch(AI_PROXY_URL, {
@@ -1414,8 +1423,8 @@ async function callGemini(geminiBody){
         body: JSON.stringify({model:model, body:geminiBody})
       });
     }catch(e){
-      lastErr = new Error('AIサーバーに接続できません。ネットワークをご確認ください。');
-      await aiSleep(700*(attempt+1)); continue;  // 通信エラーは再試行
+      lastErr = new Error('ネットワークエラー');
+      await aiSleep(1500*(attempt+1)); continue;
     }
     if(resp.status===404){
       throw new Error('AI機能が未設定です。Supabaseに Edge Function「gemini-proxy」を作成してください。');
@@ -1423,17 +1432,19 @@ async function callGemini(geminiBody){
     var txt = await resp.text();
     var json;
     try{ json = txt ? JSON.parse(txt) : {}; }
-    catch(e){ json = {}; lastErr = new Error('AI応答の解析に失敗しました'); }
+    catch(e){ json = {}; lastErr = new Error('AI応答の解析に失敗'); }
     if(resp.ok && !(json && json.error)) return json;  // 成功
     var msg = (json && json.error && json.error.message) ? json.error.message : ('HTTP '+resp.status);
     lastErr = new Error(msg);
-    // 混雑・一時エラーは自動リトライ対象
-    var retryable = resp.status===503 || resp.status===429 || resp.status===500 || resp.status===502
-      || /high demand|overload|unavailable|try again|temporar|rate.?limit|quota|busy|not found|not support|503|429/i.test(msg);
-    if(!retryable) throw lastErr;            // 設定ミス等は即終了
-    if(attempt < maxAttempts-1) await aiSleep(900*(attempt+1));  // 指数的バックオフ
+    var retryable = resp.status===503||resp.status===429||resp.status===500||resp.status===502
+      ||/high demand|overload|unavailable|try again|temporar|rate.?limit|quota|busy/i.test(msg);
+    if(!retryable) throw lastErr;
+    // 混雑エラー: 指数的バックオフで待機（最大15秒）
+    var wait = Math.min(1500*(attempt+1), 15000);
+    _aiStatus('⏳ AI混雑中。'+(Math.round(wait/1000))+'秒後に再試行 ('+(attempt+1)+'/'+(maxAttempts-1)+'回目)…');
+    if(attempt < maxAttempts-1) await aiSleep(wait);
   }
-  throw new Error('AIが混雑しています。少し時間をおいて、もう一度お試しください。'+(lastErr?'（'+lastErr.message+'）':''));
+  throw new Error('AIが混雑中のため処理できませんでした。しばらく時間をおいて再度お試しください。');
 }
 // Geminiレスポンスからテキスト（=JSON文字列）を取り出す
 function geminiText(resp){
@@ -3434,6 +3445,7 @@ async function handleAiPhoto(event){
   document.getElementById('aiStatus').style.display='block';
   document.getElementById('aiStatus').className='ai-status loading';
   document.getElementById('aiStatus').innerHTML='<span class="spinner"></span>AIが読み取り中…';
+  _aiStatusCb=function(msg){var el=document.getElementById('aiStatus');if(el)el.innerHTML='<span class="spinner"></span>'+msg;};
   const existingList=data.products.map(p=>`${p.maker||''}　${p.name}`).join('\n');
   const prompt=`あなたは倉庫在庫管理の専門家です。
 入力（画像・PDF・CSV）は手書きの在庫メモや納品書、在庫表です。
@@ -3481,8 +3493,10 @@ ${existingList}
     document.getElementById('aiStatus').style.display='none';
     document.getElementById('aiResult').style.display='block';
   }catch(e){
+    _aiStatusCb=null;
     document.getElementById('aiStatus').className='ai-status error';
-    document.getElementById('aiStatus').innerHTML='❌ 読み取りに失敗しました: '+e.message;
+    document.getElementById('aiStatus').innerHTML='❌ '+e.message
+      +'<br><button class="btn btn-secondary" style="margin-top:8px;padding:8px 16px;font-size:13px;" onclick="document.getElementById(\'aiFileInput\').click()">📷 もう一度試す</button>';
   }
 }
 
