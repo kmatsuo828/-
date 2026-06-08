@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>在庫管理</title>
+<meta name="color-scheme" content="light">
+<title>マツオ情報ポータル</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
 :root{
@@ -12,13 +13,16 @@
   --accent:#c84b2f;--accent2:#e8a020;--green:#2d7a4f;--blue:#2a5f8f;
   --border:#d4cfc8;--shadow:rgba(26,23,20,.10);
   --ni:#2a5f8f;--ho:#2d7a4f;--go:#c84b2f;--roku:#7a4a2d;--jisha:#6a4a8f;
+  --nav-bg:#1565c0;
+  color-scheme:light only;
 }
+html{background-color:#f0ede8;}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px;}
-.header{background:var(--ink);color:#faf8f5;padding:14px 16px 12px;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px var(--shadow);}
+body{font-family:'Noto Sans JP',sans-serif;background-color:#f0ede8;background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px;}
+.header{background:var(--nav-bg);color:#faf8f5;padding:14px 16px 12px;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px var(--shadow);}
 .header-title{font-size:17px;font-weight:700;letter-spacing:.04em;}
-/* ─── スクリーン共通: 横スクロール防止 ─── */
-.screen{overflow-x:hidden;}
+/* ─── スクリーン共通: 横スクロール防止・背景固定 ─── */
+.screen{overflow-x:hidden;background-color:#f0ede8;}
 
 /* ─── 大 モード (大きい文字) ─── */
 body.font-lg{font-size:15px;}
@@ -151,9 +155,9 @@ body.font-xl #priceMakerFilter{width:124px;}
 .fab{position:fixed;bottom:108px;right:16px;width:52px;height:52px;background:var(--accent);color:#fff;border:none;border-radius:50%;font-size:24px;cursor:pointer;box-shadow:0 4px 14px rgba(200,75,47,.4);display:flex;align-items:center;justify-content:center;transition:transform .15s;z-index:50;}
 .fab:active{transform:scale(.93);}
 /* BOTTOM NAV */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--ink);display:flex;padding:11px 0 max(11px,env(safe-area-inset-bottom));z-index:100;box-shadow:0 -2px 8px var(--shadow);}
-.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;color:#6a6460;font-family:'Noto Sans JP',sans-serif;font-size:10px;cursor:pointer;padding:8px 0;transition:color .15s;}
-.nav-btn.active{color:var(--accent);}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--nav-bg);display:flex;padding:11px 0 max(11px,env(safe-area-inset-bottom));z-index:100;box-shadow:0 -2px 8px var(--shadow);}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;color:rgba(255,255,255,.65);font-family:'Noto Sans JP',sans-serif;font-size:10px;cursor:pointer;padding:8px 0;transition:color .15s;}
+.nav-btn.active{color:#fff;}
 .nav-btn svg{width:23px;height:23px;}
 /* MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(26,23,20,.55);z-index:200;align-items:flex-end;justify-content:center;}
@@ -215,7 +219,7 @@ body.font-xl #priceMakerFilter{width:124px;}
 .wh-chip.active.go{background:var(--go);color:#fff;border-color:var(--go);}
 .wh-chip.active.roku{background:var(--roku);color:#fff;border-color:var(--roku);}
 .wh-chip.active.jisha{background:var(--jisha);color:#fff;border-color:var(--jisha);}
-.wh-chip.active.all{background:var(--ink);color:#fff;border-color:var(--ink);}
+.wh-chip.active.all{background:var(--nav-bg);color:#fff;border-color:var(--nav-bg);}
 .pdf-options{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;}
 .pdf-option{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .15s;}
 .pdf-option.selected{border-color:var(--accent);}
@@ -357,7 +361,7 @@ body.font-xl #priceMakerFilter{width:124px;}
 
 <div class="header">
   <div onclick="forceReload()" style="cursor:pointer;" title="タップで最新版に更新">
-    <div class="header-title" style="display:flex;align-items:center;gap:7px;"><img id="headerLogo" alt="マツオ" style="height:40px;width:auto;display:block;">在庫管理</div>
+    <div class="header-title" style="display:flex;align-items:center;gap:7px;"><img id="headerLogo" alt="マツオ" style="height:40px;width:auto;display:block;">マツオ情報ポータル</div>
     <div class="header-sub">4倉庫一括管理システム（タップで更新）</div>
   </div>
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
@@ -1383,7 +1387,7 @@ body.font-xl #priceMakerFilter{width:124px;}
 <!-- PDF PREVIEW -->
 <div id="pdf-preview">
   <button class="pdf-print-btn" onclick="window.print()">🖨 印刷/PDF保存</button>
-  <button class="pdf-close" onclick="document.getElementById('pdf-preview').style.display='none';document.title='在庫管理'">✕ 閉じる</button>
+  <button class="pdf-close" onclick="document.getElementById('pdf-preview').style.display='none';document.title='マツオ情報ポータル'">✕ 閉じる</button>
   <div class="pdf-doc" id="pdf-content"></div>
 </div>
 
@@ -1396,8 +1400,8 @@ const PK='zaiko_pw_v1';
 // APIキーはサイトに埋め込まず、Supabase Edge Function (gemini-proxy) 経由で安全に呼び出す。
 const AI_PROXY_URL = SUPA_URL + '/functions/v1/gemini-proxy';
 const AI_MODEL = 'gemini-2.5-flash';
-// 混雑時に切り替える予備モデル（順番に試行）
-const AI_MODELS = ['gemini-2.5-flash','gemini-2.0-flash','gemini-2.0-flash-lite','gemini-1.5-flash'];
+// 混雑時に切り替える予備モデル（v1beta APIで動作確認済みのもののみ）
+const AI_MODELS = ['gemini-2.5-flash','gemini-2.0-flash','gemini-2.0-flash-lite'];
 function aiSleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
 
 // リトライ中にステータスを更新するコールバック（各呼出し元でセットする）
@@ -1437,8 +1441,8 @@ async function callGemini(geminiBody){
     var msg = (json && json.error && json.error.message) ? json.error.message : ('HTTP '+resp.status);
     lastErr = new Error(msg);
     var retryable = resp.status===503||resp.status===429||resp.status===500||resp.status===502
-      ||/high demand|overload|unavailable|try again|temporar|rate.?limit|quota|busy/i.test(msg);
-    if(!retryable) throw lastErr;
+      ||/high demand|overload|unavailable|try again|temporar|rate.?limit|quota|busy|not found|not support/i.test(msg);
+    if(!retryable) throw new Error('AI処理エラーが発生しました。もう一度お試しください。');
     // 混雑エラー: 指数的バックオフで待機（最大15秒）
     var wait = Math.min(1500*(attempt+1), 15000);
     _aiStatus('⏳ AI混雑中。'+(Math.round(wait/1000))+'秒後に再試行 ('+(attempt+1)+'/'+(maxAttempts-1)+'回目)…');
@@ -2250,6 +2254,7 @@ async function handleBPriceFile(event){
   var statusEl=document.getElementById('bpriceStatus');
   statusEl.style.display='block'; statusEl.className='ai-status loading';
   statusEl.innerHTML='<span class="spinner"></span>AIが価格表を読み取り中…';
+  _aiStatusCb=function(msg){if(statusEl)statusEl.innerHTML='<span class="spinner"></span>'+msg;};
   document.getElementById('bpriceBody').innerHTML='';
   document.getElementById('bpriceActions').style.display='none';
 
@@ -2296,7 +2301,13 @@ async function handleBPriceFile(event){
     }
     renderBPriceItems();
     document.getElementById('bpriceActions').style.display='block';
-  }catch(e){ statusEl.className='ai-status error'; statusEl.innerHTML='❌ 読み取りに失敗: '+e.message; }
+  }catch(e){
+    _aiStatusCb=null;
+    statusEl.className='ai-status error';
+    statusEl.innerHTML='❌ '+e.message
+      +'<br><button class="btn btn-secondary" style="margin-top:8px;padding:8px 16px;font-size:13px;" onclick="document.getElementById(\'bpCameraInput\').click()">📷 もう一度試す（カメラ）</button>'
+      +' <button class="btn btn-secondary" style="margin-top:8px;padding:8px 16px;font-size:13px;" onclick="document.getElementById(\'bpFileInput\').click()">📁 もう一度試す（ファイル）</button>';
+  }
 }
 
 // ─── AI 一括定価検索 ─────────────────────────────────────────
@@ -3635,7 +3646,7 @@ ${existingList}
     document.getElementById('shukkaAiResult').style.display='block';
   }catch(e){
     statusEl.className='ai-status error';
-    statusEl.innerHTML='❌ 読み取りに失敗しました: '+e.message;
+    statusEl.innerHTML='❌ '+e.message;
   }
 }
 
@@ -4334,7 +4345,7 @@ ${existingList}
     renderToriokiAiItems();
     statusEl.style.display='none';
     document.getElementById('trAiResult').style.display='block';
-  }catch(e){statusEl.className='ai-status error';statusEl.innerHTML='❌ 読み取りに失敗しました: '+e.message;}
+  }catch(e){statusEl.className='ai-status error';statusEl.innerHTML='❌ '+e.message;}
 }
 function renderToriokiAiItems(){
   const el=document.getElementById('trAiItems');
@@ -4491,7 +4502,7 @@ ${existingList}
     renderAiReserveItems();
     statusEl.style.display='none';
     document.getElementById('rsvAiResult').style.display='block';
-  }catch(e){statusEl.className='ai-status error';statusEl.innerHTML='❌ 読み取りに失敗しました: '+e.message;}
+  }catch(e){statusEl.className='ai-status error';statusEl.innerHTML='❌ '+e.message;}
 }
 function renderAiReserveItems(){
   const el=document.getElementById('rsvAiItems');
@@ -4664,7 +4675,7 @@ async function handleBulkPhoto(event){
     renderBulkItems();
     statusEl.style.display='none';
     document.getElementById('bulkResult').style.display='block';
-  }catch(e){statusEl.className='ai-status error';statusEl.innerHTML='❌ 読み取りに失敗しました: '+e.message;}
+  }catch(e){statusEl.className='ai-status error';statusEl.innerHTML='❌ '+e.message;}
 }
 function renderBulkItems(){
   const el=document.getElementById('bulkItems');
