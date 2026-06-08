@@ -17,6 +17,14 @@
 body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px;}
 .header{background:var(--ink);color:#faf8f5;padding:14px 16px 12px;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px var(--shadow);}
 .header-title{font-size:17px;font-weight:700;letter-spacing:.04em;}
+/* ─── 大きい文字モード ─── */
+body.font-lg .screen{zoom:1.18;}
+body.font-lg .modal{zoom:1.15;}
+body.font-lg .header-title{font-size:20px;}
+body.font-lg .header-sub{font-size:12px;}
+body.font-lg .header-date{font-size:12px;}
+body.font-lg .nav-btn{font-size:11px;}
+body.font-lg .nav-btn svg{width:22px;height:22px;}
 .header-sub{font-size:11px;color:#b0a898;margin-top:1px;}
 .header-date{font-family:'JetBrains Mono',monospace;font-size:11px;color:#b0a898;text-align:right;}
 .screen{display:none;padding:12px;}
@@ -265,7 +273,10 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
     <div class="header-title" style="display:flex;align-items:center;gap:7px;"><img id="headerLogo" alt="マツオ" style="height:40px;width:auto;display:block;">在庫管理</div>
     <div class="header-sub">4倉庫一括管理システム（タップで更新）</div>
   </div>
-  <div class="header-date" id="headerDate"></div>
+  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+    <button id="fontToggleBtn" onclick="toggleFontSize()" style="background:rgba(255,255,255,.16);color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;white-space:nowrap;line-height:1;">あ＋</button>
+    <div class="header-date" id="headerDate"></div>
+  </div>
 </div>
 
 <!-- ══ HOME ══ -->
@@ -4821,6 +4832,19 @@ async function migrateOldYearCategory(oldCat, newCat){
   console.log('[migrate] 完了');
 }
 
+// ─── 文字サイズ切替（標準 / 大） ─────────────────────────────
+const FONT_LS_KEY='zaiko_font_v1';
+function applyFontSize(mode){
+  document.body.classList.toggle('font-lg', mode==='lg');
+  var btn=document.getElementById('fontToggleBtn');
+  if(btn) btn.textContent = (mode==='lg') ? 'あ−' : 'あ＋';
+  try{ localStorage.setItem(FONT_LS_KEY, mode); }catch(e){}
+}
+function toggleFontSize(){
+  var cur=localStorage.getItem(FONT_LS_KEY)||'normal';
+  applyFontSize(cur==='lg'?'normal':'lg');
+}
+
 function forceReload(){
   // キャッシュを回避して最新版を取得（iPhone Safari対策）
   try{
@@ -4866,6 +4890,7 @@ function setupModalDismiss(){
 
 document.addEventListener('DOMContentLoaded', async function(){
   updateDate(); setInterval(updateDate, 30000);
+  applyFontSize(localStorage.getItem(FONT_LS_KEY)||'normal');
   setupModalDismiss();
   showLoading(true);
   try{
