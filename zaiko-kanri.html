@@ -17,22 +17,90 @@
 body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px;}
 .header{background:var(--ink);color:#faf8f5;padding:14px 16px 12px;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px var(--shadow);}
 .header-title{font-size:17px;font-weight:700;letter-spacing:.04em;}
-/* ─── 大きい文字モード（1.18x） ─── */
-body.font-lg .screen{zoom:1.18;width:calc(100% / 1.18);overflow-x:hidden;}
-body.font-lg .modal{zoom:1.15;}
+/* ─── スクリーン共通: 横スクロール防止 ─── */
+.screen{overflow-x:hidden;}
+
+/* ─── 大 モード (大きい文字) ─── */
+body.font-lg{font-size:15px;}
+body.font-lg .pc-name{font-size:16px;}
+body.font-lg .pc-total{font-size:18px;}
+body.font-lg .summary-card-num{font-size:25px;}
+body.font-lg .summary-card-label{font-size:13px;}
+body.font-lg .summary-card-unit{font-size:13px;}
+body.font-lg .wh-badge{font-size:13px;padding:4px 10px;}
+body.font-lg .maker-badge,body.font-lg .cat-badge{font-size:13px;}
+body.font-lg .reserve-badge{font-size:12px;}
+body.font-lg .search-input{font-size:15px;}
+body.font-lg .filter-select{font-size:14px;}
+body.font-lg .form-input,body.font-lg .form-select,body.font-lg .form-textarea{font-size:16px;}
+body.font-lg .form-label{font-size:14px;}
+body.font-lg .btn{font-size:16px;}
+body.font-lg .modal-title{font-size:19px;}
+body.font-lg .modal-subtitle{font-size:14px;}
+body.font-lg .price-box-val{font-size:18px;}
+body.font-lg .price-box-label{font-size:12px;}
+body.font-lg .price-card-name{font-size:16px;}
+body.font-lg .price-card-maker{font-size:13px;}
+body.font-lg .hist-name{font-size:15px;}
+body.font-lg .hist-detail{font-size:13px;}
+body.font-lg .hist-time{font-size:12px;}
+body.font-lg .nav-btn{font-size:10px;}
+body.font-lg .nav-btn svg{width:21px;height:21px;}
+body.font-lg .section-hd h2{font-size:15px;}
+body.font-lg .lock-title{font-size:20px;}
+body.font-lg .lock-sub{font-size:15px;}
+body.font-lg .lock-input{font-size:22px;}
 body.font-lg .header-title{font-size:20px;}
 body.font-lg .header-sub{font-size:12px;}
 body.font-lg .header-date{font-size:12px;}
-body.font-lg .nav-btn{font-size:11px;}
-body.font-lg .nav-btn svg{width:22px;height:22px;}
-/* ─── 特大文字モード（1.35x） ─── */
-body.font-xl .screen{zoom:1.35;width:calc(100% / 1.35);overflow-x:hidden;}
-body.font-xl .modal{zoom:1.28;}
+body.font-lg .sell-badge{font-size:13px!important;}
+body.font-lg .rate-badge{font-size:13px!important;}
+body.font-lg .modal{font-size:15px;}
+body.font-lg .wh-qty-item label{font-size:14px;}
+body.font-lg .maker-dropdown-item{font-size:15px;}
+body.font-lg .rsv-card-name{font-size:16px;}
+body.font-lg .rsv-card-meta{font-size:13px;}
+
+/* ─── 特大 モード (さらに大きい文字) ─── */
+body.font-xl{font-size:17px;}
+body.font-xl .pc-name{font-size:18px;}
+body.font-xl .pc-total{font-size:20px;}
+body.font-xl .summary-card-num{font-size:28px;}
+body.font-xl .summary-card-label{font-size:14px;}
+body.font-xl .summary-card-unit{font-size:14px;}
+body.font-xl .wh-badge{font-size:14px;padding:4px 10px;}
+body.font-xl .maker-badge,body.font-xl .cat-badge{font-size:14px;}
+body.font-xl .reserve-badge{font-size:13px;}
+body.font-xl .search-input{font-size:16px;}
+body.font-xl .filter-select{font-size:15px;}
+body.font-xl .form-input,body.font-xl .form-select,body.font-xl .form-textarea{font-size:17px;}
+body.font-xl .form-label{font-size:15px;}
+body.font-xl .btn{font-size:17px;}
+body.font-xl .modal-title{font-size:21px;}
+body.font-xl .modal-subtitle{font-size:15px;}
+body.font-xl .price-box-val{font-size:20px;}
+body.font-xl .price-box-label{font-size:13px;}
+body.font-xl .price-card-name{font-size:18px;}
+body.font-xl .price-card-maker{font-size:14px;}
+body.font-xl .hist-name{font-size:17px;}
+body.font-xl .hist-detail{font-size:14px;}
+body.font-xl .hist-time{font-size:13px;}
+body.font-xl .nav-btn{font-size:11px;}
+body.font-xl .nav-btn svg{width:23px;height:23px;}
+body.font-xl .section-hd h2{font-size:16px;}
+body.font-xl .lock-title{font-size:22px;}
+body.font-xl .lock-sub{font-size:16px;}
+body.font-xl .lock-input{font-size:24px;}
 body.font-xl .header-title{font-size:22px;}
 body.font-xl .header-sub{font-size:13px;}
 body.font-xl .header-date{font-size:13px;}
-body.font-xl .nav-btn{font-size:12px;}
-body.font-xl .nav-btn svg{width:24px;height:24px;}
+body.font-xl .sell-badge{font-size:14px!important;}
+body.font-xl .rate-badge{font-size:14px!important;}
+body.font-xl .modal{font-size:17px;}
+body.font-xl .wh-qty-item label{font-size:15px;}
+body.font-xl .maker-dropdown-item{font-size:17px;}
+body.font-xl .rsv-card-name{font-size:18px;}
+body.font-xl .rsv-card-meta{font-size:14px;}
 .header-sub{font-size:11px;color:#b0a898;margin-top:1px;}
 .header-date{font-family:'JetBrains Mono',monospace;font-size:11px;color:#b0a898;text-align:right;}
 .screen{display:none;padding:12px;}
@@ -2773,7 +2841,7 @@ function renderList(){
     const badges=WH_KEYS.map(w=>p[w]>0?`<span class="wh-badge ${w}"><span class="wh-dot"></span>${WH_LABELS[w].replace('倉庫','')} ${p[w]}台</span>`:'').join('');
     const rCount=(p.reserves||[]).reduce((s,r)=>s+(r.qty||0),0);
     const rHtml=rCount>0?`<div><span class="reserve-badge">🔒 取り置き ${rCount}台</span></div>`:'';
-    const sellBadge=p.sell>0?`<span style="font-size:11px;color:var(--green);font-weight:700;margin-top:3px;display:inline-block;font-family:'JetBrains Mono',monospace;">売値 ¥${Number(p.sell).toLocaleString()}</span>`:'';
+    const sellBadge=p.sell>0?`<span class="sell-badge" style="font-size:11px;color:var(--green);font-weight:700;margin-top:3px;display:inline-block;font-family:'JetBrains Mono',monospace;">売値 ¥${Number(p.sell).toLocaleString()}</span>`:'';
     const tags=`${p.category?`<span class="cat-badge">${p.category}</span>`:''}${p.maker?`<span class="maker-badge">${makerLogoHtml(p.maker,14)}${p.maker}</span>`:''}`;
     return`<div class="product-card" onclick="openOperation('${p.id}')">
       ${tags?`<div>${tags}</div>`:''}
@@ -2861,9 +2929,9 @@ function renderPriceList(){
     const sellRate=(isRoom&&teika>0&&sell>0)?Math.round(sell/teika*100):null;
     const ratesHtml=(isRoom&&teika>0&&(costRate||sellRate))?
       `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
-        ${costRate!=null?`<span style="background:#e8f0f8;color:var(--blue);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">仕入掛率 ${costRate}%</span>`:''}
-        ${sellRate!=null?`<span style="background:#e8f4ec;color:var(--green);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">売値掛率 ${sellRate}%</span>`:''}
-        ${(costRate!=null&&sellRate!=null)?`<span style="background:#fff8e8;color:var(--accent2);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">差 +${sellRate-costRate}%</span>`:''}
+        ${costRate!=null?`<span class="rate-badge" style="background:#e8f0f8;color:var(--blue);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">仕入掛率 ${costRate}%</span>`:''}
+        ${sellRate!=null?`<span class="rate-badge" style="background:#e8f4ec;color:var(--green);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">売値掛率 ${sellRate}%</span>`:''}
+        ${(costRate!=null&&sellRate!=null)?`<span class="rate-badge" style="background:#fff8e8;color:var(--accent2);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">差 +${sellRate-costRate}%</span>`:''}
       </div>` : '';
     const seriesBadge=(isRoom&&(p.series||'').trim())?`<span style="background:#fdf0ec;color:var(--accent);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;margin-left:6px;">📡 ${p.series}</span>`:'';
     const teikaStatus=isRoom&&!teika?`<span style="font-size:11px;color:var(--ink3);margin-left:4px;">(オープン価格)</span>`:'';
@@ -4847,13 +4915,13 @@ async function migrateOldYearCategory(oldCat, newCat){
 // ─── 文字サイズ切替（標準 / 大 / 特大）3段階 ────────────────
 const FONT_LS_KEY='zaiko_font_v1';
 const FONT_MODES=['normal','lg','xl'];
-const FONT_NEXT_LABELS={normal:'文字 大',lg:'文字 特大',xl:'文字 標準'};
+const FONT_CURRENT_LABELS={normal:'標準',lg:'大',xl:'特大'};
 function applyFontSize(mode){
   document.body.classList.remove('font-lg','font-xl');
   if(mode==='lg') document.body.classList.add('font-lg');
   else if(mode==='xl') document.body.classList.add('font-xl');
   var btn=document.getElementById('fontToggleBtn');
-  if(btn) btn.textContent=FONT_NEXT_LABELS[mode]||FONT_NEXT_LABELS.normal;
+  if(btn) btn.textContent=FONT_CURRENT_LABELS[mode]||FONT_CURRENT_LABELS.normal;
   try{ localStorage.setItem(FONT_LS_KEY,mode); }catch(e){}
 }
 function toggleFontSize(){
