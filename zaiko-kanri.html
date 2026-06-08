@@ -17,14 +17,22 @@
 body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px;}
 .header{background:var(--ink);color:#faf8f5;padding:14px 16px 12px;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px var(--shadow);}
 .header-title{font-size:17px;font-weight:700;letter-spacing:.04em;}
-/* ─── 大きい文字モード ─── */
-body.font-lg .screen{zoom:1.18;}
+/* ─── 大きい文字モード（1.18x） ─── */
+body.font-lg .screen{zoom:1.18;width:calc(100% / 1.18);overflow-x:hidden;}
 body.font-lg .modal{zoom:1.15;}
 body.font-lg .header-title{font-size:20px;}
 body.font-lg .header-sub{font-size:12px;}
 body.font-lg .header-date{font-size:12px;}
 body.font-lg .nav-btn{font-size:11px;}
 body.font-lg .nav-btn svg{width:22px;height:22px;}
+/* ─── 特大文字モード（1.35x） ─── */
+body.font-xl .screen{zoom:1.35;width:calc(100% / 1.35);overflow-x:hidden;}
+body.font-xl .modal{zoom:1.28;}
+body.font-xl .header-title{font-size:22px;}
+body.font-xl .header-sub{font-size:13px;}
+body.font-xl .header-date{font-size:13px;}
+body.font-xl .nav-btn{font-size:12px;}
+body.font-xl .nav-btn svg{width:24px;height:24px;}
 .header-sub{font-size:11px;color:#b0a898;margin-top:1px;}
 .header-date{font-family:'JetBrains Mono',monospace;font-size:11px;color:#b0a898;text-align:right;}
 .screen{display:none;padding:12px;}
@@ -4836,17 +4844,23 @@ async function migrateOldYearCategory(oldCat, newCat){
   console.log('[migrate] 完了');
 }
 
-// ─── 文字サイズ切替（標準 / 大） ─────────────────────────────
+// ─── 文字サイズ切替（標準 / 大 / 特大）3段階 ────────────────
 const FONT_LS_KEY='zaiko_font_v1';
+const FONT_MODES=['normal','lg','xl'];
+const FONT_NEXT_LABELS={normal:'文字 大',lg:'文字 特大',xl:'文字 標準'};
 function applyFontSize(mode){
-  document.body.classList.toggle('font-lg', mode==='lg');
+  document.body.classList.remove('font-lg','font-xl');
+  if(mode==='lg') document.body.classList.add('font-lg');
+  else if(mode==='xl') document.body.classList.add('font-xl');
   var btn=document.getElementById('fontToggleBtn');
-  if(btn) btn.textContent = (mode==='lg') ? 'あ−' : 'あ＋';
-  try{ localStorage.setItem(FONT_LS_KEY, mode); }catch(e){}
+  if(btn) btn.textContent=FONT_NEXT_LABELS[mode]||FONT_NEXT_LABELS.normal;
+  try{ localStorage.setItem(FONT_LS_KEY,mode); }catch(e){}
 }
 function toggleFontSize(){
   var cur=localStorage.getItem(FONT_LS_KEY)||'normal';
-  applyFontSize(cur==='lg'?'normal':'lg');
+  var idx=FONT_MODES.indexOf(cur);
+  var next=FONT_MODES[(idx+1)%FONT_MODES.length];
+  applyFontSize(next);
 }
 
 function forceReload(){
