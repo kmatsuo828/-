@@ -279,7 +279,7 @@ body.font-xl #priceMakerFilter{width:124px;}
 #pdf-preview{display:none;position:fixed;inset:0;background:#fff;z-index:300;overflow-y:auto;padding:20px;}
 .pdf-close{position:fixed;top:10px;right:10px;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;z-index:301;}
 .pdf-print-btn{position:fixed;top:10px;right:80px;background:var(--green);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;z-index:301;}
-@media print{body>*:not(#pdf-preview){display:none!important;}#pdf-preview{position:static;}.pdf-close,.pdf-print-btn{display:none;}}
+@media print{body>*:not(#pdf-preview){display:none!important;}#pdf-preview{position:static!important;overflow:visible!important;height:auto!important;padding:10px!important;background:#fff!important;inset:unset!important;}.pdf-close,.pdf-print-btn{display:none!important;}}
 .pdf-doc{max-width:740px;margin:40px auto 0;font-family:'Noto Sans JP',sans-serif;}
 .pdf-doc h1{font-size:20px;font-weight:700;text-align:center;margin-bottom:4px;}
 .pdf-date{text-align:center;font-size:12px;color:#888;margin-bottom:20px;}
@@ -1386,7 +1386,7 @@ body.font-xl #priceMakerFilter{width:124px;}
 
 <!-- PDF PREVIEW -->
 <div id="pdf-preview">
-  <button class="pdf-print-btn" onclick="window.print()">🖨 印刷/PDF保存</button>
+  <button class="pdf-print-btn" onclick="doPrintPdf()">🖨 印刷/PDF保存</button>
   <button class="pdf-close" onclick="document.getElementById('pdf-preview').style.display='none';document.title='マツオ情報ポータル'">✕ 閉じる</button>
   <div class="pdf-doc" id="pdf-content"></div>
 </div>
@@ -3827,7 +3827,9 @@ function selectPdfType(el,type){
 function generatePdf(){
   const now=new Date();
   const ds=`${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  let products=pdfType==='reserve'?data.products.filter(p=>(p.reserves||[]).length>0):data.products;
+  let products=pdfType==='reserve'
+    ?data.products.filter(p=>(p.reserves||[]).length>0)
+    :data.products.filter(p=>WH_KEYS.reduce((s,w)=>s+(p[w]||0),0)>0); // 在庫0は除外
   const whCols=pdfWhFilter==='all'?WH_KEYS:[pdfWhFilter];
   const rows=products.map(p=>{
     const cells=whCols.map(w=>`<td>${p[w]||0}</td>`).join('');
@@ -4987,6 +4989,28 @@ function toggleFontSize(){
   var idx=FONT_MODES.indexOf(cur);
   var next=FONT_MODES[(idx+1)%FONT_MODES.length];
   applyFontSize(next);
+}
+
+// ─── PDF印刷・保存（iOS対応） ────────────────────────────────
+function doPrintPdf(){
+  // PWAモード（ホーム画面から起動）の検出
+  var isPwa=(window.navigator.standalone===true)||window.matchMedia('(display-mode: standalone)').matches;
+  if(isPwa){
+    // PWAモードでは window.print() が動作しないため案内表示
+    if(confirm('📱 PWAモードでは印刷機能が制限されます。\n\nSafariで開いて印刷しますか？\n（「OK」でSafariが開きます）')){
+      window.open(window.location.href,'_blank');
+    }
+    return;
+  }
+  // Safari/通常ブラウザ: 確実に動作させるため focus + 遅延実行
+  window.focus();
+  setTimeout(function(){
+    try{
+      window.print();
+    }catch(e){
+      alert('印刷ダイアログを開けませんでした。\n\n【代替手順】\niPhone: ブラウザ下部の「共有」ボタン(□↑)→「プリント」\nまたは ブラウザのメニュー(…)→「印刷」');
+    }
+  }, 150);
 }
 
 function forceReload(){
