@@ -117,10 +117,20 @@ body.font-xl .rsv-card-meta{font-size:14px;}
 .section-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
 .section-hd h2{font-size:13px;font-weight:700;color:var(--ink2);letter-spacing:.05em;text-transform:uppercase;}
 /* SEARCH */
-.search-row{display:flex;gap:8px;margin-bottom:8px;}
-.search-input{flex:1;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-family:'Noto Sans JP',sans-serif;font-size:14px;color:var(--ink);outline:none;transition:border-color .15s;}
+.search-row{display:flex;gap:8px;margin-bottom:8px;overflow:hidden;}
+.search-input{flex:1 1 0;min-width:0;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-family:'Noto Sans JP',sans-serif;font-size:14px;color:var(--ink);outline:none;transition:border-color .15s;}
 .search-input:focus{border-color:var(--accent);}
-.filter-select{background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:9px 8px;font-family:'Noto Sans JP',sans-serif;font-size:13px;color:var(--ink);outline:none;}
+.filter-select{flex-shrink:0;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:9px 8px;font-family:'Noto Sans JP',sans-serif;font-size:13px;color:var(--ink);outline:none;}
+/* 倉庫選択（全倉庫/に/ほ/5番/6番/自社） */
+#filterWh{width:82px;}
+/* メーカー選択（全メーカー〜パナソニック等） */
+#priceMakerFilter{width:108px;}
+/* font-lg 時 */
+body.font-lg #filterWh{width:90px;}
+body.font-lg #priceMakerFilter{width:116px;}
+/* font-xl 時 */
+body.font-xl #filterWh{width:98px;}
+body.font-xl #priceMakerFilter{width:124px;}
 /* CARDS */
 .product-list{display:flex;flex-direction:column;gap:6px;}
 .product-card{background:var(--surface);border-radius:10px;padding:10px 12px;box-shadow:0 1px 3px var(--shadow);cursor:pointer;transition:transform .12s;border:1.5px solid transparent;}
@@ -385,8 +395,8 @@ body.font-xl .rsv-card-meta{font-size:14px;}
     </select>
   </div>
   <div class="search-row">
-    <select class="filter-select" id="filterMaker" onchange="renderList()" style="flex:1;font-size:13px;"><option value="all">全メーカー</option></select>
-    <select class="filter-select" id="filterCategory" onchange="onCategoryFilterChange()" style="flex:1;font-size:13px;"><option value="all">全ジャンル</option></select>
+    <select class="filter-select" id="filterMaker" onchange="renderList()" style="flex:1;"><option value="all">全メーカー</option></select>
+    <select class="filter-select" id="filterCategory" onchange="onCategoryFilterChange()" style="flex:1;"><option value="all">全ジャンル</option></select>
   </div>
   <div class="search-row" id="yearFilterRow" style="display:none;">
     <select class="filter-select" id="filterYear" onchange="renderList()" style="flex:1;font-size:13px;"><option value="all">全年式モデル</option></select>
@@ -612,10 +622,10 @@ body.font-xl .rsv-card-meta{font-size:14px;}
       <select class="filter-select" id="priceMakerFilter" onchange="renderPriceList()"><option value="all">全メーカー</option></select>
     </div>
     <div class="search-row" style="margin-bottom:4px;">
-      <select class="filter-select" id="priceCatFilter" onchange="onPriceCatChange()" style="flex:1;font-size:13px;"><option value="all">全ジャンル</option></select>
+      <select class="filter-select" id="priceCatFilter" onchange="onPriceCatChange()" style="flex:1;"><option value="all">全ジャンル</option></select>
     </div>
     <div class="search-row" id="priceSeriesRow" style="display:none;margin-bottom:4px;">
-      <select class="filter-select" id="priceSeriesFilter" onchange="renderPriceList()" style="flex:1;font-size:13px;"><option value="all">全シリーズ</option></select>
+      <select class="filter-select" id="priceSeriesFilter" onchange="renderPriceList()" style="flex:1;"><option value="all">全シリーズ</option></select>
     </div>
     <div id="priceList"></div>
   </div>
