@@ -2419,7 +2419,9 @@ const PRICE_FIELD_LABELS={teika:'定価(税別)',cost:'仕入値',sell:'売値',
 function renderBPriceItems(){
   var el=document.getElementById('bpriceBody');
   el.innerHTML=bpriceItems.map(function(item,i){
-    var notMatched=!item.matched?'<div style="font-size:11px;color:var(--accent);margin-bottom:4px;">⚠️ 登録済み商品に一致なし — 保存は登録済み商品のみ対象</div>':'';
+    var statusHtml=item.matched
+      ?'<div style="font-size:11px;color:var(--green);margin-bottom:4px;">✅ 登録済み商品と一致 — 価格を更新します</div>'
+      :'<div style="font-size:11px;color:var(--accent2);margin-bottom:4px;">📝 未登録商品 — チェックすると<b>新規追加</b>されます</div>';
     var srcHtml='<div style="font-size:10px;color:var(--ink3);margin-top:3px;">📌 '+item.source+'</div>';
     var diffRows=Object.keys(item.changes).map(function(f){
       var c=item.changes[f];
@@ -2440,31 +2442,52 @@ function renderBPriceItems(){
       +'<div class="ai-item-maker">'+item.maker+'</div>'
       +'</div>'
       +'<label style="display:flex;align-items:center;gap:5px;cursor:pointer;margin-left:8px;">'
-      +'<input type="checkbox" id="bpr-check-'+i+'" '+chk+' '+(item.matched?'':'disabled')+' style="width:18px;height:18px;">'
+      +'<input type="checkbox" id="bpr-check-'+i+'" '+chk+' style="width:22px;height:22px;cursor:pointer;">'
       +'</label></div>'
-      +notMatched+diffRows+srcHtml
+      +statusHtml+diffRows+srcHtml
       +'</div>';
   }).join('');
 }
 function checkAllBPrice(checked){
-  bpriceItems.forEach(function(item,i){ var el=document.getElementById('bpr-check-'+i); if(el&&item.matched) el.checked=checked; });
+  bpriceItems.forEach(function(item,i){
+    var el=document.getElementById('bpr-check-'+i);
+    if(el) el.checked=checked;
+  });
 }
 async function saveBPriceItems(){
-  var saved=0,skipped=0;
+  var updated=0, added=0, skipped=0;
   showLoading(true);
   try{
     for(var i=0;i<bpriceItems.length;i++){
       var chk=document.getElementById('bpr-check-'+i); if(!chk||!chk.checked){skipped++;continue;}
-      var item=bpriceItems[i]; if(!item.matched||!item.pid){skipped++;continue;}
-      var p=data.products.find(function(x){return x.id===item.pid;});
-      if(!p){skipped++;continue;}
-      Object.keys(item.changes).forEach(function(f){ p[f]=item.changes[f].new; });
-      await upsertProduct(p); saved++;
+      var item=bpriceItems[i];
+      if(item.matched && item.pid){
+        // 既存商品の価格を更新
+        var p=data.products.find(function(x){return x.id===item.pid;});
+        if(!p){skipped++;continue;}
+        Object.keys(item.changes).forEach(function(f){ if(item.changes[f].new>0) p[f]=item.changes[f].new; });
+        await upsertProduct(p); updated++;
+      }else{
+        // 未一致 → 新規商品として追加（在庫0で価格のみ登録）
+        var qo={ni:0,ho:0,go:0,roku:0,jisha:0};
+        var newP=Object.assign({id:uid(),maker:item.maker||'',name:item.name,category:'',series:'',yearmodel:'',note:'価格一括取込より追加',reserves:[]},qo);
+        newP.teika=item.changes.teika?item.changes.teika.new:0;
+        newP.cost=item.changes.cost?item.changes.cost.new:0;
+        newP.sell=item.changes.sell?item.changes.sell.new:0;
+        data.products.push(newP);
+        await upsertProduct(newP);
+        await addHistoryDB('henshu',item.name,'価格一括取込で新規追加（在庫0）');
+        added++;
+      }
     }
     renderMakerFilter();renderSummary();renderList();
     if(priceUnlocked) renderPriceList();
     closeModal('modalBulkPrice');
-    alert('✅ 保存完了\n'+saved+'件を更新'+(skipped>0?' / '+skipped+'件スキップ':''));
+    var msg='✅ 保存完了';
+    if(updated>0) msg+='\n更新: '+updated+'件';
+    if(added>0) msg+='\n新規追加: '+added+'件（在庫は0で登録、在庫管理から入荷登録してください）';
+    if(skipped>0) msg+='\nスキップ: '+skipped+'件';
+    alert(msg);
   }catch(e){ alert('保存エラー: '+e.message); }
   finally{ showLoading(false); }
 }
