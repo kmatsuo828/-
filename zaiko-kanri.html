@@ -4339,16 +4339,18 @@ function buildReserveRows(q){
   return rows;
 }
 function reserveRowsHtml(rows){
-  return rows.map(function(x){
+  return rows.map(function(x, i){
     var r=x.r,p=x.p,ded=(r.deducted!==false);
+    var qtyId='rsvqty-'+i+'-'+p.id;
     return '<div class="rsv-card">'
       +'<div class="rsv-card-top"><div>'
       +'<div class="rsv-card-name">'+p.name+'</div>'
       +'<div class="rsv-card-maker">'+(p.category?p.category+' ・ ':'')+(p.maker||'メーカー未設定')+'</div>'
-      +'<div class="rsv-card-qty">'
-      +'<input type="number" id="rsvqty-'+i+'" value="'+r.qty+'" min="1" style="width:56px;border:1.5px solid var(--border);border-radius:6px;padding:3px 6px;font-size:15px;font-family:\'JetBrains Mono\',monospace;font-weight:700;color:var(--accent2);text-align:center;">'
-      +'<span style="font-size:11px;color:var(--ink3);font-family:\'Noto Sans JP\',sans-serif;"> 台</span>'
-      +'<button onclick="saveReserveQty(\''+p.id+'\','+x.idx+',document.getElementById(\'rsvqty-'+i+'\').value)" style="margin-left:4px;background:var(--blue);color:#fff;border:none;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;font-family:\'Noto Sans JP\',sans-serif;">変更</button>'
+      +'</div>'
+      +'<div class="rsv-card-qty" style="display:flex;align-items:center;gap:4px;">'
+      +'<input type="number" id="'+qtyId+'" value="'+r.qty+'" min="1" style="width:56px;border:1.5px solid var(--border);border-radius:6px;padding:3px 6px;font-size:15px;font-family:\'JetBrains Mono\',monospace;font-weight:700;color:var(--accent2);text-align:center;">'
+      +'<span style="font-size:11px;color:var(--ink3);"> 台</span>'
+      +'<button onclick="saveReserveQty(\''+p.id+'\','+x.idx+',document.getElementById(\''+qtyId+'\').value)" style="background:var(--blue);color:#fff;border:none;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;font-family:\'Noto Sans JP\',sans-serif;">変更</button>'
       +'</div></div>'
       +'<div class="rsv-card-meta"><span class="wh-badge '+r.wh+'"><span class="wh-dot"></span>'+WH_LABELS[r.wh]+'</span>'
       +'<span>得意先: <span class="rsv-customer">'+(r.customer||r.name||'未記入')+'</span></span></div>'
