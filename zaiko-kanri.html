@@ -637,8 +637,15 @@ body.font-xl #priceMakerFilter{width:124px;}
 
 <!-- ══ PDF ══ -->
 <div id="screen-pdf" class="screen pb-safe">
-  <div class="section-hd" style="margin-bottom:12px"><h2>PDF出力</h2></div>
-  <div class="form-group">
+  <div class="section-hd" style="margin-bottom:10px"><h2>PDF出力</h2></div>
+
+  <!-- 見積書作成（最上部） -->
+  <button class="btn btn-amber btn-full" onclick="openQuote()" style="padding:14px;font-size:16px;margin-bottom:14px;">📋 見積書を作成する</button>
+
+  <div style="height:1px;background:var(--border);margin-bottom:14px;"></div>
+
+  <!-- 在庫PDF出力 -->
+  <div class="form-group" style="margin-bottom:10px;">
     <label class="form-label">倉庫を選択</label>
     <div class="wh-filter-row">
       <div class="wh-chip active all" data-wh="all" onclick="togglePdfWh(this)">全倉庫</div>
@@ -649,7 +656,7 @@ body.font-xl #priceMakerFilter{width:124px;}
       <div class="wh-chip jisha" data-wh="jisha" onclick="togglePdfWh(this)">自社倉庫</div>
     </div>
   </div>
-  <div class="form-group">
+  <div class="form-group" style="margin-bottom:8px;">
     <label class="form-label">ジャンルで絞り込み</label>
     <select class="filter-select" id="pdfCatFilter" style="width:100%;font-size:14px;" onchange="onPdfCatChange()">
       <option value="all">全ジャンル</option>
@@ -659,7 +666,7 @@ body.font-xl #priceMakerFilter{width:124px;}
     <input type="checkbox" id="pdfGroupByCat" style="width:20px;height:20px;cursor:pointer;">
     <label for="pdfGroupByCat" style="font-size:13px;color:var(--ink2);cursor:pointer;">ジャンル別にグループ化して表示</label>
   </div>
-  <div class="pdf-options">
+  <div class="pdf-options" style="margin-bottom:10px;">
     <div class="pdf-option selected" onclick="selectPdfType(this,'all')">
       <div class="pdf-icon">📊</div>
       <div><div class="pdf-opt-title">全在庫一覧</div><div class="pdf-opt-sub">全商品の倉庫別在庫数</div></div>
@@ -669,11 +676,7 @@ body.font-xl #priceMakerFilter{width:124px;}
       <div><div class="pdf-opt-title">取り置き一覧</div><div class="pdf-opt-sub">取り置き中の商品のみ</div></div>
     </div>
   </div>
-  <button class="btn btn-primary btn-full" onclick="generatePdf()" style="padding:15px;font-size:16px;">📄 PDF プレビュー・印刷</button>
-  <div style="height:1px;background:var(--border);margin:18px 0;"></div>
-  <div class="section-hd" style="margin-bottom:10px"><h2>見積書作成</h2></div>
-  <div style="font-size:12px;color:var(--ink3);margin-bottom:10px;line-height:1.6;">得意先と商品を選んで、自社フォーマットの見積書PDFを作成します。</div>
-  <button class="btn btn-amber btn-full" onclick="openQuote()" style="padding:15px;font-size:16px;">📋 見積書を作成する</button>
+  <button class="btn btn-primary btn-full" onclick="generatePdf()" style="padding:14px;font-size:16px;">📄 PDF プレビュー・印刷</button>
 </div>
 
 <!-- FAB -->
