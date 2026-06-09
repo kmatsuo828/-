@@ -1404,6 +1404,7 @@ body.font-xl #priceMakerFilter{width:124px;}
 <!-- PDF PREVIEW -->
 <div id="pdf-preview">
   <button class="pdf-print-btn" onclick="doPrintPdf()">🖨 印刷/PDF保存</button>
+  <button onclick="doSharePdf()" style="position:fixed;top:10px;right:170px;background:#1565c0;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;z-index:301;">📤 共有</button>
   <button class="pdf-close" onclick="document.getElementById('pdf-preview').style.display='none';document.title='マツオ情報ポータル'">✕ 閉じる</button>
   <div class="pdf-doc" id="pdf-content"></div>
 </div>
@@ -5111,24 +5112,16 @@ function toggleFontSize(){
 
 // ─── PDF印刷・保存（iOS対応） ────────────────────────────────
 function doPrintPdf(){
-  // PWAモード（ホーム画面から起動）の検出
-  var isPwa=(window.navigator.standalone===true)||window.matchMedia('(display-mode: standalone)').matches;
-  if(isPwa){
-    // PWAモードでは window.print() が動作しないため案内表示
-    if(confirm('📱 PWAモードでは印刷機能が制限されます。\n\nSafariで開いて印刷しますか？\n（「OK」でSafariが開きます）')){
-      window.open(window.location.href,'_blank');
-    }
-    return;
-  }
-  // Safari/通常ブラウザ: 確実に動作させるため focus + 遅延実行
   window.focus();
-  setTimeout(function(){
-    try{
-      window.print();
-    }catch(e){
-      alert('印刷ダイアログを開けませんでした。\n\n【代替手順】\niPhone: ブラウザ下部の「共有」ボタン(□↑)→「プリント」\nまたは ブラウザのメニュー(…)→「印刷」');
-    }
-  }, 150);
+  setTimeout(function(){ window.print(); }, 150);
+}
+async function doSharePdf(){
+  if(navigator.share){
+    try{ await navigator.share({title:document.title, url:window.location.href}); }
+    catch(e){}
+  }else{
+    alert('共有機能はこのブラウザでは利用できません。\nURLをコピーしてSafariで開いてください:\n'+window.location.href);
+  }
 }
 
 function forceReload(){
