@@ -385,6 +385,7 @@ body.font-xl #priceMakerFilter{width:124px;}
   </div>
   <div class="section-hd" style="flex-wrap:wrap;gap:6px;"><h2>商品一覧</h2><span id="product-count" style="font-size:12px;color:var(--ink3)"></span>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;">
+      <button onclick="openAddModal()" style="background:var(--accent);color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;">＋ 新規商品を登録</button>
       <button id="btnSeriesDetect" onclick="openSeriesDetect()" style="background:#8b5cf6;color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;display:none;">📡 シリーズを自動判定</button>
       <button id="btnYearDetect" onclick="openYearDetect()" style="background:#3e7d52;color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;display:none;">🗓 エアコン年式で自動分類</button>
       <button id="btnMakerUnify" onclick="openMakerUnify()" style="background:var(--ho);color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;display:none;">🏭 メーカー名を統一</button>
@@ -617,7 +618,10 @@ body.font-xl #priceMakerFilter{width:124px;}
   <div id="price-content" style="display:none;">
     <div class="section-hd" style="margin-bottom:8px;">
       <h2>商品情報・価格</h2>
-      <button class="btn btn-secondary" style="padding:6px 12px;border-radius:6px;font-size:12px;" onclick="lockPrice()">🔒 ロック</button>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button onclick="openAddModal()" style="background:var(--accent);color:#fff;border:none;border-radius:7px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;white-space:nowrap;">＋ 新規登録</button>
+        <button class="btn btn-secondary" style="padding:6px 12px;border-radius:6px;font-size:12px;" onclick="lockPrice()">🔒 ロック</button>
+      </div>
     </div>
     <button class="btn btn-blue btn-full" onclick="openBulkPrice()" style="margin-bottom:6px;padding:11px;font-size:13px;">💴 価格・情報を一括更新 / AI検索</button>
     <button class="btn btn-amber btn-full" onclick="openSellRate()" style="margin-bottom:10px;padding:11px;font-size:13px;">📊 売値を一括計算（定価・仕入値の %）</button>
@@ -1555,12 +1559,12 @@ let HAS_YEARMODEL = false;
 let HAS_SERIES = false;
 const PRESET_CATEGORIES_BASE=['業務用エアコン','配管・部材','コンセント','スイッチ','ケーブル・電線','分電盤・ブレーカー','照明器具','換気・送風機','給湯・温水','その他'];
 // ルームエアコンは年式付きジャンル（25年ルームエアコン 等）。
-// 現在年から2年以内（3年分）のみ生成し、3年以上古い年式は登録させない。
-// 年が進むと自動でスライドする（例: 2026年 → 24/25/26年, 2027年 → 25/26/27年）
+// 今年・前年の2年分のみ（24年以前は終了のため除外）
+// 2026年 → 25年・26年のみ、2027年 → 26年・27年のみ
 function getRoomACYearCats(){
   var cy=new Date().getFullYear();
   var arr=[];
-  for(var y=cy-2;y<=cy;y++){ arr.push((y%100)+'年ルームエアコン'); }
+  for(var y=cy-1;y<=cy;y++){ arr.push((y%100)+'年ルームエアコン'); }
   return arr.reverse(); // 新しい年を上に
 }
 function getPresetCategories(){
@@ -5181,6 +5185,7 @@ document.addEventListener('DOMContentLoaded', async function(){
     await loadProducts();
     // ─── 一括年式移行: 21年ルームエアコン → 25年ルームエアコン ──────
     await migrateOldYearCategory('21年ルームエアコン','25年ルームエアコン');
+    await migrateOldYearCategory('24年ルームエアコン','25年ルームエアコン'); // 24年は終了
     // ─────────────────────────────────────────────────────────────
     await loadHistoryDB();
     await loadCustomers();
