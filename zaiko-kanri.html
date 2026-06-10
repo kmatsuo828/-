@@ -1550,7 +1550,7 @@ let aiShukkaItems = [];
 let aiReserveItems = [];
 let aiToriokiItems = [];
 let bulkItems = [];
-let reserveDeductMode = true;
+let reserveDeductMode = false; // デフォルト: 在庫を引かない（フリー在庫のみ登録パターンが多いため）
 let bulkMode = 'text';
 // Capability flags — true only if the optional DB column/table exists.
 // Lets the app run fully even before the (optional) SQL migration is applied.
@@ -3446,10 +3446,11 @@ function openOpForm(type){
       </div>
       <div class="form-group"><label class="form-label">在庫の扱い</label>
         <div class="seg-toggle">
-          <button id="op-deduct-on" class="active" type="button" onclick="setOpDeduct(true)">在庫を減らして取置</button>
-          <button id="op-deduct-off" type="button" onclick="setOpDeduct(false)">在庫はそのまま取置</button>
+          <button id="op-deduct-on" type="button" onclick="setOpDeduct(true)">在庫を減らして取置</button>
+          <button id="op-deduct-off" class="active" type="button" onclick="setOpDeduct(false)">在庫はそのまま取置</button>
         </div>
-        <input type="hidden" id="op-deduct" value="1">
+        <input type="hidden" id="op-deduct" value="0">
+        <div style="font-size:11px;color:var(--ink3);margin-top:4px;">「在庫はそのまま」= フリー在庫のみ登録済みの場合。出荷確定・解除時も在庫変動なし。</div>
       </div>
       <div class="form-group"><label class="form-label">倉庫</label><select class="form-select" id="op-wh">${whOpts}</select></div>
       <div class="form-group"><label class="form-label">数量</label><input type="number" class="form-input" id="op-qty" value="1" min="1"></div>
@@ -4269,14 +4270,15 @@ async function saveReserveQty(productId, idx, newQtyVal){
   var r=p.reserves[idx];
   var oldQty=r.qty;
   if(newQty===oldQty) return;
+  var wasDeducted=(r.deducted!==false); // 在庫を引いていた場合のみ在庫を連動調整
   var diff=newQty-oldQty;
-  if(diff>0&&(p[r.wh]||0)<diff){
+  if(wasDeducted && diff>0 && (p[r.wh]||0)<diff){
     alert('在庫不足です\n追加必要: +'+diff+'台 ／ 利用可能: '+(p[r.wh]||0)+'台');
     return;
   }
   showLoading(true);
   try{
-    p[r.wh]=(p[r.wh]||0)-diff;
+    if(wasDeducted) p[r.wh]=(p[r.wh]||0)-diff; // 在庫引き済みの場合のみ在庫を連動
     p.reserves[idx].qty=newQty;
     await upsertProduct(p);
     await addHistoryDB('torioki',p.name,(r.customer||'')+'の取り置き台数を'+oldQty+'台→'+newQty+'台に変更');
@@ -4313,25 +4315,18 @@ async function shipReserveById(productId, idx){
   var p = data.products.find(function(x){return x.id===productId;});
   if(!p||!p.reserves||!p.reserves[idx]) return;
   var r = p.reserves[idx];
-  var wasDeducted = (r.deducted!==false);
-  if(!wasDeducted && (p[r.wh]||0)<r.qty){
-    alert(WH_LABELS[r.wh]+'\u306e\u5728\u5eab\u304c\u4e0d\u8db3\u3057\u3066\u3044\u307e\u3059\uff08\u73fe\u5728 '+(p[r.wh]||0)+'\u53f0\uff09\u3002\u51fa\u8377\u78ba\u5b9a\u3067\u304d\u307e\u305b\u3093\u3002');
-    return;
-  }
-  var note = wasDeducted
-    ? '\u203b\u5728\u5eab\u306f\u53d6\u308a\u7f6e\u304d\u6642\u306b\u5f15\u304d\u6e08\u307f\u306e\u305f\u3081\u3001\u3053\u3053\u3067\u306f\u6e1b\u308a\u307e\u305b\u3093'
-    : '\u203b\u3053\u306e\u53d6\u7f6e\u306f\u5728\u5eab\u672a\u5f15\u306e\u305f\u3081\u3001\u51fa\u8377\u78ba\u5b9a\u3067\u4eca'+r.qty+'\u53f0\u3092\u5728\u5eab\u304b\u3089\u6e1b\u3089\u3057\u307e\u3059';
-  if(!confirm('\u3053\u306e\u53d6\u308a\u7f6e\u304d\u3092\u51fa\u8377\u78ba\u5b9a\u3057\u307e\u3059\u304b\uff1f\n'+(r.customer||r.name||'')+' / '+WH_LABELS[r.wh]+' '+r.qty+'\u53f0\n'+note)) return;
+  // 在庫は取り置き登録時に既に引き済み → 出荷確定では在庫を変更しない
+  if(!confirm('この取り置きを出荷確定しますか？\n'+(r.customer||r.name||'')+' / '+WH_LABELS[r.wh]+' '+r.qty+'台\n※在庫は取り置き時に引き済みのため変わりません')) return;
   showLoading(true);
   try{
-    if(!wasDeducted) p[r.wh]=(p[r.wh]||0)-r.qty;
     p.reserves.splice(idx,1);
     await upsertProduct(p);
-    await addHistoryDB('shuko',p.name,'['+(p.maker||'')+'] '+WH_LABELS[r.wh]+'\u304b\u3089'+r.qty+'\u53f0\u51fa\u8377\uff08\u53d6\u308a\u7f6e\u304d\u78ba\u5b9a\uff09 \u2192 '+(r.customer||r.name||''));
+    await addHistoryDB('shuko',p.name,'['+(p.maker||'')+'] '+WH_LABELS[r.wh]+'から'+r.qty+'台出荷（取り置き確定） → '+(r.customer||r.name||''));
     closeModal('modalOperation');
     renderSummary();renderList();
-    if(document.getElementById('modalReserveList').classList.contains('open')) renderReserveList(); if(currentScreen==='torioki') renderToriokiList();
-  }catch(e){alert('\u30a8\u30e9\u30fc: '+e.message);}
+    if(document.getElementById('modalReserveList').classList.contains('open')) renderReserveList();
+    if(currentScreen==='torioki') renderToriokiList();
+  }catch(e){alert('エラー: '+e.message);}
   finally{showLoading(false);}
 }
 
