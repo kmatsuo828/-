@@ -1164,6 +1164,50 @@ body.font-xl #priceMakerFilter{width:124px;}
     <div id="bulkStatus" class="ai-status" style="display:none;"></div>
     <div class="ai-result" id="bulkResult">
       <div class="ai-result-title">📋 登録プレビュー — 確認・編集して登録</div>
+
+      <!-- 一括メーカー設定ツールバー -->
+      <div id="bulkToolbar" style="background:var(--surface2);border-radius:10px;padding:10px;margin-bottom:10px;">
+        <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:8px;">🏭 一括設定ツール</div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:120px;">
+            <div style="font-size:10px;color:var(--ink3);margin-bottom:3px;">メーカー名</div>
+            <div class="maker-combo" style="position:relative;">
+              <input type="text" id="bulkMakerAll" placeholder="メーカーを入力 or ▼" class="form-input" style="font-size:13px;padding:7px 32px 7px 8px;" autocomplete="off"
+                oninput="filterBulkMakerDropdown()" onfocus="openBulkMakerDropdown()">
+              <button type="button" onclick="toggleBulkMakerDropdown()" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);border:none;background:none;font-size:14px;color:var(--ink3);cursor:pointer;padding:4px 8px;">▼</button>
+              <div id="bulkMakerAllDD" class="maker-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:200px;overflow-y:auto;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;z-index:10;box-shadow:0 4px 12px var(--shadow);"></div>
+            </div>
+          </div>
+          <button class="btn btn-green" style="flex:none;padding:8px 14px;font-size:12px;white-space:nowrap;margin-top:14px;" type="button" onclick="applyBulkMakerAll()">✅ 一括適用</button>
+        </div>
+        <!-- 一括掛率設定（価格モード時のみ表示） -->
+        <div id="bulkRateTool" style="display:none;">
+          <div style="height:1px;background:var(--border);margin:8px 0;"></div>
+          <div style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;">
+            <div style="flex:0 0 80px;">
+              <div style="font-size:10px;color:var(--ink3);margin-bottom:3px;">ベース</div>
+              <select id="bulkRateBase" class="form-select" style="font-size:12px;padding:7px 4px;">
+                <option value="teika">定価</option>
+                <option value="cost">仕入値</option>
+              </select>
+            </div>
+            <div style="flex:0 0 70px;">
+              <div style="font-size:10px;color:var(--ink3);margin-bottom:3px;">掛率(%)</div>
+              <input type="number" id="bulkRatePercent" value="70" min="1" max="200" class="form-input" style="font-size:13px;padding:7px 4px;text-align:center;">
+            </div>
+            <div style="flex:0 0 auto;">
+              <div style="font-size:10px;color:var(--ink3);margin-bottom:3px;">対象</div>
+              <select id="bulkRateTarget" class="form-select" style="font-size:12px;padding:7px 4px;">
+                <option value="sell">→ 売値</option>
+                <option value="cost">→ 仕入値</option>
+              </select>
+            </div>
+            <button class="btn btn-blue" style="flex:none;padding:8px 14px;font-size:12px;white-space:nowrap;" type="button" onclick="applyBulkRateAll()">💴 一括計算</button>
+          </div>
+          <div style="font-size:10px;color:var(--ink3);margin-top:4px;">例: 定価×70% → 売値を一括設定</div>
+        </div>
+      </div>
+
       <div id="bulkItems"></div>
       <button class="btn btn-green btn-full" onclick="registerBulkItems()" style="padding:13px;">✅ チェックした商品を登録</button>
     </div>
@@ -1413,7 +1457,7 @@ body.font-xl #priceMakerFilter{width:124px;}
   <button class="pdf-print-btn" onclick="doPrintPdf()">🖨 印刷/PDF保存</button>
   <button class="pdf-share-btn" onclick="doSharePdf()" style="position:fixed;top:10px;right:170px;background:#1565c0;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;z-index:301;">📤 共有</button>
   <button class="pdf-save-btn" onclick="saveCurrentQuote()" style="position:fixed;top:10px;right:250px;background:#2d7a4f;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;z-index:301;">💾 保存</button>
-  <button class="pdf-close" onclick="document.getElementById('pdf-preview').style.display='none';document.title='マツオ情報ポータル'">✕ 閉じる</button>
+  <button class="pdf-close" onclick="_autoSaveQuoteDraft();document.getElementById('pdf-preview').style.display='none';document.title='マツオ情報ポータル'">✕ 閉じる</button>
   <div class="pdf-doc" id="pdf-content"></div>
 </div>
 
@@ -3075,7 +3119,11 @@ function switchScreen(name){
 
 function openModal(id){document.getElementById(id).classList.add('open');}
 
-function closeModal(id){document.getElementById(id).classList.remove('open');}
+function closeModal(id){
+  // 見積書モーダルを閉じるときは自動保存
+  if(id==='modalQuote' && typeof _autoSaveQuoteDraft==='function') _autoSaveQuoteDraft();
+  document.getElementById(id).classList.remove('open');
+}
 
 // ═══ ADD / EDIT PRODUCT ══════════════════════════════════════════
 
@@ -4190,7 +4238,6 @@ function _cleanupOldQuotes(){
 function saveCurrentQuote(){
   if(!_lastQuoteData){alert('保存する見積書がありません。先に「見積書PDFを作成」してください。');return;}
   var list=_cleanupOldQuotes();
-  // 編集中の見積書があればそのインデックスを優先、なければファイル名で重複チェック
   var existIdx=(_editingQuoteIdx>=0 && _editingQuoteIdx<list.length)?_editingQuoteIdx:list.findIndex(function(q){return q.filename===_lastQuoteData.filename;});
   if(existIdx>=0){
     if(!confirm('「'+_lastQuoteData.filename+'」を上書き保存しますか？')) return;
@@ -4201,6 +4248,49 @@ function saveCurrentQuote(){
   _saveSavedQuotes(list);
   _editingQuoteIdx=-1;
   alert('✅ 見積書を保存しました\n「'+_lastQuoteData.filename+'」');
+}
+// ─── 見積書の自動保存（モーダルを閉じるとき自動で保存） ───────────
+function _collectQuoteFormData(){
+  // 現在のフォーム入力値からquoteLinesを最新化
+  for(var i=0;i<quoteLines.length;i++){
+    var el;
+    el=document.getElementById('q-name-'+i); if(el) quoteLines[i].name=el.value;
+    el=document.getElementById('q-maker-'+i); if(el) quoteLines[i].maker=el.value||'その他';
+    el=document.getElementById('q-hinmei-'+i); if(el) quoteLines[i].hinmei=el.value;
+    el=document.getElementById('q-qty-'+i); if(el) quoteLines[i].qty=parseInt(el.value)||1;
+    el=document.getElementById('q-teika-'+i); if(el) quoteLines[i].teika=parseFloat(el.value)||0;
+    el=document.getElementById('q-tanka-'+i); if(el) quoteLines[i].tanka=parseFloat(el.value)||0;
+    el=document.getElementById('q-bikou-'+i); if(el) quoteLines[i].bikou=el.value;
+    quoteLines[i].rate=(quoteLines[i].teika>0&&quoteLines[i].tanka>0)?Math.round(quoteLines[i].tanka/quoteLines[i].teika*100):0;
+  }
+  var title=(document.getElementById('quote-title').value||'').trim();
+  var cust=(document.getElementById('quote-customer').value||'').trim();
+  var staff=(document.getElementById('quote-staff').value||'').trim();
+  var dateVal=document.getElementById('quote-date').value||'';
+  var footerNote=((document.getElementById('quote-footer-note')||{value:''}).value||'').trim();
+  var sub=quoteLines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
+  var tax=Math.round(sub*0.1), tot=sub+tax;
+  var pdfFilename=getQuotePdfFilename(title,dateVal);
+  return {title:title,customer:cust,staff:staff,date:dateVal,lines:JSON.parse(JSON.stringify(quoteLines)),footerNote:footerNote,total:tot,sub:sub,tax:tax,html:(_lastQuoteData?_lastQuoteData.html:''),filename:pdfFilename,createdAt:new Date().toISOString()};
+}
+function _autoSaveQuoteDraft(){
+  if(!quoteLines.length) return; // 明細がなければ保存しない
+  var qd=_collectQuoteFormData();
+  var list=_cleanupOldQuotes();
+  // 編集中ならそのインデックスを上書き、なければファイル名で検索、なければ新規追加
+  var existIdx=(_editingQuoteIdx>=0 && _editingQuoteIdx<list.length)?_editingQuoteIdx:list.findIndex(function(q){return q.filename===qd.filename;});
+  if(existIdx>=0){
+    list[existIdx]=qd;
+  }else{
+    list.unshift(qd);
+  }
+  _saveSavedQuotes(list);
+  _editingQuoteIdx=-1;
+}
+// closeQuoteModal: 閉じるとき自動保存してからモーダルを閉じる
+function closeQuoteModal(){
+  _autoSaveQuoteDraft();
+  closeModal('modalQuote');
 }
 function toggleSavedQuotes(){
   var el=document.getElementById('saved-quotes-list');
@@ -4926,6 +5016,11 @@ async function handleBulkPhoto(event){
 }
 function renderBulkItems(){
   const el=document.getElementById('bulkItems');
+  // 一括掛率ツールの表示切替
+  var rateTool=document.getElementById('bulkRateTool');
+  if(rateTool) rateTool.style.display=bulkPriceMode?'block':'none';
+  // メーカードロップダウンの候補を更新
+  _buildBulkMakerDropdown();
   el.innerHTML=bulkItems.map(function(it,i){
     var exists=data.products.find(function(p){return p.name.toLowerCase().trim()===(it.name||'').toLowerCase().trim();});
     var whInputs=WH_KEYS.map(function(w){return `<div style="text-align:center;"><div style="font-size:9px;color:var(--ink3);">${WH_LABELS[w].replace('倉庫','')}</div><input type="number" id="bulk-${w}-${i}" value="${it[w]||0}" min="0" class="form-input" style="width:46px;padding:5px 2px;font-size:12px;text-align:center;"></div>`;}).join('');
@@ -4949,6 +5044,84 @@ function renderBulkItems(){
     </div>`;
   }).join('');
 }
+// ─── 一括メーカー設定ツール ────────────────────────────────────
+function _buildBulkMakerDropdown(){
+  var dd=document.getElementById('bulkMakerAllDD'); if(!dd) return;
+  // 既存メーカー + 一括登録内のメーカーを統合
+  var mkSet={}; getMakers().forEach(function(m){mkSet[m]=1;});
+  bulkItems.forEach(function(it){if(it.maker)mkSet[it.maker]=1;});
+  var makers=Object.keys(mkSet).sort();
+  dd.innerHTML=makers.map(function(m){return '<div class="maker-dropdown-item" onclick="selectBulkMakerAll(\''+m.replace(/'/g,"\\'")+'\')">'+m+'</div>';}).join('');
+}
+function openBulkMakerDropdown(){
+  var dd=document.getElementById('bulkMakerAllDD');
+  _buildBulkMakerDropdown();
+  dd.style.display='block';
+  filterBulkMakerDropdown();
+}
+function toggleBulkMakerDropdown(){
+  var dd=document.getElementById('bulkMakerAllDD');
+  if(dd.style.display==='block'){dd.style.display='none';}else{openBulkMakerDropdown();}
+}
+function filterBulkMakerDropdown(){
+  var val=(document.getElementById('bulkMakerAll').value||'').toLowerCase();
+  var dd=document.getElementById('bulkMakerAllDD'); if(!dd) return;
+  var items=dd.querySelectorAll('.maker-dropdown-item');
+  items.forEach(function(el){el.style.display=(el.textContent.toLowerCase().indexOf(val)>=0)?'':'none';});
+}
+function selectBulkMakerAll(m){
+  document.getElementById('bulkMakerAll').value=m;
+  document.getElementById('bulkMakerAllDD').style.display='none';
+}
+function applyBulkMakerAll(){
+  var maker=(document.getElementById('bulkMakerAll').value||'').trim();
+  if(!maker){alert('メーカー名を入力してください');return;}
+  var count=0;
+  for(var i=0;i<bulkItems.length;i++){
+    var chk=document.getElementById('bulk-check-'+i);
+    if(!chk||!chk.checked) continue;
+    var el=document.getElementById('bulk-maker-'+i);
+    if(el){el.value=maker; bulkItems[i].maker=maker; count++;}
+  }
+  alert('✅ '+count+'件のメーカーを「'+maker+'」に設定しました');
+}
+// ─── 一括掛率計算ツール ──────────────────────────────────────
+function applyBulkRateAll(){
+  var base=document.getElementById('bulkRateBase').value; // 'teika' or 'cost'
+  var pct=parseFloat(document.getElementById('bulkRatePercent').value)||0;
+  var target=document.getElementById('bulkRateTarget').value; // 'sell' or 'cost'
+  if(pct<=0){alert('掛率を入力してください');return;}
+  var count=0;
+  for(var i=0;i<bulkItems.length;i++){
+    var chk=document.getElementById('bulk-check-'+i);
+    if(!chk||!chk.checked) continue;
+    // ベース値を取得
+    var baseEl=document.getElementById('bulk-'+base+'-'+i);
+    var baseVal=baseEl?parseFloat(baseEl.value)||0:0;
+    if(baseVal<=0) continue;
+    var calc=Math.round(baseVal*pct/100);
+    var targetEl=document.getElementById('bulk-'+target+'-'+i);
+    if(targetEl){
+      targetEl.value=calc;
+      bulkItems[i][target]=calc;
+      count++;
+    }
+  }
+  var baseLabel=base==='teika'?'定価':'仕入値';
+  var targetLabel=target==='sell'?'売値':'仕入値';
+  alert('✅ '+count+'件の'+targetLabel+'を '+baseLabel+'×'+pct+'% で設定しました');
+}
+// ─── ドロップダウン外クリックで閉じる ─────────────────────────
+document.addEventListener('click',function(e){
+  var dd=document.getElementById('bulkMakerAllDD');
+  if(dd && dd.style.display==='block'){
+    var inp=document.getElementById('bulkMakerAll');
+    if(inp && !inp.contains(e.target) && !dd.contains(e.target) && !e.target.closest('[onclick*="toggleBulkMakerDropdown"]')){
+      dd.style.display='none';
+    }
+  }
+});
+
 async function registerBulkItems(){
   var added=0,updated=0,skipped=0;
   showLoading(true);
