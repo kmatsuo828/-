@@ -1915,9 +1915,24 @@ function showLoading(on){
 }
 
 
+// ─── フリー在庫ヘルパー ───────────────────────────────────────────
+// deducted:false の取り置きは在庫数値はそのままで確保されているため差し引く
+// deducted:true はすでに在庫数値から引き済みなので差し引かない
+function getFreeQty(p, wh){
+  const stock = p[wh]||0;
+  const reserved = (p.reserves||[])
+    .filter(r=>r.wh===wh && r.deducted===false)
+    .reduce((s,r)=>s+(r.qty||0),0);
+  return Math.max(0, stock - reserved);
+}
+function getTotalFreeQty(p){
+  return WH_KEYS.reduce((s,w)=>s+getFreeQty(p,w),0);
+}
+// ─────────────────────────────────────────────────────────────────
+
 function renderSummary(){
   const t={};WH_KEYS.forEach(w=>t[w]=0);
-  data.products.forEach(p=>WH_KEYS.forEach(w=>t[w]+=(p[w]||0)));
+  data.products.forEach(p=>WH_KEYS.forEach(w=>t[w]+=getFreeQty(p,w)));
   WH_KEYS.forEach(w=>{const el=document.getElementById('sum-'+w);if(el)el.innerHTML=t[w]+'<span class="summary-card-unit"> 台</span>';});
   // 倉庫詳細モーダルが開いていれば更新
   if(currentWhDetail && document.getElementById('modalWhDetail').classList.contains('open')) renderWhDetailList();
@@ -2876,11 +2891,11 @@ let currentWhDetail = null;
 function openWhDetail(wh){
   currentWhDetail=wh;
   document.getElementById('whDetailSearch').value='';
-  var total=data.products.reduce(function(s,p){return s+(p[wh]||0);},0);
+  var total=data.products.reduce(function(s,p){return s+getFreeQty(p,wh);},0);
   document.getElementById('whDetailTitle').textContent=WH_ICONS[wh]+' '+WH_LABELS[wh];
   document.getElementById('whDetailTotal').textContent=total+' 台';
   var rCnt=0; data.products.forEach(function(p){(p.reserves||[]).forEach(function(r){if(r.wh===wh)rCnt+=(r.qty||0);});});
-  document.getElementById('whDetailSubtitle').textContent='在庫合計 '+total+' 台'+(rCnt>0?' / うち取り置き '+rCnt+' 台':'');
+  document.getElementById('whDetailSubtitle').textContent='フリー在庫 '+total+' 台'+(rCnt>0?' / うち取り置き '+rCnt+' 台':'');
   renderWhDetailList();
   openModal('modalWhDetail');
 }
@@ -2899,6 +2914,7 @@ function renderWhDetailList(){
   }
   el.innerHTML=items.map(function(p){
     var rqty=(p.reserves||[]).filter(function(r){return r.wh===wh;}).reduce(function(s,r){return s+(r.qty||0);},0);
+    var freeQty=getFreeQty(p,wh);
     var rsv=rqty>0?'<span style="font-size:10px;background:#fff8e8;color:var(--accent2);padding:1px 6px;border-radius:10px;font-weight:700;margin-left:4px;">取置 '+rqty+'台</span>':'';
     var tags=(p.category?'<span style="font-size:10px;background:#eef4fb;color:var(--blue);padding:1px 5px;border-radius:3px;margin-right:3px;">'+p.category+'</span>':'')+(p.maker?'<span style="font-size:10px;color:var(--ink3);">'+p.maker+'</span>':'');
     return '<div class="wh-detail-item" onclick="closeModal(\'modalWhDetail\');openOperation(\''+p.id+'\')">'
@@ -2907,7 +2923,7 @@ function renderWhDetailList(){
       +'<div class="wh-detail-meta">'+tags+'</div>'
       +(p.note?'<div style="font-size:10px;color:var(--ink3);margin-top:2px;">📝 '+p.note+'</div>':'')
       +'</div>'
-      +'<div class="wh-detail-qty" style="margin-left:12px;">'+p[wh]+'<span style="font-size:11px;color:var(--ink3);font-weight:400;font-family:\'Noto Sans JP\',sans-serif;"> 台</span></div>'
+      +'<div class="wh-detail-qty" style="margin-left:12px;">'+freeQty+'<span style="font-size:11px;color:var(--ink3);font-weight:400;font-family:\'Noto Sans JP\',sans-serif;"> 台</span></div>'
       +'</div>';
   }).join('');
 }
@@ -2956,7 +2972,7 @@ function renderList(){
   const yr=(yrEl && document.getElementById('yearFilterRow').style.display!=='none')?yrEl.value:'all';
   let items=data.products.filter(p=>{
     const totalStock=WH_KEYS.reduce((s,w)=>s+(p[w]||0),0);
-    if(totalStock===0) return false; // 在庫ゼロは非表示
+    if(totalStock===0) return false; // 在庫ゼロは非表示（取り置きのみでも在庫がある場合は表示）
     const mq=!q||p.name.toLowerCase().includes(q)||(p.maker||'').toLowerCase().includes(q)||(p.category||'').toLowerCase().includes(q)||(p.note||'').toLowerCase().includes(q);
     const mwh=wh==='all'||(p[wh]||0)>0;
     const mmk=mk==='all'||(p.maker||'')===mk;
@@ -2978,8 +2994,8 @@ function renderList(){
   const el=document.getElementById('productList');
   if(!items.length){el.innerHTML='<div class="empty-state">商品が見つかりません</div>';return;}
   el.innerHTML=items.map(p=>{
-    const total=WH_KEYS.reduce((s,w)=>s+(p[w]||0),0);
-    const badges=WH_KEYS.map(w=>p[w]>0?`<span class="wh-badge ${w}"><span class="wh-dot"></span>${WH_LABELS[w].replace('倉庫','')} ${p[w]}台</span>`:'').join('');
+    const total=getTotalFreeQty(p);
+    const badges=WH_KEYS.map(w=>getFreeQty(p,w)>0?`<span class="wh-badge ${w}"><span class="wh-dot"></span>${WH_LABELS[w].replace('倉庫','')} ${getFreeQty(p,w)}台</span>`:'').join('');
     const rCount=(p.reserves||[]).reduce((s,r)=>s+(r.qty||0),0);
     const rHtml=rCount>0?`<div><span class="reserve-badge">🔒 取り置き ${rCount}台</span></div>`:'';
     const sellBadge=p.sell>0?`<span class="sell-badge" style="font-size:11px;color:var(--green);font-weight:700;margin-top:3px;display:inline-block;font-family:'JetBrains Mono',monospace;">売値 ¥${Number(p.sell).toLocaleString()}</span>`:'';
@@ -3434,8 +3450,8 @@ function openOperation(id){
   document.getElementById('modalOpTitle').innerHTML=titleHtml;
   // 情報表示：売値・取り置き詳細
   var infoHtml='';
-  var total=WH_KEYS.reduce(function(s,w){return s+(p[w]||0);},0);
-  var stockBadges=WH_KEYS.map(function(w){return p[w]>0?'<span class="wh-badge '+w+'"><span class="wh-dot"></span>'+WH_LABELS[w].replace('倉庫','')+' '+p[w]+'台</span>':'';}).join('');
+  var total=getTotalFreeQty(p);
+  var stockBadges=WH_KEYS.map(function(w){return getFreeQty(p,w)>0?'<span class="wh-badge '+w+'"><span class="wh-dot"></span>'+WH_LABELS[w].replace('倉庫','')+' '+getFreeQty(p,w)+'台</span>':'';}).join('');
   infoHtml+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">'+(stockBadges||'<span style="font-size:12px;color:var(--ink3);">在庫なし</span>')+'</div>';
   if(p.sell>0||p.teika>0||p.cost>0){
     var priceBits=[];
@@ -3562,7 +3578,7 @@ function updateNyukoStockInfo(){
   const infoEl=document.getElementById('nyuko-stock-info');
   if(!id){infoEl.style.display='none';return;}
   const p=data.products.find(x=>x.id===id);if(!p){infoEl.style.display='none';return;}
-  const badges=WH_KEYS.map(w=>p[w]>0?`<span class="wh-badge ${w}"><span class="wh-dot"></span>${WH_LABELS[w].replace('倉庫','')} ${p[w]}台</span>`:'').join('');
+  const badges=WH_KEYS.map(w=>getFreeQty(p,w)>0?`<span class="wh-badge ${w}"><span class="wh-dot"></span>${WH_LABELS[w].replace('倉庫','')} ${getFreeQty(p,w)}台</span>`:'').join('');
   document.getElementById('nyuko-stock-badges').innerHTML=badges||'<span style="color:var(--ink3);font-size:12px;">全倉庫在庫なし</span>';
   infoEl.style.display='block';
 }
@@ -3701,7 +3717,7 @@ function updateShukkaStock(){
   const infoEl=document.getElementById('shukka-stock-info');
   if(!id){infoEl.style.display='none';return;}
   const p=data.products.find(x=>x.id===id);if(!p){infoEl.style.display='none';return;}
-  const badges=WH_KEYS.map(w=>p[w]>0?`<span class="wh-badge ${w}"><span class="wh-dot"></span>${WH_LABELS[w].replace('倉庫','')} ${p[w]}台</span>`:'').join('');
+  const badges=WH_KEYS.map(w=>getFreeQty(p,w)>0?`<span class="wh-badge ${w}"><span class="wh-dot"></span>${WH_LABELS[w].replace('倉庫','')} ${getFreeQty(p,w)}台</span>`:'').join('');
   document.getElementById('shukka-stock-badges').innerHTML=badges||'<span style="color:var(--ink3);font-size:12px;">全倉庫在庫なし</span>';
   infoEl.style.display='block';
 }
@@ -4616,7 +4632,7 @@ function updateToriokiStockInfo(){
   const infoEl=document.getElementById('tr-stock-info');
   if(!id){infoEl.style.display='none';return;}
   const p=data.products.find(function(x){return x.id===id;});if(!p){infoEl.style.display='none';return;}
-  const badges=WH_KEYS.map(function(w){return p[w]>0?`<span class="wh-badge ${w}"><span class="wh-dot"></span>${WH_LABELS[w].replace('倉庫','')} ${p[w]}台</span>`:'';}).join('');
+  const badges=WH_KEYS.map(function(w){return getFreeQty(p,w)>0?`<span class="wh-badge ${w}"><span class="wh-dot"></span>${WH_LABELS[w].replace('倉庫','')} ${getFreeQty(p,w)}台</span>`:'';}).join('');
   document.getElementById('tr-stock-badges').innerHTML=badges||'<span style="color:var(--ink3);font-size:12px;">全倉庫在庫なし</span>';
   infoEl.style.display='block';
 }
