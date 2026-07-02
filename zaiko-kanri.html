@@ -644,7 +644,10 @@ body.font-xl #priceMakerFilter{width:124px;}
   <div class="section-hd" style="margin-bottom:10px"><h2>PDF出力</h2></div>
 
   <!-- 見積書作成（最上部） -->
-  <button class="btn btn-amber btn-full" onclick="openQuote()" style="padding:14px;font-size:16px;margin-bottom:14px;">📋 見積書を作成する</button>
+  <button class="btn btn-amber btn-full" onclick="openQuote()" style="padding:14px;font-size:16px;margin-bottom:10px;">📋 見積書を作成する</button>
+
+  <!-- 請求書作成 -->
+  <button class="btn btn-blue btn-full" onclick="openInvoice()" style="padding:14px;font-size:16px;margin-bottom:14px;">🧾 請求書を作成する</button>
 
   <div style="height:1px;background:var(--border);margin-bottom:14px;"></div>
 
@@ -1452,12 +1455,75 @@ body.font-xl #priceMakerFilter{width:124px;}
   </div>
 </div>
 
+<!-- MODAL: INVOICE BUILDER -->
+<div class="modal-overlay" id="modalInvoice">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🧾 請求書作成</div>
+    <div class="form-group" style="margin-bottom:8px;">
+      <label class="form-label">件名</label>
+      <input type="text" class="form-input" id="invoice-title" placeholder="例: 電気設備工事一式">
+    </div>
+    <div class="form-group" style="margin-bottom:8px;">
+      <label class="form-label">宛先（御中）</label>
+      <div class="maker-combo">
+        <input type="text" class="maker-combo-input" id="invoice-customer" placeholder="得意先を入力 or ▼で選択" autocomplete="off"
+          oninput="filterCustomerDropdown('invoice-customer','invoiceCustDD')" onfocus="openCustomerDropdown('invoice-customer','invoiceCustDD')">
+        <button class="maker-combo-toggle" type="button" onclick="toggleCustomerDropdown('invoice-customer','invoiceCustDD')">▼</button>
+        <div class="maker-dropdown" id="invoiceCustDD"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <div class="form-group" style="flex:1;margin:0;"><label class="form-label">発行日</label><input type="date" class="form-input" id="invoice-date"></div>
+      <div class="form-group" style="flex:1;margin:0;"><label class="form-label">担当者</label><input type="text" class="form-input" id="invoice-staff" value="松尾 勇輝"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:10px;">
+      <label class="form-label">請求書No.（任意・納品書番号など）</label>
+      <input type="text" class="form-input" id="invoice-no" placeholder="例: 00195063">
+    </div>
+
+    <div style="background:var(--surface2);border-radius:10px;padding:10px;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:700;margin-bottom:6px;color:var(--ink2);">明細を追加</div>
+      <select class="form-select" id="invoice-add-maker" onchange="updateInvoiceProductOptions()" style="margin-bottom:6px;font-size:13px;"><option value="">── メーカー選択 ──</option></select>
+      <select class="form-select" id="invoice-add-product" style="margin-bottom:6px;font-size:13px;"><option value="">── 品番選択 ──</option></select>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="number" class="form-input" id="invoice-add-qty" value="1" min="1" style="width:80px;text-align:center;">
+        <span style="font-size:13px;color:var(--ink3);">数量</span>
+        <button class="btn btn-blue" style="flex:1;padding:9px;" type="button" onclick="addInvoiceLine()">＋ 明細に追加</button>
+      </div>
+      <div style="font-size:11px;color:var(--ink3);margin-top:6px;">※登録済みの定価・売値が自動で入ります。手入力で明細を追加することも可能です（納品書の内容をそのまま転記する場合など）。</div>
+      <button class="btn btn-secondary" style="width:100%;margin-top:6px;padding:8px;font-size:12px;" type="button" onclick="addInvoiceLineManual()">✏️ 手入力で1行追加</button>
+    </div>
+
+    <div id="invoice-lines"></div>
+    <div id="invoice-total" style="margin-bottom:10px;"></div>
+
+    <div class="form-group" style="margin-bottom:10px;">
+      <label class="form-label">備考欄（請求書の下部に表示・自由入力）</label>
+      <textarea class="form-textarea" id="invoice-footer-note" placeholder="例: ・お振込先：〇〇銀行 〇〇支店 普通 〇〇〇〇〇〇〇&#10;・特記事項など自由に入力" style="min-height:70px;"></textarea>
+      <div style="font-size:11px;color:var(--ink3);margin-top:4px;">空欄の場合は標準の条件文（お支払期限など）を表示します。</div>
+    </div>
+
+    <button class="btn btn-blue btn-full" onclick="generateInvoicePdf()" style="padding:13px;font-size:15px;margin-bottom:8px;">📄 請求書PDFを作成</button>
+
+    <!-- 保存済み請求書一覧 -->
+    <div style="margin-bottom:10px;">
+      <button class="btn btn-secondary btn-full" onclick="toggleSavedInvoices()" style="padding:10px;font-size:13px;">📂 保存済み請求書一覧</button>
+      <div id="saved-invoices-list" style="display:none;margin-top:8px;max-height:300px;overflow-y:auto;"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary btn-full" onclick="closeModal('modalInvoice')">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <!-- PDF PREVIEW -->
 <div id="pdf-preview">
   <button class="pdf-print-btn" onclick="doPrintPdf()">🖨 印刷/PDF保存</button>
   <button class="pdf-share-btn" onclick="doSharePdf()" style="position:fixed;top:10px;right:170px;background:#1565c0;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;z-index:301;">📤 共有</button>
-  <button class="pdf-save-btn" onclick="saveCurrentQuote()" style="position:fixed;top:10px;right:250px;background:#2d7a4f;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;z-index:301;">💾 保存</button>
-  <button class="pdf-close" onclick="_autoSaveQuoteDraft();document.getElementById('pdf-preview').style.display='none';document.title='マツオ情報ポータル'">✕ 閉じる</button>
+  <button class="pdf-save-btn" onclick="saveCurrentDoc()" style="position:fixed;top:10px;right:250px;background:#2d7a4f;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;z-index:301;">💾 保存</button>
+  <button class="pdf-close" onclick="_autoSaveCurrentDoc();document.getElementById('pdf-preview').style.display='none';document.title='マツオ情報ポータル'">✕ 閉じる</button>
   <div class="pdf-doc" id="pdf-content"></div>
 </div>
 
@@ -3136,8 +3202,9 @@ function switchScreen(name){
 function openModal(id){document.getElementById(id).classList.add('open');}
 
 function closeModal(id){
-  // 見積書モーダルを閉じるときは自動保存
+  // 見積書・請求書モーダルを閉じるときは自動保存
   if(id==='modalQuote' && typeof _autoSaveQuoteDraft==='function') _autoSaveQuoteDraft();
+  if(id==='modalInvoice' && typeof _autoSaveInvoiceDraft==='function') _autoSaveInvoiceDraft();
   document.getElementById(id).classList.remove('open');
 }
 
@@ -4008,6 +4075,7 @@ function generatePdf(){
       ${whCols.length>1?'<th>合計</th>':''}
     </tr></thead><tbody>${rows}</tbody></table>
     ${!products.length?'<p style="text-align:center;color:#888;margin-top:20px;">該当商品なし</p>':''}`;
+  _pdfDocType='none';
   document.getElementById('pdf-preview').style.display='block';
 }
 
@@ -4227,6 +4295,7 @@ function generateQuotePdf(){
   // document.title をPDFファイル名に設定（Safariでは印刷時のファイル名になる）
   var pdfFilename=getQuotePdfFilename(title, dateVal);
   document.title=pdfFilename;
+  _pdfDocType='quote';
   document.getElementById('pdf-preview').style.display='block';
   // 保存用にデータを保持
   _lastQuoteData={title:title,customer:cust,staff:staff,date:dateVal,lines:JSON.parse(JSON.stringify(quoteLines)),footerNote:footerNote,total:tot,sub:sub,tax:tax,html:document.getElementById('pdf-content').innerHTML,filename:pdfFilename,createdAt:new Date().toISOString()};
@@ -4337,6 +4406,7 @@ function openSavedQuote(idx){
   document.getElementById('pdf-content').innerHTML=q.html;
   document.title=q.filename||'御見積書';
   _lastQuoteData=q;
+  _pdfDocType='quote';
   closeModal('modalQuote');
   document.getElementById('pdf-preview').style.display='block';
 }
@@ -4369,6 +4439,316 @@ function deleteSavedQuote(idx){
   list.splice(idx,1);
   _saveSavedQuotes(list);
   renderSavedQuotes();
+}
+
+// ─── PDFプレビュー: 見積書/請求書どちらの操作か振り分け ───────────
+var _pdfDocType='none'; // 'quote' | 'invoice' | 'none'
+function saveCurrentDoc(){
+  if(_pdfDocType==='invoice') saveCurrentInvoice();
+  else if(_pdfDocType==='quote') saveCurrentQuote();
+  else alert('この画面には保存機能はありません。');
+}
+function _autoSaveCurrentDoc(){
+  if(_pdfDocType==='invoice') _autoSaveInvoiceDraft();
+  else if(_pdfDocType==='quote') _autoSaveQuoteDraft();
+}
+
+// ═══ 請求書作成 ═══════════════════════════════════════════════
+let invoiceLines=[]; // {name,hinmei,qty,unit,tanka,bikou}
+var _editingInvoiceIdx=-1;
+
+function openInvoice(){
+  invoiceLines=[];
+  _editingInvoiceIdx=-1;
+  document.getElementById('invoice-title').value='';
+  document.getElementById('invoice-customer').value='';
+  document.getElementById('invoice-no').value='';
+  var ifn=document.getElementById('invoice-footer-note'); if(ifn) ifn.value='';
+  var n=new Date();
+  document.getElementById('invoice-date').value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');
+  // メーカー選択肢
+  var makers=getMakers();
+  document.getElementById('invoice-add-maker').innerHTML='<option value="">── メーカー選択 ──</option>'+makers.map(function(m){return '<option value="'+m+'">'+m+'</option>';}).join('');
+  document.getElementById('invoice-add-product').innerHTML='<option value="">── 品番選択 ──</option>';
+  renderInvoiceLines();
+  openModal('modalInvoice');
+}
+function updateInvoiceProductOptions(){
+  var mk=document.getElementById('invoice-add-maker').value;
+  var prods=data.products.filter(function(p){return (p.maker||'')===mk;});
+  document.getElementById('invoice-add-product').innerHTML='<option value="">── 品番選択 ──</option>'+prods.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>';}).join('');
+}
+function addInvoiceLine(){
+  var pid=document.getElementById('invoice-add-product').value;
+  if(!pid){ alert('品番を選択してください'); return; }
+  var qty=parseInt(document.getElementById('invoice-add-qty').value)||1;
+  var p=data.products.find(function(x){return x.id===pid;});
+  if(!p) return;
+  var hinmeiParts=[p.maker||'',p.category||'',p.series?p.series+'シリーズ':'',p.note||''].filter(Boolean);
+  invoiceLines.push({name:p.name,hinmei:hinmeiParts.join(' '),qty:qty,unit:'台',tanka:p.sell||0,bikou:''});
+  renderInvoiceLines();
+}
+function addInvoiceLineManual(){
+  invoiceLines.push({name:'',hinmei:'',qty:1,unit:'個',tanka:0,bikou:''});
+  renderInvoiceLines();
+}
+function removeInvoiceLine(i){ invoiceLines.splice(i,1); renderInvoiceLines(); }
+function _invoiceRecalc(i){
+  invoiceLines[i].name=(document.getElementById('inv-name-'+i)||{value:''}).value;
+  invoiceLines[i].hinmei=(document.getElementById('inv-hinmei-'+i)||{value:''}).value;
+  invoiceLines[i].qty=parseInt((document.getElementById('inv-qty-'+i)||{value:1}).value)||1;
+  invoiceLines[i].unit=(document.getElementById('inv-unit-'+i)||{value:''}).value||'式';
+  invoiceLines[i].tanka=parseFloat((document.getElementById('inv-tanka-'+i)||{value:0}).value)||0;
+  invoiceLines[i].bikou=(document.getElementById('inv-bikou-'+i)||{value:''}).value;
+  var amt=invoiceLines[i].qty*invoiceLines[i].tanka;
+  var amtEl=document.getElementById('inv-amt-'+i); if(amtEl) amtEl.textContent=fmt(amt);
+  renderInvoiceTotal();
+}
+function renderInvoiceLines(){
+  var el=document.getElementById('invoice-lines');
+  if(!invoiceLines.length){ el.innerHTML='<div style="text-align:center;color:var(--ink3);font-size:13px;padding:16px;">明細がありません。上から商品を追加してください。</div>'; renderInvoiceTotal(); return; }
+  el.innerHTML=invoiceLines.map(function(L,i){
+    var amt=L.qty*L.tanka;
+    return '<div class="ai-item" style="margin-bottom:6px;">'
+      +'<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px;">'
+      +'<input type="text" id="inv-name-'+i+'" value="'+(L.name||'').replace(/"/g,'&quot;')+'" placeholder="商品名" list="productNameList" class="form-input" style="flex:1;font-size:12px;font-weight:700;padding:4px 6px;" oninput="_invoiceRecalc('+i+')">'
+      +'<button onclick="removeInvoiceLine('+i+')" style="border:none;background:var(--accent);color:#fff;border-radius:5px;width:26px;height:26px;font-size:14px;cursor:pointer;flex:none;">×</button>'
+      +'</div>'
+      +'<input type="text" id="inv-hinmei-'+i+'" value="'+(L.hinmei||'').replace(/"/g,'&quot;')+'" placeholder="品名・仕様" class="form-input" style="width:100%;font-size:11px;padding:4px 6px;margin-bottom:5px;" oninput="_invoiceRecalc('+i+')">'
+      +'<div style="display:flex;gap:5px;align-items:flex-end;">'
+      +'<div style="flex:0 0 44px;"><div style="font-size:9px;color:var(--ink3);">数量</div><input type="number" id="inv-qty-'+i+'" value="'+L.qty+'" min="1" class="form-input" style="padding:5px 3px;font-size:12px;text-align:center;" oninput="_invoiceRecalc('+i+')"></div>'
+      +'<div style="flex:0 0 44px;"><div style="font-size:9px;color:var(--ink3);">単位</div><input type="text" id="inv-unit-'+i+'" value="'+(L.unit||'').replace(/"/g,'&quot;')+'" class="form-input" style="padding:5px 3px;font-size:12px;text-align:center;" oninput="_invoiceRecalc('+i+')"></div>'
+      +'<div style="flex:1;"><div style="font-size:9px;color:var(--green);">単価</div><input type="number" id="inv-tanka-'+i+'" value="'+L.tanka+'" min="0" class="form-input" style="padding:5px 3px;font-size:12px;text-align:right;" oninput="_invoiceRecalc('+i+')"></div>'
+      +'<div style="flex:1;text-align:right;"><div style="font-size:9px;color:var(--ink3);">金額</div><div id="inv-amt-'+i+'" style="font-size:13px;font-weight:700;padding:5px 0;">'+fmt(amt)+'</div></div>'
+      +'</div>'
+      +'<input type="text" id="inv-bikou-'+i+'" value="'+(L.bikou||'').replace(/"/g,'&quot;')+'" placeholder="摘要（任意）" class="form-input" style="width:100%;font-size:11px;padding:4px 6px;margin-top:6px;" oninput="_invoiceRecalc('+i+')">'
+      +'</div>';
+  }).join('');
+  renderInvoiceTotal();
+}
+function renderInvoiceTotal(){
+  var sub=invoiceLines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
+  var tax=Math.round(sub*0.1);
+  var tot=sub+tax;
+  document.getElementById('invoice-total').innerHTML='<div style="background:var(--surface);border-radius:8px;padding:10px 12px;font-size:13px;">'
+    +'<div style="display:flex;justify-content:space-between;padding:2px 0;"><span style="color:var(--ink3);">小計</span><span>'+fmt(sub)+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between;padding:2px 0;"><span style="color:var(--ink3);">消費税(10%)</span><span>'+fmt(tax)+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between;padding:4px 0 0;border-top:1px solid var(--border);margin-top:4px;font-weight:700;font-size:15px;"><span>合計(税込)</span><span style="color:var(--accent);">'+fmt(tot)+'</span></div>'
+    +'</div>';
+}
+// ─── 請求書PDFファイル名生成 ──────────────────────────────────
+function getInvoicePdfFilename(subject, dateVal){
+  var dateStr;
+  if(dateVal && dateVal.match(/\d{4}-\d{2}-\d{2}/)){
+    dateStr=dateVal.replace(/-/g,'');
+  }else{
+    var n=new Date();
+    dateStr=n.getFullYear().toString()+String(n.getMonth()+1).padStart(2,'0')+String(n.getDate()).padStart(2,'0');
+  }
+  var base;
+  if(!subject||!subject.trim()){
+    base='請求書';
+  }else{
+    var s=subject.trim();
+    base=s.includes('請求書')?s:(s+'請求書');
+  }
+  return base+dateStr;
+}
+function generateInvoicePdf(){
+  if(!invoiceLines.length){ alert('明細を1件以上追加してください'); return; }
+  var title=document.getElementById('invoice-title').value.trim();
+  var cust=document.getElementById('invoice-customer').value.trim();
+  var staff=document.getElementById('invoice-staff').value.trim();
+  var invNo=document.getElementById('invoice-no').value.trim();
+  var dateVal=document.getElementById('invoice-date').value;
+  var dispDate=dateVal?dateVal.replace(/-/g,'/'):'';
+  if(cust) addCustomerIfNew(cust);
+  var sub=invoiceLines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
+  var tax=Math.round(sub*0.1), tot=sub+tax;
+  var rowsHtml='';
+  invoiceLines.forEach(function(L,i){
+    var amt=L.qty*L.tanka;
+    rowsHtml+='<tr>'
+      +'<td>'+(i+1)+'</td>'
+      +'<td style="text-align:left;">'+(L.name||'')+(L.hinmei?'<br><span style="font-size:10px;color:#666;">'+L.hinmei+'</span>':'')+'</td>'
+      +'<td>'+L.qty+'</td>'
+      +'<td>'+(L.unit||'')+'</td>'
+      +'<td style="text-align:right;">'+(L.tanka>0?Number(L.tanka).toLocaleString():'')+'</td>'
+      +'<td style="text-align:right;font-weight:700;">'+(amt>0?Number(amt).toLocaleString():'')+'</td>'
+      +'<td style="text-align:left;font-size:10px;">'+(L.bikou||'')+'</td>'
+      +'</tr>';
+  });
+  var c=QUOTE_COMPANY;
+  var footerNote=((document.getElementById('invoice-footer-note')||{value:''}).value||'').trim();
+  var footerHtml = footerNote
+    ? footerNote.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>')
+    : '・お支払期限：発行日より翌月末日までにお願いいたします。<br>・恐れ入りますが振込手数料は貴社にてご負担いただきますようお願いいたします。';
+  document.getElementById('pdf-content').innerHTML=
+    '<div style="text-align:center;font-size:22px;font-weight:700;letter-spacing:.3em;margin-bottom:14px;">請 求 書</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">'
+    +'<div style="font-size:12px;line-height:1.8;">'
+    +'<div>発行日: '+dispDate+(invNo?'　請求書No: '+invNo:'')+'</div>'
+    +'<div style="font-size:15px;font-weight:700;margin-top:10px;border-bottom:2px solid #1a1714;padding-bottom:2px;display:inline-block;">'+(cust||'　　　　　　')+'　御中</div>'
+    +'</div>'
+    +'<div style="display:flex;align-items:flex-start;gap:10px;">'
+    +'<div style="font-size:11px;line-height:1.8;text-align:left;">'
+    +'<div style="font-size:14px;font-weight:700;">'+c.name+'</div>'
+    +'<div>担当者: '+(staff||'')+'</div><div>'+c.zip+'</div><div>'+c.addr+'</div><div>'+c.tel+'</div>'
+    +'</div>'
+    +'<div style="flex-shrink:0;width:72px;height:72px;display:flex;align-items:center;justify-content:center;">'
+    +'<img src="'+LOGO_BIG+'" alt="マツオ" style="width:64px;height:64px;object-fit:contain;">'
+    +'</div>'
+    +'</div>'
+    +'</div>'
+    +'<div style="border:1px solid #1a1714;padding:6px 10px;margin-bottom:4px;font-size:13px;"><b>件名:</b> '+(title||'')+'</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+    +'<span style="font-size:12px;">下記の通りご請求申し上げます。</span>'
+    +'<span style="font-size:13px;">ご請求金額(税込) <b style="font-size:18px;">¥'+tot.toLocaleString()+'</b></span></div>'
+    +'<table class="pdf-table quote-table"><thead><tr>'
+    +'<th style="width:28px;">No.</th><th style="text-align:left;min-width:160px;">商品名</th>'
+    +'<th style="width:40px;">数量</th><th style="width:40px;">単位</th><th style="width:64px;">単価</th><th style="width:74px;">金額</th><th style="text-align:left;min-width:90px;">摘要</th>'
+    +'</tr></thead><tbody>'+rowsHtml+'</tbody></table>'
+    +'<div style="display:flex;justify-content:flex-end;margin-top:10px;">'
+    +'<table style="font-size:13px;border-collapse:collapse;min-width:240px;">'
+    +'<tr><td style="padding:4px 12px;color:#555;">小計</td><td style="padding:4px 12px;text-align:right;">¥'+sub.toLocaleString()+'</td></tr>'
+    +'<tr><td style="padding:4px 12px;color:#555;">消費税(10%)</td><td style="padding:4px 12px;text-align:right;">¥'+tax.toLocaleString()+'</td></tr>'
+    +'<tr style="border-top:2px solid #1a1714;"><td style="padding:5px 12px;font-weight:700;">合計</td><td style="padding:5px 12px;text-align:right;font-weight:700;font-size:16px;">¥'+tot.toLocaleString()+'</td></tr>'
+    +'</table></div>'
+    +'<div style="font-size:11px;color:#555;margin-top:16px;line-height:1.9;border-top:1px solid #ddd;padding-top:10px;">'
+    +'<div style="font-weight:700;color:#333;margin-bottom:3px;">備考</div>'+footerHtml+'</div>';
+  closeModal('modalInvoice');
+  var pdfFilename=getInvoicePdfFilename(title, dateVal);
+  document.title=pdfFilename;
+  _pdfDocType='invoice';
+  document.getElementById('pdf-preview').style.display='block';
+  _lastInvoiceData={title:title,customer:cust,staff:staff,invNo:invNo,date:dateVal,lines:JSON.parse(JSON.stringify(invoiceLines)),footerNote:footerNote,total:tot,sub:sub,tax:tax,html:document.getElementById('pdf-content').innerHTML,filename:pdfFilename,createdAt:new Date().toISOString()};
+}
+
+// ═══ 請求書保存機能（localStorage・直近2ヶ月保持） ══════════════
+var _lastInvoiceData=null;
+var INVOICE_STORAGE_KEY='zaiko_saved_invoices_v1';
+var INVOICE_KEEP_DAYS=62;
+
+function _loadSavedInvoices(){
+  try{ var s=localStorage.getItem(INVOICE_STORAGE_KEY); return s?JSON.parse(s):[]; }
+  catch(e){ return []; }
+}
+function _saveSavedInvoices(arr){
+  try{ localStorage.setItem(INVOICE_STORAGE_KEY,JSON.stringify(arr)); }catch(e){}
+}
+function _cleanupOldInvoices(){
+  var list=_loadSavedInvoices();
+  var cutoff=new Date(); cutoff.setDate(cutoff.getDate()-INVOICE_KEEP_DAYS);
+  var filtered=list.filter(function(q){ return new Date(q.createdAt)>=cutoff; });
+  if(filtered.length!==list.length) _saveSavedInvoices(filtered);
+  return filtered;
+}
+function saveCurrentInvoice(){
+  if(!_lastInvoiceData){alert('保存する請求書がありません。先に「請求書PDFを作成」してください。');return;}
+  var list=_cleanupOldInvoices();
+  var existIdx=(_editingInvoiceIdx>=0 && _editingInvoiceIdx<list.length)?_editingInvoiceIdx:list.findIndex(function(q){return q.filename===_lastInvoiceData.filename;});
+  if(existIdx>=0){
+    if(!confirm('「'+_lastInvoiceData.filename+'」を上書き保存しますか？')) return;
+    list[existIdx]=_lastInvoiceData;
+  }else{
+    list.unshift(_lastInvoiceData);
+  }
+  _saveSavedInvoices(list);
+  _editingInvoiceIdx=-1;
+  alert('✅ 請求書を保存しました\n「'+_lastInvoiceData.filename+'」');
+}
+function _collectInvoiceFormData(){
+  for(var i=0;i<invoiceLines.length;i++){
+    var el;
+    el=document.getElementById('inv-name-'+i); if(el) invoiceLines[i].name=el.value;
+    el=document.getElementById('inv-hinmei-'+i); if(el) invoiceLines[i].hinmei=el.value;
+    el=document.getElementById('inv-qty-'+i); if(el) invoiceLines[i].qty=parseInt(el.value)||1;
+    el=document.getElementById('inv-unit-'+i); if(el) invoiceLines[i].unit=el.value;
+    el=document.getElementById('inv-tanka-'+i); if(el) invoiceLines[i].tanka=parseFloat(el.value)||0;
+    el=document.getElementById('inv-bikou-'+i); if(el) invoiceLines[i].bikou=el.value;
+  }
+  var title=(document.getElementById('invoice-title').value||'').trim();
+  var cust=(document.getElementById('invoice-customer').value||'').trim();
+  var staff=(document.getElementById('invoice-staff').value||'').trim();
+  var invNo=(document.getElementById('invoice-no').value||'').trim();
+  var dateVal=document.getElementById('invoice-date').value||'';
+  var footerNote=((document.getElementById('invoice-footer-note')||{value:''}).value||'').trim();
+  var sub=invoiceLines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
+  var tax=Math.round(sub*0.1), tot=sub+tax;
+  var pdfFilename=getInvoicePdfFilename(title,dateVal);
+  return {title:title,customer:cust,staff:staff,invNo:invNo,date:dateVal,lines:JSON.parse(JSON.stringify(invoiceLines)),footerNote:footerNote,total:tot,sub:sub,tax:tax,html:(_lastInvoiceData?_lastInvoiceData.html:''),filename:pdfFilename,createdAt:new Date().toISOString()};
+}
+function _autoSaveInvoiceDraft(){
+  if(!invoiceLines.length) return;
+  var qd=_collectInvoiceFormData();
+  var list=_cleanupOldInvoices();
+  var existIdx=(_editingInvoiceIdx>=0 && _editingInvoiceIdx<list.length)?_editingInvoiceIdx:list.findIndex(function(q){return q.filename===qd.filename;});
+  if(existIdx>=0){
+    list[existIdx]=qd;
+  }else{
+    list.unshift(qd);
+  }
+  _saveSavedInvoices(list);
+  _editingInvoiceIdx=-1;
+}
+function toggleSavedInvoices(){
+  var el=document.getElementById('saved-invoices-list');
+  if(el.style.display==='none'){el.style.display='block';renderSavedInvoices();}
+  else{el.style.display='none';}
+}
+function renderSavedInvoices(){
+  var el=document.getElementById('saved-invoices-list');
+  var list=_cleanupOldInvoices();
+  if(!list.length){el.innerHTML='<div style="text-align:center;color:var(--ink3);font-size:13px;padding:12px;">保存済みの請求書はありません</div>';return;}
+  el.innerHTML=list.map(function(q,i){
+    var d=q.date?q.date.replace(/-/g,'/'):'';
+    var cust=q.customer||'（宛先なし）';
+    return '<div style="display:flex;align-items:center;gap:5px;padding:8px 10px;background:var(--surface);border-radius:8px;margin-bottom:4px;box-shadow:0 1px 3px var(--shadow);">'
+      +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(q.title||'（件名なし）')+'</div>'
+      +'<div style="font-size:11px;color:var(--ink3);">'+cust+' ｜ '+d+' ｜ ¥'+(q.total||0).toLocaleString()+'</div>'
+      +'</div>'
+      +'<button onclick="editSavedInvoice('+i+')" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">✏️編集</button>'
+      +'<button onclick="openSavedInvoice('+i+')" style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">📄表示</button>'
+      +'<button onclick="deleteSavedInvoice('+i+')" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer;">✕</button>'
+      +'</div>';
+  }).join('');
+}
+function openSavedInvoice(idx){
+  var list=_loadSavedInvoices();
+  var q=list[idx]; if(!q) return;
+  document.getElementById('pdf-content').innerHTML=q.html;
+  document.title=q.filename||'請求書';
+  _lastInvoiceData=q;
+  _pdfDocType='invoice';
+  closeModal('modalInvoice');
+  document.getElementById('pdf-preview').style.display='block';
+}
+function editSavedInvoice(idx){
+  var list=_loadSavedInvoices();
+  var q=list[idx]; if(!q) return;
+  invoiceLines=q.lines?JSON.parse(JSON.stringify(q.lines)):[];
+  document.getElementById('invoice-title').value=q.title||'';
+  document.getElementById('invoice-customer').value=q.customer||'';
+  document.getElementById('invoice-staff').value=q.staff||'松尾 勇輝';
+  document.getElementById('invoice-no').value=q.invNo||'';
+  document.getElementById('invoice-date').value=q.date||'';
+  var ifn=document.getElementById('invoice-footer-note');
+  if(ifn) ifn.value=q.footerNote||'';
+  var makers=getMakers();
+  document.getElementById('invoice-add-maker').innerHTML='<option value="">── メーカー選択 ──</option>'+makers.map(function(m){return '<option value="'+m+'">'+m+'</option>';}).join('');
+  document.getElementById('invoice-add-product').innerHTML='<option value="">── 品番選択 ──</option>';
+  _editingInvoiceIdx=idx;
+  document.getElementById('saved-invoices-list').style.display='none';
+  renderInvoiceLines();
+}
+function deleteSavedInvoice(idx){
+  var list=_loadSavedInvoices();
+  var q=list[idx]; if(!q) return;
+  if(!confirm('「'+(q.title||q.filename)+'」を削除しますか？')) return;
+  list.splice(idx,1);
+  _saveSavedInvoices(list);
+  renderSavedInvoices();
 }
 
 // ═══ DATE ════════════════════════════════════════════════════════
