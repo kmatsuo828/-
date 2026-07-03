@@ -1795,6 +1795,20 @@ async function upsertProduct(p){
   });
 }
 
+// ─── 手動入力・AI読み取りで初めて出てきた商品名を商品データへ自動登録 ─────
+async function ensureProductExists(name, maker, category, sell){
+  name = (name||'').trim();
+  if(!name) return null;
+  var existing = findProductByName(name);
+  if(existing) return existing;
+  var qo={}; WH_KEYS.forEach(function(w){qo[w]=0;});
+  var newP = Object.assign({id:uid(),maker:(maker||'').trim(),category:(category||'').trim(),name:name},qo,
+    {teika:0,cost:0,sell:sell||0,note:'',reserves:[]});
+  data.products.push(newP);
+  try{ await upsertProduct(newP); }catch(e){ /* non-fatal: keep local */ }
+  return newP;
+}
+
 async function deleteProductDB(id){
   return supaFetch('products?id=eq.'+encodeURIComponent(id),'DELETE',null,{
     'Prefer':'return=minimal'
@@ -4167,13 +4181,14 @@ async function handleQuotePhoto(event){
       statusEl.innerHTML='⚠️ 明細を読み取れませんでした。別の写真をお試しください。';
       return;
     }
-    items.forEach(function(it){
+    for(const it of items){
       var p=findProductByName(it.name);
       var teika=p?(p.teika||0):0;
       var tanka=(it.tanka&&it.tanka>0)?it.tanka:(p?(p.sell||0):0);
+      if(!p) p=await ensureProductExists(it.name, it.maker, '', tanka);
       var rate=(teika>0&&tanka>0)?Math.round(tanka/teika*100):0;
       quoteLines.push({pid:p?p.id:null,maker:it.maker||(p?p.maker:'')||'その他',name:it.name||'',hinmei:it.hinmei||'',qty:parseInt(it.qty)||1,teika:teika,rate:rate,tanka:tanka,bikou:''});
-    });
+    }
     renderQuoteLines();
     statusEl.className='ai-status';
     statusEl.innerHTML='✅ '+items.length+'件の明細を追加しました。内容を確認してください。';
@@ -4218,6 +4233,12 @@ function _quoteRecalc(i){
   var amtEl=document.getElementById('q-amt-'+i); if(amtEl) amtEl.textContent=fmt(amt);
   renderQuoteTotal();
 }
+// 手入力で品番を確定（フォーカスを外した時）したら、未登録なら商品データへ自動登録
+async function _quoteLineBlur(i){
+  var L=quoteLines[i]; if(!L||!L.name||L.pid) return; // 既に登録済み商品を選択済みならスキップ
+  var p=await ensureProductExists(L.name, L.maker, '', L.tanka);
+  if(p) L.pid=p.id;
+}
 function renderQuoteLines(){
   var el=document.getElementById('quote-lines');
   if(!quoteLines.length){ el.innerHTML='<div style="text-align:center;color:var(--ink3);font-size:13px;padding:16px;">明細がありません。上から商品を追加してください。</div>'; renderQuoteTotal(); return; }
@@ -4226,7 +4247,7 @@ function renderQuoteLines(){
     return '<div class="ai-item" style="margin-bottom:6px;">'
       +'<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px;">'
       +'<input type="text" id="q-maker-'+i+'" value="'+(L.maker||'').replace(/"/g,'&quot;')+'" placeholder="メーカー" class="form-input" style="width:90px;font-size:11px;padding:4px 6px;" oninput="_quoteRecalc('+i+')">'
-      +'<input type="text" id="q-name-'+i+'" value="'+(L.name||'').replace(/"/g,'&quot;')+'" placeholder="品番" list="productNameList" class="form-input" style="flex:1;font-size:12px;font-weight:700;padding:4px 6px;" oninput="_quoteRecalc('+i+')">'
+      +'<input type="text" id="q-name-'+i+'" value="'+(L.name||'').replace(/"/g,'&quot;')+'" placeholder="品番" list="productNameList" class="form-input" style="flex:1;font-size:12px;font-weight:700;padding:4px 6px;" oninput="_quoteRecalc('+i+')" onblur="_quoteLineBlur('+i+')">'
       +'<button onclick="removeQuoteLine('+i+')" style="border:none;background:var(--accent);color:#fff;border-radius:5px;width:26px;height:26px;font-size:14px;cursor:pointer;flex:none;">×</button>'
       +'</div>'
       +'<input type="text" id="q-hinmei-'+i+'" value="'+(L.hinmei||'').replace(/"/g,'&quot;')+'" placeholder="品名・仕様" class="form-input" style="width:100%;font-size:11px;padding:4px 6px;margin-bottom:5px;" oninput="_quoteRecalc('+i+')">'
@@ -4549,12 +4570,18 @@ function addInvoiceLine(){
   var p=data.products.find(function(x){return x.id===pid;});
   if(!p) return;
   var hinmeiParts=[p.maker||'',p.category||'',p.series?p.series+'シリーズ':'',p.note||''].filter(Boolean);
-  invoiceLines.push({name:p.name,hinmei:hinmeiParts.join(' '),qty:qty,unit:'台',tanka:p.sell||0,bikou:''});
+  invoiceLines.push({pid:p.id,name:p.name,hinmei:hinmeiParts.join(' '),qty:qty,unit:'台',tanka:p.sell||0,bikou:''});
   renderInvoiceLines();
 }
 function addInvoiceLineManual(){
-  invoiceLines.push({name:'',hinmei:'',qty:1,unit:'個',tanka:0,bikou:''});
+  invoiceLines.push({pid:null,name:'',hinmei:'',qty:1,unit:'個',tanka:0,bikou:''});
   renderInvoiceLines();
+}
+// 手入力で商品名を確定（フォーカスを外した時）したら、未登録なら商品データへ自動登録
+async function _invoiceLineBlur(i){
+  var L=invoiceLines[i]; if(!L||!L.name||L.pid) return;
+  var p=await ensureProductExists(L.name, '', '', L.tanka);
+  if(p) L.pid=p.id;
 }
 // ─── 写真から請求明細を読み取り追加（AI） ─────────────────────────
 async function handleInvoicePhoto(event){
@@ -4579,9 +4606,11 @@ async function handleInvoicePhoto(event){
       statusEl.innerHTML='⚠️ 明細を読み取れませんでした。別の写真をお試しください。';
       return;
     }
-    items.forEach(function(it){
-      invoiceLines.push({name:it.name||'',hinmei:it.hinmei||'',qty:parseInt(it.qty)||1,unit:it.unit||'式',tanka:parseFloat(it.tanka)||0,bikou:it.bikou||''});
-    });
+    for(const it of items){
+      var tanka=parseFloat(it.tanka)||0;
+      var p=await ensureProductExists(it.name, '', '', tanka);
+      invoiceLines.push({pid:p?p.id:null,name:it.name||'',hinmei:it.hinmei||'',qty:parseInt(it.qty)||1,unit:it.unit||'式',tanka:tanka,bikou:it.bikou||''});
+    }
     renderInvoiceLines();
     statusEl.className='ai-status';
     statusEl.innerHTML='✅ '+items.length+'件の明細を追加しました。内容を確認してください。';
@@ -4611,7 +4640,7 @@ function renderInvoiceLines(){
     var amt=L.qty*L.tanka;
     return '<div class="ai-item" style="margin-bottom:6px;">'
       +'<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px;">'
-      +'<input type="text" id="inv-name-'+i+'" value="'+(L.name||'').replace(/"/g,'&quot;')+'" placeholder="商品名" list="productNameList" class="form-input" style="flex:1;font-size:12px;font-weight:700;padding:4px 6px;" oninput="_invoiceRecalc('+i+')">'
+      +'<input type="text" id="inv-name-'+i+'" value="'+(L.name||'').replace(/"/g,'&quot;')+'" placeholder="商品名" list="productNameList" class="form-input" style="flex:1;font-size:12px;font-weight:700;padding:4px 6px;" oninput="_invoiceRecalc('+i+')" onblur="_invoiceLineBlur('+i+')">'
       +'<button onclick="removeInvoiceLine('+i+')" style="border:none;background:var(--accent);color:#fff;border-radius:5px;width:26px;height:26px;font-size:14px;cursor:pointer;flex:none;">×</button>'
       +'</div>'
       +'<input type="text" id="inv-hinmei-'+i+'" value="'+(L.hinmei||'').replace(/"/g,'&quot;')+'" placeholder="品名・仕様" class="form-input" style="width:100%;font-size:11px;padding:4px 6px;margin-bottom:5px;" oninput="_invoiceRecalc('+i+')">'
