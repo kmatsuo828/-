@@ -4662,6 +4662,12 @@ function generateInvoicePdf(){
   var invNo=document.getElementById('invoice-no').value.trim();
   var dateVal=document.getElementById('invoice-date').value;
   var dispDate=dateVal?dateVal.replace(/-/g,'/'):'';
+  var dueDateStr='';
+  if(dateVal){
+    var dueD=new Date(dateVal+'T00:00:00');
+    dueD.setDate(dueD.getDate()+14);
+    dueDateStr=dueD.getFullYear()+'/'+String(dueD.getMonth()+1).padStart(2,'0')+'/'+String(dueD.getDate()).padStart(2,'0');
+  }
   if(cust) addCustomerIfNew(cust);
   var sub=invoiceLines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
   var tax=Math.round(sub*0.1), tot=sub+tax;
@@ -4682,7 +4688,7 @@ function generateInvoicePdf(){
   var footerNote=((document.getElementById('invoice-footer-note')||{value:''}).value||'').trim();
   var footerHtml = footerNote
     ? footerNote.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>')
-    : '・お支払期限：発行日より翌月末日までにお願いいたします。<br>・恐れ入りますが振込手数料は貴社にてご負担いただきますようお願いいたします。';
+    : '・恐れ入りますが振込手数料は貴社にてご負担いただきますようお願いいたします。';
   document.getElementById('pdf-content').innerHTML=
     '<div style="text-align:center;font-size:22px;font-weight:700;letter-spacing:.3em;margin-bottom:14px;">請 求 書</div>'
     +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">'
@@ -4718,6 +4724,7 @@ function generateInvoicePdf(){
     +'<div style="font-size:11px;color:#333;margin-top:16px;line-height:1.9;border-top:1px solid #ddd;padding-top:10px;">'
     +'<div style="font-weight:700;margin-bottom:3px;">お振込先</div>'
     +INVOICE_BANK_INFO.holder+'　振込先<br>'+INVOICE_BANK_INFO.bank+'　'+INVOICE_BANK_INFO.type+'　'+INVOICE_BANK_INFO.no+'<br>登録番号: '+INVOICE_REG_NO
+    +'<br>お支払期限: '+(dueDateStr?dueDateStr+'（発行日より14日以内）':'発行日より14日以内')
     +'</div>'
     +'<div style="font-size:11px;color:#555;margin-top:10px;line-height:1.9;">'
     +'<div style="font-weight:700;color:#333;margin-bottom:3px;">備考</div>'+footerHtml+'</div>';
