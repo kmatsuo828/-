@@ -4101,6 +4101,9 @@ function generatePdf(){
 
 // ═══ 見積書作成 ═══════════════════════════════════════════════
 const QUOTE_COMPANY={name:'株式会社マツオ',zip:'〒594-0023',addr:'大阪府和泉市伯太町2丁目33-37',tel:'TEL:0725-41-1306　FAX:0725-41-1308'};
+// インボイス制度対応: 請求書に必須表示する登録番号・振込先
+const INVOICE_REG_NO='T7-1201-0104-8746';
+const INVOICE_BANK_INFO={bank:'池田泉州銀行　和泉支店',type:'当座',no:'1000030',holder:'株式会社マツオ'};
 const QUOTE_MAKER_COLORS=['#e8f0f8','#e8f4ec','#fdf0ec','#f4ede8','#f0ecf8','#fff8e8','#eef4fb'];
 let quoteLines=[]; // {pid,maker,name,hinmei,qty,teika,rate,tanka}
 
@@ -4691,6 +4694,7 @@ function generateInvoicePdf(){
     +'<div style="font-size:11px;line-height:1.8;text-align:left;">'
     +'<div style="font-size:14px;font-weight:700;">'+c.name+'</div>'
     +'<div>担当者: '+(staff||'')+'</div><div>'+c.zip+'</div><div>'+c.addr+'</div><div>'+c.tel+'</div>'
+    +'<div>登録番号: '+INVOICE_REG_NO+'</div>'
     +'</div>'
     +'<div style="flex-shrink:0;width:72px;height:72px;display:flex;align-items:center;justify-content:center;">'
     +'<img src="'+LOGO_BIG+'" alt="マツオ" style="width:64px;height:64px;object-fit:contain;">'
@@ -4711,7 +4715,11 @@ function generateInvoicePdf(){
     +'<tr><td style="padding:4px 12px;color:#555;">消費税(10%)</td><td style="padding:4px 12px;text-align:right;">¥'+tax.toLocaleString()+'</td></tr>'
     +'<tr style="border-top:2px solid #1a1714;"><td style="padding:5px 12px;font-weight:700;">合計</td><td style="padding:5px 12px;text-align:right;font-weight:700;font-size:16px;">¥'+tot.toLocaleString()+'</td></tr>'
     +'</table></div>'
-    +'<div style="font-size:11px;color:#555;margin-top:16px;line-height:1.9;border-top:1px solid #ddd;padding-top:10px;">'
+    +'<div style="font-size:11px;color:#333;margin-top:16px;line-height:1.9;border-top:1px solid #ddd;padding-top:10px;">'
+    +'<div style="font-weight:700;margin-bottom:3px;">お振込先</div>'
+    +INVOICE_BANK_INFO.holder+'　振込先<br>'+INVOICE_BANK_INFO.bank+'　'+INVOICE_BANK_INFO.type+'　'+INVOICE_BANK_INFO.no+'<br>登録番号: '+INVOICE_REG_NO
+    +'</div>'
+    +'<div style="font-size:11px;color:#555;margin-top:10px;line-height:1.9;">'
     +'<div style="font-weight:700;color:#333;margin-bottom:3px;">備考</div>'+footerHtml+'</div>';
   closeModal('modalInvoice');
   var pdfFilename=getInvoicePdfFilename(title, dateVal);
