@@ -18,7 +18,7 @@
 }
 html{background-color:#f0ede8;}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Noto Sans JP',sans-serif;background-color:#f0ede8;background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px;}
+body{font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;background-color:#f0ede8;background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px;}
 .header{background:var(--nav-bg);color:#faf8f5;padding:14px 16px 12px;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px var(--shadow);}
 .header-title{font-size:17px;font-weight:700;letter-spacing:.04em;}
 /* ─── スクリーン共通: 横スクロール防止・背景固定 ─── */
@@ -122,9 +122,9 @@ body.font-xl .rsv-card-meta{font-size:14px;}
 .section-hd h2{font-size:13px;font-weight:700;color:var(--ink2);letter-spacing:.05em;text-transform:uppercase;}
 /* SEARCH */
 .search-row{display:flex;gap:8px;margin-bottom:8px;overflow:hidden;}
-.search-input{flex:1 1 0;min-width:0;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-family:'Noto Sans JP',sans-serif;font-size:14px;color:var(--ink);outline:none;transition:border-color .15s;}
+.search-input{flex:1 1 0;min-width:0;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;font-size:14px;color:var(--ink);outline:none;transition:border-color .15s;}
 .search-input:focus{border-color:var(--accent);}
-.filter-select{flex-shrink:0;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:9px 8px;font-family:'Noto Sans JP',sans-serif;font-size:13px;color:var(--ink);outline:none;}
+.filter-select{flex-shrink:0;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:9px 8px;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;font-size:13px;color:var(--ink);outline:none;}
 /* 倉庫選択（全倉庫/に/ほ/5番/6番/自社） */
 #filterWh{width:82px;}
 /* メーカー選択（全メーカー〜パナソニック等） */
@@ -142,7 +142,7 @@ body.font-xl #priceMakerFilter{width:124px;}
 .pc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
 .pc-name{font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;}
 .pc-total{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:600;color:var(--accent);}
-.pc-total span{font-size:11px;color:var(--ink3);font-family:'Noto Sans JP',sans-serif;}
+.pc-total span{font-size:11px;color:var(--ink3);font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;}
 .pc-warehouses{display:flex;gap:6px;flex-wrap:wrap;}
 .wh-badge{display:flex;align-items:center;gap:3px;padding:3px 8px;border-radius:20px;font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:600;}
 .wh-badge.ni{background:#e8f0f8;color:var(--ni);}.wh-badge.ho{background:#e8f4ec;color:var(--ho);}
@@ -156,7 +156,7 @@ body.font-xl #priceMakerFilter{width:124px;}
 .fab:active{transform:scale(.93);}
 /* BOTTOM NAV */
 .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--nav-bg);display:flex;padding:11px 0 max(11px,env(safe-area-inset-bottom));z-index:100;box-shadow:0 -2px 8px var(--shadow);}
-.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;color:rgba(255,255,255,.65);font-family:'Noto Sans JP',sans-serif;font-size:10px;cursor:pointer;padding:8px 0;transition:color .15s;}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;color:rgba(255,255,255,.65);font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;font-size:10px;cursor:pointer;padding:8px 0;transition:color .15s;}
 .nav-btn.active{color:#fff;}
 .nav-btn svg{width:23px;height:23px;}
 /* MODAL */
@@ -170,7 +170,7 @@ body.font-xl #priceMakerFilter{width:124px;}
 /* FORMS */
 .form-group{margin-bottom:14px;}
 .form-label{font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:5px;display:block;letter-spacing:.04em;text-transform:uppercase;}
-.form-input,.form-select,.form-textarea{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Noto Sans JP',sans-serif;font-size:15px;color:var(--ink);outline:none;transition:border-color .15s;}
+.form-input,.form-select,.form-textarea{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;font-size:15px;color:var(--ink);outline:none;transition:border-color .15s;}
 .form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent);}
 .form-textarea{min-height:60px;resize:vertical;}
 .wh-qty-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
@@ -186,16 +186,16 @@ body.font-xl #priceMakerFilter{width:124px;}
 .rsv-deduct-badge.on{background:#fdf0ec;color:var(--accent);}
 .rsv-deduct-badge.off{background:#e8f4ec;color:var(--green);}
 .seg-toggle{display:flex;background:var(--surface2);border-radius:8px;padding:3px;gap:3px;}
-.seg-toggle button{flex:1;padding:8px;border:none;border-radius:6px;font-family:'Noto Sans JP',sans-serif;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:var(--ink3);}
+.seg-toggle button{flex:1;padding:8px;border:none;border-radius:6px;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:var(--ink3);}
 .seg-toggle button.active{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px var(--shadow);}
-.btn{flex:1;padding:13px;border-radius:10px;border:none;font-family:'Noto Sans JP',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:transform .12s,opacity .12s;}
+.btn{flex:1;padding:13px;border-radius:10px;border:none;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:transform .12s,opacity .12s;}
 .btn:active{transform:scale(.97);opacity:.85;}
 .btn-primary{background:var(--accent);color:#fff;}.btn-secondary{background:var(--surface2);color:var(--ink2);}
 .btn-danger{background:#fdf0ec;color:var(--accent);}.btn-green{background:var(--green);color:#fff;}
 .btn-blue{background:var(--blue);color:#fff;}.btn-full{width:100%;}.btn-amber{background:var(--accent2);color:#fff;}
 /* OP BUTTONS */
 .op-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
-.op-btn{padding:14px;border-radius:10px;border:none;font-family:'Noto Sans JP',sans-serif;font-size:14px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:transform .12s;}
+.op-btn{padding:14px;border-radius:10px;border:none;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;font-size:14px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:transform .12s;}
 .op-btn:active{transform:scale(.96);}
 .op-btn svg{width:24px;height:24px;}
 .op-btn.nyuko{background:#e8f4ec;color:var(--green);}.op-btn.shuko{background:#fdf0ec;color:var(--accent);}
@@ -270,17 +270,17 @@ body.font-xl #priceMakerFilter{width:124px;}
 @keyframes spin{to{transform:rotate(360deg);}}
 /* MODE TOGGLE */
 .mode-toggle{display:flex;background:var(--surface2);border-radius:10px;padding:3px;gap:3px;margin-bottom:14px;}
-.mode-btn{flex:1;padding:8px;border:none;border-radius:8px;font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--ink3);transition:all .15s;}
+.mode-btn{flex:1;padding:8px;border:none;border-radius:8px;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--ink3);transition:all .15s;}
 .mode-btn.active{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px var(--shadow);}
 /* NYUKO STOCK INFO */
 .stock-info-box{background:var(--surface);border-radius:10px;padding:12px;margin-bottom:14px;box-shadow:0 1px 3px var(--shadow);}
 .stock-info-label{font-size:12px;font-weight:700;color:var(--ink3);margin-bottom:8px;}
 /* PDF preview */
 #pdf-preview{display:none;position:fixed;inset:0;background:#fff;z-index:300;overflow-y:auto;padding:20px;}
-.pdf-close{position:fixed;top:10px;right:10px;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;z-index:301;}
-.pdf-print-btn{position:fixed;top:10px;right:80px;background:var(--green);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;z-index:301;}
+.pdf-close{position:fixed;top:10px;right:10px;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;z-index:301;}
+.pdf-print-btn{position:fixed;top:10px;right:80px;background:var(--green);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;z-index:301;}
 @media print{body>*:not(#pdf-preview){display:none!important;}#pdf-preview{position:static!important;overflow:visible!important;height:auto!important;padding:10px!important;background:#fff!important;inset:unset!important;}.pdf-close,.pdf-print-btn,.pdf-share-btn,.pdf-save-btn{display:none!important;}}
-.pdf-doc{max-width:740px;margin:40px auto 0;font-family:'Noto Sans JP',sans-serif;}
+.pdf-doc{max-width:740px;margin:40px auto 0;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;}
 .pdf-doc h1{font-size:20px;font-weight:700;text-align:center;margin-bottom:4px;}
 .pdf-date{text-align:center;font-size:12px;color:#888;margin-bottom:20px;}
 .pdf-table{width:100%;border-collapse:collapse;font-size:12px;}
@@ -301,7 +301,7 @@ body.font-xl #priceMakerFilter{width:124px;}
 .ai-price-error{font-size:12px;color:var(--accent);padding:4px 0;}
 /* MAKER COMBO */
 .maker-combo{position:relative;}
-.maker-combo-input{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:10px 38px 10px 12px;font-family:'Noto Sans JP',sans-serif;font-size:15px;color:var(--ink);outline:none;transition:border-color .15s;}
+.maker-combo-input{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:10px 38px 10px 12px;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;font-size:15px;color:var(--ink);outline:none;transition:border-color .15s;}
 .maker-combo-input:focus{border-color:var(--accent);}
 .maker-combo-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--ink3);font-size:14px;padding:4px;}
 .maker-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;box-shadow:0 4px 16px var(--shadow);z-index:999;max-height:200px;overflow-y:auto;display:none;}
@@ -365,7 +365,7 @@ body.font-xl #priceMakerFilter{width:124px;}
     <div class="header-sub">4倉庫一括管理システム（タップで更新）</div>
   </div>
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
-    <button id="fontToggleBtn" onclick="toggleFontSize()" style="background:rgba(255,255,255,.16);color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;white-space:nowrap;line-height:1;">あ＋</button>
+    <button id="fontToggleBtn" onclick="toggleFontSize()" style="background:rgba(255,255,255,.16);color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;white-space:nowrap;line-height:1;">あ＋</button>
     <div class="header-date" id="headerDate"></div>
   </div>
 </div>
@@ -385,11 +385,11 @@ body.font-xl #priceMakerFilter{width:124px;}
   </div>
   <div class="section-hd" style="flex-wrap:wrap;gap:6px;"><h2>商品一覧</h2><span id="product-count" style="font-size:12px;color:var(--ink3)"></span>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;">
-      <button onclick="openAddModal()" style="background:var(--accent);color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;">＋ 新規商品を登録</button>
-      <button id="btnSeriesDetect" onclick="openSeriesDetect()" style="background:#8b5cf6;color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;display:none;">📡 シリーズを自動判定</button>
-      <button id="btnYearDetect" onclick="openYearDetect()" style="background:#3e7d52;color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;display:none;">🗓 エアコン年式で自動分類</button>
-      <button id="btnMakerUnify" onclick="openMakerUnify()" style="background:var(--ho);color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;display:none;">🏭 メーカー名を統一</button>
-      <button id="btnAutoCategory" onclick="openAutoCategory()" style="background:var(--blue);color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;display:none;">🤖 未分類を自動分類</button>
+      <button onclick="openAddModal()" style="background:var(--accent);color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;">＋ 新規商品を登録</button>
+      <button id="btnSeriesDetect" onclick="openSeriesDetect()" style="background:#8b5cf6;color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;display:none;">📡 シリーズを自動判定</button>
+      <button id="btnYearDetect" onclick="openYearDetect()" style="background:#3e7d52;color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;display:none;">🗓 エアコン年式で自動分類</button>
+      <button id="btnMakerUnify" onclick="openMakerUnify()" style="background:var(--ho);color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;display:none;">🏭 メーカー名を統一</button>
+      <button id="btnAutoCategory" onclick="openAutoCategory()" style="background:var(--blue);color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;display:none;">🤖 未分類を自動分類</button>
     </div>
   </div>
   <div class="search-row">
@@ -619,7 +619,7 @@ body.font-xl #priceMakerFilter{width:124px;}
     <div class="section-hd" style="margin-bottom:8px;">
       <h2>商品情報・価格</h2>
       <div style="display:flex;gap:6px;align-items:center;">
-        <button onclick="openAddModal()" style="background:var(--accent);color:#fff;border:none;border-radius:7px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;white-space:nowrap;">＋ 新規登録</button>
+        <button onclick="openAddModal()" style="background:var(--accent);color:#fff;border:none;border-radius:7px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;white-space:nowrap;">＋ 新規登録</button>
         <button class="btn btn-secondary" style="padding:6px 12px;border-radius:6px;font-size:12px;" onclick="lockPrice()">🔒 ロック</button>
       </div>
     </div>
@@ -1430,6 +1430,16 @@ body.font-xl #priceMakerFilter{width:124px;}
       </div>
       <div style="font-size:11px;color:var(--ink3);margin-top:6px;">※登録済みの定価・売値が自動で入ります。手入力で明細を追加することも可能です。</div>
       <button class="btn btn-secondary" style="width:100%;margin-top:6px;padding:8px;font-size:12px;" type="button" onclick="addQuoteLineManual()">✏️ 手入力で1行追加</button>
+      <div style="height:1px;background:var(--border);margin:10px 0;"></div>
+      <div style="font-size:11px;color:var(--ink3);margin-bottom:6px;">📷 見積依頼メモ・仕様書・商品リストなどの写真から、AIが明細を読み取って追加します。</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-blue" style="flex:1;padding:9px;font-size:12px;" type="button" onclick="document.getElementById('quoteCameraInput').click()">📷 カメラで撮影</button>
+        <button class="btn btn-secondary" style="flex:1;padding:9px;font-size:12px;" type="button" onclick="document.getElementById('quoteFileInput').click()">🖼 アルバム/ファイル</button>
+      </div>
+      <input type="file" id="quoteCameraInput" accept="image/*" capture="environment" onchange="handleQuotePhoto(event)" style="display:none;">
+      <input type="file" id="quoteFileInput" accept="image/*,application/pdf" onchange="handleQuotePhoto(event)" style="display:none;">
+      <img id="quoteAiPreview" class="ai-preview">
+      <div id="quoteAiStatus" class="ai-status" style="display:none;"></div>
     </div>
 
     <div id="quote-lines"></div>
@@ -1493,6 +1503,16 @@ body.font-xl #priceMakerFilter{width:124px;}
       </div>
       <div style="font-size:11px;color:var(--ink3);margin-top:6px;">※登録済みの定価・売値が自動で入ります。手入力で明細を追加することも可能です（納品書の内容をそのまま転記する場合など）。</div>
       <button class="btn btn-secondary" style="width:100%;margin-top:6px;padding:8px;font-size:12px;" type="button" onclick="addInvoiceLineManual()">✏️ 手入力で1行追加</button>
+      <div style="height:1px;background:var(--border);margin:10px 0;"></div>
+      <div style="font-size:11px;color:var(--ink3);margin-bottom:6px;">📷 納品書・見積書などの写真から、AIが商品名・数量・単位・単価・摘要を読み取って明細に追加します。</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-blue" style="flex:1;padding:9px;font-size:12px;" type="button" onclick="document.getElementById('invoiceCameraInput').click()">📷 カメラで撮影</button>
+        <button class="btn btn-secondary" style="flex:1;padding:9px;font-size:12px;" type="button" onclick="document.getElementById('invoiceFileInput').click()">🖼 アルバム/ファイル</button>
+      </div>
+      <input type="file" id="invoiceCameraInput" accept="image/*" capture="environment" onchange="handleInvoicePhoto(event)" style="display:none;">
+      <input type="file" id="invoiceFileInput" accept="image/*,application/pdf" onchange="handleInvoicePhoto(event)" style="display:none;">
+      <img id="invoiceAiPreview" class="ai-preview">
+      <div id="invoiceAiStatus" class="ai-status" style="display:none;"></div>
     </div>
 
     <div id="invoice-lines"></div>
@@ -1521,8 +1541,8 @@ body.font-xl #priceMakerFilter{width:124px;}
 <!-- PDF PREVIEW -->
 <div id="pdf-preview">
   <button class="pdf-print-btn" onclick="doPrintPdf()">🖨 印刷/PDF保存</button>
-  <button class="pdf-share-btn" onclick="doSharePdf()" style="position:fixed;top:10px;right:170px;background:#1565c0;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;z-index:301;">📤 共有</button>
-  <button class="pdf-save-btn" onclick="saveCurrentDoc()" style="position:fixed;top:10px;right:250px;background:#2d7a4f;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;z-index:301;">💾 保存</button>
+  <button class="pdf-share-btn" onclick="doSharePdf()" style="position:fixed;top:10px;right:170px;background:#1565c0;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;z-index:301;">📤 共有</button>
+  <button class="pdf-save-btn" onclick="saveCurrentDoc()" style="position:fixed;top:10px;right:250px;background:#2d7a4f;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;z-index:301;">💾 保存</button>
   <button class="pdf-close" onclick="_autoSaveCurrentDoc();document.getElementById('pdf-preview').style.display='none';document.title='マツオ情報ポータル'">✕ 閉じる</button>
   <div class="pdf-doc" id="pdf-content"></div>
 </div>
@@ -2989,7 +3009,7 @@ function renderWhDetailList(){
       +'<div class="wh-detail-meta">'+tags+'</div>'
       +(p.note?'<div style="font-size:10px;color:var(--ink3);margin-top:2px;">📝 '+p.note+'</div>':'')
       +'</div>'
-      +'<div class="wh-detail-qty" style="margin-left:12px;">'+freeQty+'<span style="font-size:11px;color:var(--ink3);font-weight:400;font-family:\'Noto Sans JP\',sans-serif;"> 台</span></div>'
+      +'<div class="wh-detail-qty" style="margin-left:12px;">'+freeQty+'<span style="font-size:11px;color:var(--ink3);font-weight:400;font-family:\'MS Gothic\',\'MS PGothic\',\'Noto Sans JP\',sans-serif;"> 台</span></div>'
       +'</div>';
   }).join('');
 }
@@ -3166,7 +3186,7 @@ function renderPriceList(){
           </div>
           <div class="price-card-maker" style="display:flex;align-items:center;gap:4px;">${makerLogoHtml(p.maker||'',14)} ${p.maker||'―'} ${p.category?'・ '+p.category:''}</div>
         </div>
-        <div style="text-align:right;">${mpHtml}<button onclick="editPriceProduct('${p.id}')" style="display:block;margin-top:4px;background:var(--surface2);border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;color:var(--ink2);">✏️ 編集</button></div>
+        <div style="text-align:right;">${mpHtml}<button onclick="editPriceProduct('${p.id}')" style="display:block;margin-top:4px;background:var(--surface2);border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;color:var(--ink2);">✏️ 編集</button></div>
       </div>
       ${hasPrice?`<div class="price-row" style="grid-template-columns:${priceColStyle};">
         ${teika?`<div class="price-box"><div class="price-box-label">税別定価</div><div class="price-box-val" style="color:var(--ink2);font-size:15px;">${fmt(teika)}</div></div>`:''}
@@ -3726,7 +3746,7 @@ function renderAiItems(){
     return`<div class="ai-item" id="ai-item-${i}">
       <div class="ai-item-header">
         <div>
-          <div class="ai-item-maker"><input type="text" style="background:transparent;border:none;outline:none;font-size:11px;color:var(--ink3);width:100%;font-family:'Noto Sans JP',sans-serif;" id="ai-maker-${i}" value="${item.maker||''}" placeholder="メーカー名"></div>
+          <div class="ai-item-maker"><input type="text" style="background:transparent;border:none;outline:none;font-size:11px;color:var(--ink3);width:100%;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;" id="ai-maker-${i}" value="${item.maker||''}" placeholder="メーカー名"></div>
           <div class="ai-item-name"><input type="text" style="background:transparent;border:none;outline:none;font-size:13px;font-weight:700;width:100%;font-family:'JetBrains Mono',monospace;" id="ai-name-${i}" value="${item.name||''}" placeholder="型番" list="productNameList" autocomplete="off"></div>
         </div>
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
@@ -4120,6 +4140,47 @@ function addQuoteLineManual(){
   quoteLines.push({pid:null,maker:'その他',name:'',hinmei:'',qty:1,teika:0,rate:0,tanka:0,bikou:''});
   renderQuoteLines();
 }
+// ─── 写真から見積明細を読み取り追加（AI） ─────────────────────────
+async function handleQuotePhoto(event){
+  const file=event.target.files[0]; if(!file) return;
+  const img=document.getElementById('quoteAiPreview');
+  setAiPreview(img,file);
+  const statusEl=document.getElementById('quoteAiStatus');
+  statusEl.style.display='block';
+  statusEl.className='ai-status loading';
+  statusEl.innerHTML='<span class="spinner"></span>AIが読み取り中…';
+  _aiStatusCb=function(msg){ statusEl.innerHTML='<span class="spinner"></span>'+msg; };
+  const existingList=data.products.map(function(p){return (p.maker||'')+'　'+p.name;}).join('\n');
+  const prompt='あなたは電気設備資材卸のプロです。\n入力（画像・PDF）は見積依頼のメモ・仕様書・商品リスト・納品書などです。\nメーカー、品番・型番、品名・仕様、数量、単価（記載があれば）を読み取ってください。\n\n既存の登録商品リスト（参考・できるだけこの型番に一致させる）:\n'+existingList+'\n\n必ず以下のJSON形式のみで返答してください。他の文章は一切不要です:\n{\n  "items": [\n    {\n      "maker": "メーカー名（不明なら空文字）",\n      "name": "型番・商品名",\n      "hinmei": "品名・仕様（なければ空文字）",\n      "qty": 数量（数値、不明なら1）,\n      "tanka": 単価（数値、記載がなければ0）\n    }\n  ]\n}';
+  try{
+    const parts=await fileToAiParts(file,prompt);
+    const result=await callGemini({contents:[{parts:parts}],generationConfig:{responseMimeType:'application/json',temperature:0}});
+    const text=geminiText(result);
+    const cleaned=text.replace(/```json|```/g,'').trim();
+    const parsed=JSON.parse(cleaned);
+    const items=parsed.items||[];
+    if(!items.length){
+      statusEl.className='ai-status error';
+      statusEl.innerHTML='⚠️ 明細を読み取れませんでした。別の写真をお試しください。';
+      return;
+    }
+    items.forEach(function(it){
+      var p=findProductByName(it.name);
+      var teika=p?(p.teika||0):0;
+      var tanka=(it.tanka&&it.tanka>0)?it.tanka:(p?(p.sell||0):0);
+      var rate=(teika>0&&tanka>0)?Math.round(tanka/teika*100):0;
+      quoteLines.push({pid:p?p.id:null,maker:it.maker||(p?p.maker:'')||'その他',name:it.name||'',hinmei:it.hinmei||'',qty:parseInt(it.qty)||1,teika:teika,rate:rate,tanka:tanka,bikou:''});
+    });
+    renderQuoteLines();
+    statusEl.className='ai-status';
+    statusEl.innerHTML='✅ '+items.length+'件の明細を追加しました。内容を確認してください。';
+  }catch(e){
+    statusEl.className='ai-status error';
+    statusEl.innerHTML='❌ '+e.message;
+  }finally{
+    _aiStatusCb=null;
+  }
+}
 function removeQuoteLine(i){ quoteLines.splice(i,1); renderQuoteLines(); }
 function insertQuoteStock(i){
   var L=quoteLines[i];
@@ -4491,6 +4552,42 @@ function addInvoiceLine(){
 function addInvoiceLineManual(){
   invoiceLines.push({name:'',hinmei:'',qty:1,unit:'個',tanka:0,bikou:''});
   renderInvoiceLines();
+}
+// ─── 写真から請求明細を読み取り追加（AI） ─────────────────────────
+async function handleInvoicePhoto(event){
+  const file=event.target.files[0]; if(!file) return;
+  const img=document.getElementById('invoiceAiPreview');
+  setAiPreview(img,file);
+  const statusEl=document.getElementById('invoiceAiStatus');
+  statusEl.style.display='block';
+  statusEl.className='ai-status loading';
+  statusEl.innerHTML='<span class="spinner"></span>AIが読み取り中…';
+  _aiStatusCb=function(msg){ statusEl.innerHTML='<span class="spinner"></span>'+msg; };
+  const prompt='あなたは経理事務の専門家です。\n入力（画像・PDF）は納品書・見積書・請求書などの明細書類です。\n各行の商品名、数量、単位（台・個・本・面・式など）、単価、摘要（備考・記号）を読み取ってください。\n単価が無く金額のみ記載されている場合は、金額÷数量で単価を算出してください。\n\n必ず以下のJSON形式のみで返答してください。他の文章は一切不要です:\n{\n  "items": [\n    {\n      "name": "商品名（型番含む）",\n      "hinmei": "品名・仕様の補足（なければ空文字）",\n      "qty": 数量（数値、不明なら1）,\n      "unit": "単位（不明なら式）",\n      "tanka": 単価（数値）,\n      "bikou": "摘要・備考（なければ空文字）"\n    }\n  ]\n}';
+  try{
+    const parts=await fileToAiParts(file,prompt);
+    const result=await callGemini({contents:[{parts:parts}],generationConfig:{responseMimeType:'application/json',temperature:0}});
+    const text=geminiText(result);
+    const cleaned=text.replace(/```json|```/g,'').trim();
+    const parsed=JSON.parse(cleaned);
+    const items=parsed.items||[];
+    if(!items.length){
+      statusEl.className='ai-status error';
+      statusEl.innerHTML='⚠️ 明細を読み取れませんでした。別の写真をお試しください。';
+      return;
+    }
+    items.forEach(function(it){
+      invoiceLines.push({name:it.name||'',hinmei:it.hinmei||'',qty:parseInt(it.qty)||1,unit:it.unit||'式',tanka:parseFloat(it.tanka)||0,bikou:it.bikou||''});
+    });
+    renderInvoiceLines();
+    statusEl.className='ai-status';
+    statusEl.innerHTML='✅ '+items.length+'件の明細を追加しました。内容を確認してください。';
+  }catch(e){
+    statusEl.className='ai-status error';
+    statusEl.innerHTML='❌ '+e.message;
+  }finally{
+    _aiStatusCb=null;
+  }
 }
 function removeInvoiceLine(i){ invoiceLines.splice(i,1); renderInvoiceLines(); }
 function _invoiceRecalc(i){
@@ -4947,7 +5044,7 @@ function reserveRowsHtml(rows){
       +'<div class="rsv-card-qty" style="display:flex;align-items:center;gap:4px;">'
       +'<input type="number" id="'+qtyId+'" value="'+r.qty+'" min="1" style="width:56px;border:1.5px solid var(--border);border-radius:6px;padding:3px 6px;font-size:15px;font-family:\'JetBrains Mono\',monospace;font-weight:700;color:var(--accent2);text-align:center;">'
       +'<span style="font-size:11px;color:var(--ink3);"> 台</span>'
-      +'<button onclick="saveReserveQty(\''+p.id+'\','+x.idx+',document.getElementById(\''+qtyId+'\').value)" style="background:var(--blue);color:#fff;border:none;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;font-family:\'Noto Sans JP\',sans-serif;">変更</button>'
+      +'<button onclick="saveReserveQty(\''+p.id+'\','+x.idx+',document.getElementById(\''+qtyId+'\').value)" style="background:var(--blue);color:#fff;border:none;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;font-family:\'MS Gothic\',\'MS PGothic\',\'Noto Sans JP\',sans-serif;">変更</button>'
       +'</div></div>'
       +'<div class="rsv-card-meta"><span class="wh-badge '+r.wh+'"><span class="wh-dot"></span>'+WH_LABELS[r.wh]+'</span>'
       +'<span>得意先: <span class="rsv-customer">'+(r.customer||r.name||'未記入')+'</span></span></div>'
