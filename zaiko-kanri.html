@@ -2934,7 +2934,8 @@ async function saveBPriceItems(){
 // ═══ 価格ルール設定（メーカー・ジャンル・シリーズ・品番別） ═════
 // 初期値の出典: Obsidian second-brain「見積計算ルール（標準得意先版）」(2026-05-26版)
 // ルームエアコンは全メーカー共通「仕入掛率+3%」方式:
-//   売値 = 定価 ×（仕入値÷定価 + 3pt）。定価なしのオープン価格品は 仕入×1.1 千円繰上。
+//   売値 = 定価 ×（仕入値÷定価 + 3pt）→ 千円未満切上（○万○千円単位で管理）。
+//   定価なしのオープン価格品は 仕入×1.1 千円繰上。
 const PR_LS_KEY='price_rules_v1';
 const PR_ROUND_LABELS={none:'端数処理なし',round1:'1円四捨五入',up10:'10円未満切上',up100:'100円未満切上',up1000:'千円未満切上',round1000:'千円四捨五入'};
 const DEFAULT_PRICE_RULES=[
@@ -2959,7 +2960,7 @@ const DEFAULT_PRICE_RULES=[
   {maker:'河村電器',cat:'',series:'',prefix:'',base:'cost',pct:115,round:'up1000',memo:'盤類 仕入NET×1.15 千円切上'},
   {maker:'有馬工業所',cat:'',series:'',prefix:'',base:'cost',pct:112,round:'up1000',memo:'枠・BOX 仕入NET×1.12 千円切上（集約禁止）'},
   {maker:'',cat:'電線',series:'',prefix:'',base:'cost',pct:112,round:'round1',memo:'電線 仕入単価×1.12 四捨五入'},
-  {maker:'',cat:'ルームエアコン',series:'',prefix:'',calc:'plus3',base:'teika',pct:3,round:'up10',memo:'ルームエアコン 定価×(仕入掛率+3pt) 全メーカー共通'},
+  {maker:'',cat:'ルームエアコン',series:'',prefix:'',calc:'plus3',base:'teika',pct:3,round:'up1000',memo:'ルームエアコン 定価×(仕入掛率+3pt) 千円繰上 全メーカー共通'},
   {maker:'',cat:'ルームエアコン',series:'',prefix:'',calc:'rate',base:'cost',pct:110,round:'up1000',memo:'ルームエアコン オープン価格品（定価なし） 仕入×1.1 千円繰上'}
 ];
 let prRules=null;
