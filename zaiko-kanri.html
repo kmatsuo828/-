@@ -355,6 +355,12 @@ body.font-xl #priceMakerFilter{width:124px;}
 .ql-amt{font-size:13px;font-weight:700;padding:5px 0;}
 .ql-bikou{display:flex;gap:6px;align-items:center;margin-top:6px;}
 .ql-stock-btn{border:none;background:var(--jisha);color:#fff;border-radius:6px;padding:6px 9px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex:none;}
+/* ═══ 価格ルール設定の行 ═══ */
+.pr-rule{margin-bottom:8px;}
+.pr-row{display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;margin-bottom:5px;}
+.pr-row:last-child{margin-bottom:0;}
+.pr-f{min-width:0;}
+.pr-f .form-select.ql-input-sm{padding:5px 4px;font-size:11px;}
 /* ═══ マウス操作環境（PC）: ホバー反応 ═══ */
 @media (hover:hover) and (pointer:fine){
   .btn:hover,.ql-del:hover,.ql-stock-btn:hover,.pdf-toolbar button:hover{filter:brightness(.93);}
@@ -432,6 +438,7 @@ body.font-xl #priceMakerFilter{width:124px;}
       <button id="btnSeriesDetect" onclick="openSeriesDetect()" style="background:#8b5cf6;color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;display:none;">📡 シリーズを自動判定</button>
       <button id="btnYearDetect" onclick="openYearDetect()" style="background:#3e7d52;color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;display:none;">🗓 エアコン年式で自動分類</button>
       <button id="btnMakerUnify" onclick="openMakerUnify()" style="background:var(--ho);color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;display:none;">🏭 メーカー名を統一</button>
+      <button id="btnMakerAssign" onclick="openMakerAssign()" style="background:var(--roku);color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;display:none;">🏷 メーカー未登録を一括設定</button>
       <button id="btnAutoCategory" onclick="openAutoCategory()" style="background:var(--blue);color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;display:none;">🤖 未分類を自動分類</button>
     </div>
   </div>
@@ -667,7 +674,8 @@ body.font-xl #priceMakerFilter{width:124px;}
       </div>
     </div>
     <button class="btn btn-blue btn-full" onclick="openBulkPrice()" style="margin-bottom:6px;padding:11px;font-size:13px;">💴 価格・情報を一括更新 / AI検索</button>
-    <button class="btn btn-amber btn-full" onclick="openSellRate()" style="margin-bottom:10px;padding:11px;font-size:13px;">📊 売値を一括計算（定価・仕入値の %）</button>
+    <button class="btn btn-amber btn-full" onclick="openSellRate()" style="margin-bottom:6px;padding:11px;font-size:13px;">📊 売値を一括計算（定価・仕入値の %）</button>
+    <button class="btn btn-blue btn-full" onclick="openPriceRules()" style="margin-bottom:10px;padding:11px;font-size:13px;">⚙️ 価格ルール設定（メーカー・ジャンル別の売値ルール）</button>
     <div class="search-row" style="margin-bottom:4px;">
       <input type="text" class="search-input" placeholder="型番・メーカーで検索…" id="priceSearchInput" oninput="renderPriceList()">
       <select class="filter-select" id="priceMakerFilter" onchange="renderPriceList()"><option value="all">全メーカー</option></select>
@@ -1108,6 +1116,26 @@ body.font-xl #priceMakerFilter{width:124px;}
   </div>
 </div>
 
+<!-- MODAL: MAKER ASSIGN (メーカー未登録の一括設定) -->
+<div class="modal-overlay" id="modalMakerAssign">
+  <div class="modal modal-wide">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🏷 メーカー未登録を一括設定</div>
+    <div class="modal-subtitle">メーカーが空欄の商品を一覧表示します。「AIで判定」を押すと型番の命名規則からメーカーを推定して入力します。手入力・修正もできます。</div>
+    <button id="maStartBtn" class="btn btn-blue btn-full" onclick="startMakerAssignAI()" style="padding:12px;margin-bottom:10px;">🤖 AIでメーカーを判定</button>
+    <div id="makerAssignStatus" class="ai-status" style="display:none;"></div>
+    <div id="makerAssignBody"></div>
+    <div id="makerAssignActions" style="display:none;">
+      <div style="font-size:11px;color:var(--ink3);margin-bottom:8px;">メーカー名は修正できます。チェックした商品のみ保存します（空欄のままの行は保存されません）。</div>
+      <button class="btn btn-green btn-full" onclick="saveMakerAssign()" style="padding:14px;font-size:15px;">💾 チェックした商品にメーカーを設定</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary btn-full" onclick="closeModal('modalMakerAssign')">閉じる</button>
+    </div>
+  </div>
+</div>
+<datalist id="maMakerList"></datalist>
+
 <!-- MODAL: YEAR DETECT (ルームエアコン年式) -->
 <div class="modal-overlay" id="modalYearDetect">
   <div class="modal">
@@ -1331,6 +1359,47 @@ body.font-xl #priceMakerFilter{width:124px;}
     </div>
   </div>
 </div>
+
+<!-- MODAL: PRICE RULES (価格ルール設定) -->
+<div class="modal-overlay" id="modalPriceRules">
+  <div class="modal modal-wide">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚙️ 価格ルール設定</div>
+    <div class="modal-subtitle">メーカー・ジャンル・シリーズ・品番の先頭文字ごとに売値の計算ルールを登録します。「標準得意先版 見積計算ルール」を初期値として搭載しています。</div>
+
+    <div id="pr-sync-note" style="font-size:11px;color:var(--ink3);background:var(--surface2);border-radius:8px;padding:8px 10px;margin-bottom:10px;"></div>
+
+    <div id="pr-rules-list" style="margin-bottom:8px;"></div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;">
+      <button class="btn btn-blue" style="flex:1;padding:10px;font-size:13px;" type="button" onclick="addPriceRule()">＋ ルールを追加</button>
+      <button class="btn btn-secondary" style="flex:1;padding:10px;font-size:13px;" type="button" onclick="resetPriceRulesToDefault()">↺ 初期ルールに戻す</button>
+    </div>
+
+    <div style="height:1px;background:var(--border);margin:4px 0 12px;"></div>
+
+    <div class="form-group" style="margin-bottom:8px;">
+      <label class="form-label">一括適用の対象商品</label>
+      <div class="seg-toggle">
+        <button id="pr-target-nosell" class="active" type="button" onclick="setPrTarget('nosell')">売値未設定のみ</button>
+        <button id="pr-target-all" type="button" onclick="setPrTarget('all')">全商品（上書き）</button>
+      </div>
+    </div>
+    <button class="btn btn-blue btn-full" onclick="renderPrPreview()" style="padding:11px;margin-bottom:10px;">🔍 ルール適用のプレビュー</button>
+
+    <div id="prPreviewArea" style="display:none;">
+      <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:6px;" id="prPreviewTitle"></div>
+      <div id="prPreviewBody" style="max-height:260px;overflow-y:auto;"></div>
+      <button class="btn btn-green btn-full" onclick="applyPriceRules()" style="padding:13px;margin-top:8px;font-size:15px;">💾 チェックした商品の売値を設定</button>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-green btn-full" onclick="savePriceRulesAndClose()">💾 ルールを保存して閉じる</button>
+      <button class="btn btn-secondary btn-full" onclick="closeModal('modalPriceRules')">閉じる</button>
+    </div>
+  </div>
+</div>
+<datalist id="prMakerList"></datalist>
+<datalist id="prCatList"></datalist>
 
 <!-- MODAL: BULK PRICE UPDATE -->
 <div class="modal-overlay" id="modalBulkPrice">
@@ -1741,6 +1810,7 @@ let HAS_CATEGORY = false;
 let HAS_CUSTOMERS = false;
 let HAS_YEARMODEL = false;
 let HAS_SERIES = false;
+let HAS_SETTINGS = false; // app_settingsテーブル（価格ルールの全端末共有用・任意）
 const PRESET_CATEGORIES_BASE=['業務用エアコン','配管・部材','コンセント','スイッチ','ケーブル・電線','分電盤・ブレーカー','照明器具','換気・送風機','給湯・温水','その他'];
 // ルームエアコンは年式付きジャンル（25年ルームエアコン 等）。
 // 今年・前年の2年分のみ（24年以前は終了のため除外）
@@ -1885,9 +1955,10 @@ async function detectCapabilities(){
     probe('products?select=category&limit=1'),
     probe('products?select=yearmodel&limit=1'),
     probe('products?select=series&limit=1'),
-    probe('customers?select=id&limit=1')
+    probe('customers?select=id&limit=1'),
+    probe('app_settings?select=key&limit=1')
   ]);
-  HAS_CATEGORY=r[0]; HAS_YEARMODEL=r[1]; HAS_SERIES=r[2]; HAS_CUSTOMERS=r[3];
+  HAS_CATEGORY=r[0]; HAS_YEARMODEL=r[1]; HAS_SERIES=r[2]; HAS_CUSTOMERS=r[3]; HAS_SETTINGS=r[4];
 }
 
 // ─── Customers (得意先) ───────────────────────────────────────────
@@ -2309,6 +2380,120 @@ async function saveMakerUnify(){
     closeModal('modalMakerUnify');
     alert('✅ メーカー名を統一しました\n'+groupsDone+'グループ / '+changed+'件の商品を更新');
   }catch(e){ alert('統一エラー: '+e.message); }
+  finally{ showLoading(false); }
+}
+
+// ═══ メーカー未登録の一括設定（AI判定＋手入力） ═══════════════
+let makerAssignItems=[]; // {pid,name,cat,note,maker}
+
+function _makerAssignTargets(){
+  return data.products.filter(function(p){ return !(p.maker||'').trim(); });
+}
+function openMakerAssign(){
+  var targets=_makerAssignTargets();
+  makerAssignItems=targets.map(function(p){
+    return {pid:p.id, name:p.name, cat:p.category||'', note:p.note||'', maker:''};
+  });
+  // 入力補助: 既存メーカーの候補
+  document.getElementById('maMakerList').innerHTML=getAllMakers().map(function(m){return '<option value="'+m.replace(/"/g,'&quot;')+'">';}).join('');
+  document.getElementById('makerAssignStatus').style.display='none';
+  document.getElementById('maStartBtn').style.display=makerAssignItems.length?'block':'none';
+  renderMakerAssignItems();
+  document.getElementById('makerAssignActions').style.display=makerAssignItems.length?'block':'none';
+  openModal('modalMakerAssign');
+}
+function renderMakerAssignItems(){
+  var el=document.getElementById('makerAssignBody');
+  if(!makerAssignItems.length){
+    el.innerHTML='<div class="empty-state">メーカー未登録の商品はありません 🎉</div>';
+    return;
+  }
+  el.innerHTML=makerAssignItems.map(function(it,i){
+    return '<div class="ai-item" style="margin-bottom:6px;">'
+      +'<div style="display:flex;gap:8px;align-items:center;">'
+      +'<label style="display:flex;align-items:center;flex:0 0 auto;"><input type="checkbox" id="ma-check-'+i+'" checked style="width:18px;height:18px;"></label>'
+      +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-size:13px;font-weight:700;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+it.name+'</div>'
+      +(it.cat?'<div style="font-size:10px;color:var(--ink3);">'+it.cat+'</div>':'')
+      +'</div>'
+      +'<input type="text" id="ma-maker-'+i+'" list="maMakerList" value="'+(it.maker||'').replace(/"/g,'&quot;')+'" placeholder="メーカー名" autocomplete="off" class="form-input" style="flex:0 0 150px;font-size:13px;padding:7px 8px;">'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+function _maReadInputs(){
+  makerAssignItems.forEach(function(it,i){
+    var inp=document.getElementById('ma-maker-'+i);
+    if(inp) it.maker=inp.value.trim();
+  });
+}
+async function startMakerAssignAI(){
+  if(!makerAssignItems.length) return;
+  _maReadInputs();
+  var statusEl=document.getElementById('makerAssignStatus');
+  statusEl.style.display='block';
+  statusEl.className='ai-status loading';
+  statusEl.innerHTML='<span class="spinner"></span>AIが型番からメーカーを判定中…';
+  _aiStatusCb=function(msg){ statusEl.innerHTML='<span class="spinner"></span>'+msg; };
+  var existingMakers=getAllMakers().join('、');
+  var listText=makerAssignItems.map(function(it,i){
+    return (i+1)+'. 型番: '+it.name+(it.cat?'（ジャンル: '+it.cat+'）':'')+(it.note?'（備考: '+it.note+'）':'');
+  }).join('\n');
+  var prompt=[
+    'あなたは日本の電気設備資材・空調機器・照明器具の専門家です。',
+    '以下の商品型番から、製造メーカーを型番の命名規則に基づいて判定してください。',
+    '例: CS-→パナソニック、MSZ-→三菱電機、S/AN-→ダイキン、RAS-→日立または東芝、AS-→富士通ゼネラル、FY-→パナソニック、V-/VD-→三菱電機、DXL-/LZ→大光電機、AU/AD→KOIZUMI、XS→パナソニック 等。',
+    '既存の登録メーカー（できるだけこの表記に合わせる）: '+existingMakers,
+    '',
+    '商品リスト:',
+    listText,
+    '',
+    '確信が持てない場合は maker を空文字にしてください（推測で断定しない）。',
+    '必ず以下のJSON形式のみで返答してください:',
+    '{"items":[{"no":1,"maker":"メーカー名または空文字"}]}'
+  ].join('\n');
+  try{
+    var result=await callGemini({contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0}});
+    var parsed=JSON.parse(geminiText(result).replace(/```json|```/g,'').trim());
+    var items=parsed.items||[];
+    var filled=0;
+    items.forEach(function(r){
+      var idx=(parseInt(r.no)||0)-1;
+      if(idx<0||idx>=makerAssignItems.length) return;
+      var mk=(r.maker||'').trim();
+      if(mk){ makerAssignItems[idx].maker=mk; filled++; }
+    });
+    renderMakerAssignItems();
+    statusEl.className='ai-status';
+    statusEl.innerHTML='✅ '+filled+'件のメーカーを推定しました（'+(makerAssignItems.length-filled)+'件は判定不能・手入力してください）。内容を確認して保存してください。';
+  }catch(e){
+    statusEl.className='ai-status error';
+    statusEl.innerHTML='❌ AI判定に失敗しました: '+e.message;
+  }finally{
+    _aiStatusCb=null;
+  }
+}
+async function saveMakerAssign(){
+  _maReadInputs();
+  var changed=0, skipped=0;
+  showLoading(true);
+  try{
+    for(var i=0;i<makerAssignItems.length;i++){
+      var chk=document.getElementById('ma-check-'+i);
+      if(!chk||!chk.checked){ continue; }
+      var it=makerAssignItems[i];
+      if(!it.maker){ skipped++; continue; }
+      var p=data.products.find(function(x){return x.id===it.pid;});
+      if(!p) continue;
+      p.maker=it.maker;
+      await upsertProduct(p);
+      changed++;
+    }
+    renderMakerFilter();renderSummary();renderList();
+    if(priceUnlocked) renderPriceList();
+    closeModal('modalMakerAssign');
+    alert('✅ メーカーを設定しました\n'+changed+'件を更新'+(skipped?'（'+skipped+'件はメーカー空欄のためスキップ）':''));
+  }catch(e){ alert('保存エラー: '+e.message); }
   finally{ showLoading(false); }
 }
 
@@ -2746,6 +2931,284 @@ async function saveBPriceItems(){
   finally{ showLoading(false); }
 }
 
+// ═══ 価格ルール設定（メーカー・ジャンル・シリーズ・品番別） ═════
+// 初期値の出典: Obsidian second-brain「見積計算ルール（標準得意先版）」(2026-05-26版)
+// ルームエアコンは全メーカー共通「仕入掛率+3%」方式:
+//   売値 = 定価 ×（仕入値÷定価 + 3pt）。定価なしのオープン価格品は 仕入×1.1 千円繰上。
+const PR_LS_KEY='price_rules_v1';
+const PR_ROUND_LABELS={none:'端数処理なし',round1:'1円四捨五入',up10:'10円未満切上',up100:'100円未満切上',up1000:'千円未満切上',round1000:'千円四捨五入'};
+const DEFAULT_PRICE_RULES=[
+  {maker:'三菱電機',cat:'空調',series:'',prefix:'',base:'teika',pct:17,round:'round1',memo:'パッケージエアコン 定価17%'},
+  {maker:'三菱電機',cat:'',series:'',prefix:'V-,VD-,P-',base:'teika',pct:35,round:'round1',memo:'一般換気扇・パイプファン'},
+  {maker:'三菱電機',cat:'',series:'',prefix:'EWF-,PS-,W-,G-',base:'teika',pct:42,round:'round1',memo:'有圧換気扇'},
+  {maker:'三菱電機',cat:'',series:'',prefix:'AT-',base:'teika',pct:45,round:'round1',memo:'メルコエアテック（指定色塗装STも45%）'},
+  {maker:'三菱電機',cat:'照明',series:'',prefix:'',base:'teika',pct:25,round:'round1',memo:'照明 定価25%'},
+  {maker:'パナソニック',cat:'照明',series:'',prefix:'',base:'teika',pct:25,round:'round1',memo:'照明・誘導灯 定価25%（本体と表示板は別行）'},
+  {maker:'パナソニック',cat:'',series:'',prefix:'FY-',base:'teika',pct:36,round:'round1',memo:'換気扇FYシリーズ 定価36%固定'},
+  {maker:'大光電機',cat:'',series:'',prefix:'LZ',base:'teika',pct:48,round:'round1',memo:'照明 LZ系48%'},
+  {maker:'大光電機',cat:'',series:'',prefix:'D',base:'teika',pct:40,round:'round1',memo:'照明 D系40%'},
+  {maker:'KOIZUMI',cat:'',series:'',prefix:'A',base:'teika',pct:40,round:'round1',memo:'照明 A系40%'},
+  {maker:'KOIZUMI',cat:'',series:'',prefix:'X',base:'teika',pct:48,round:'round1',memo:'照明 X系48%'},
+  {maker:'岩崎電気',cat:'',series:'',prefix:'',base:'teika',pct:45,round:'round1',memo:'投光器 定価45%'},
+  {maker:'岩崎電気',cat:'ポール',series:'',prefix:'',base:'cost',pct:110,round:'up1000',memo:'ポール・運賃 仕入NET×1.10 千円切上'},
+  {maker:'TOA',cat:'',series:'',prefix:'',base:'teika',pct:75,round:'round1',memo:'放送 定価75%（工事費・法定福利費も同率）'},
+  {maker:'アイホン',cat:'',series:'',prefix:'',base:'teika',pct:42,round:'round1',memo:'インターホン42%（トイレ呼出は75%・個別対応）'},
+  {maker:'日本緑十字',cat:'',series:'',prefix:'',base:'teika',pct:75,round:'round1',memo:'表示板 定価75%'},
+  {maker:'エナジーサポート',cat:'',series:'',prefix:'',base:'cost',pct:115,round:'round1000',memo:'高圧気中開閉器 仕入NET×1.15 千円四捨五入'},
+  {maker:'大日コンクリート',cat:'',series:'',prefix:'',base:'cost',pct:115,round:'up100',memo:'コン柱建柱 仕入NET×1.15 下2桁繰上'},
+  {maker:'河村電器',cat:'',series:'',prefix:'',base:'cost',pct:115,round:'up1000',memo:'盤類 仕入NET×1.15 千円切上'},
+  {maker:'有馬工業所',cat:'',series:'',prefix:'',base:'cost',pct:112,round:'up1000',memo:'枠・BOX 仕入NET×1.12 千円切上（集約禁止）'},
+  {maker:'',cat:'電線',series:'',prefix:'',base:'cost',pct:112,round:'round1',memo:'電線 仕入単価×1.12 四捨五入'},
+  {maker:'',cat:'ルームエアコン',series:'',prefix:'',calc:'plus3',base:'teika',pct:3,round:'up10',memo:'ルームエアコン 定価×(仕入掛率+3pt) 全メーカー共通'},
+  {maker:'',cat:'ルームエアコン',series:'',prefix:'',calc:'rate',base:'cost',pct:110,round:'up1000',memo:'ルームエアコン オープン価格品（定価なし） 仕入×1.1 千円繰上'}
+];
+let prRules=null;
+let prTarget='nosell';
+let prPreviewItems=[];
+
+function prRound(v,mode){
+  if(mode==='round1') return Math.round(v);
+  if(mode==='up10') return Math.ceil(v/10)*10;
+  if(mode==='up100') return Math.ceil(v/100)*100;
+  if(mode==='up1000') return Math.ceil(v/1000)*1000;
+  if(mode==='round1000') return Math.round(v/1000)*1000;
+  return v;
+}
+function _prNm(s){ return (s||'').replace(/\s/g,'').toUpperCase(); }
+// 商品に一致するルールを具体度順で返す（品番先頭8点・シリーズ4点・メーカー2点・ジャンル1点）
+function _prCandidates(p){
+  var name=_prNm(p.name), maker=_prNm(p.maker), cat=_prNm(p.category), series=_prNm(p.series);
+  var hits=[];
+  (prRules||[]).forEach(function(r,idx){
+    if(!r || !(r.pct>0)) return;
+    var score=0;
+    if(r.maker){
+      var rm=_prNm(r.maker);
+      if(!maker || (maker.indexOf(rm)<0 && rm.indexOf(maker)<0)) return;
+      score+=2;
+    }
+    if(r.cat){
+      var rc=_prNm(r.cat);
+      if(!cat || (cat.indexOf(rc)<0 && rc.indexOf(cat)<0)) return;
+      score+=1;
+    }
+    if(r.series){
+      if(series!==_prNm(r.series)) return;
+      score+=4;
+    }
+    if(r.prefix){
+      var hit=String(r.prefix).split(/[,、，]/).some(function(px){
+        px=_prNm(px); return px && name.indexOf(px)===0;
+      });
+      if(!hit) return;
+      score+=8;
+    }
+    hits.push({r:r, score:score, idx:idx});
+  });
+  // 具体度が高い順、同点はルール一覧の上から順
+  hits.sort(function(a,b){ return b.score-a.score || a.idx-b.idx; });
+  return hits.map(function(h){ return h.r; });
+}
+function _prCalc(p,r){
+  if((r.calc||'rate')==='plus3'){
+    // 仕入掛率+◯pt方式: 売値 = 定価 ×（仕入値÷定価 + pct/100）。定価・仕入値の両方が必要。
+    var t=p.teika||0, c=p.cost||0;
+    if(!(t>0) || !(c>0)) return null;
+    return prRound(c + t*r.pct/100, r.round||'round1');
+  }
+  var base=p[r.base==='cost'?'cost':'teika']||0;
+  if(!(base>0)) return null;
+  return prRound(base*r.pct/100, r.round||'round1');
+}
+// 具体度順に試し、計算可能な最初のルールを適用（例: ルームエアコンで定価なし→オープン価格ルールへ）
+function _prBestCalc(p){
+  var cands=_prCandidates(p);
+  for(var i=0;i<cands.length;i++){
+    var v=_prCalc(p,cands[i]);
+    if(v!==null) return {rule:cands[i], newSell:v};
+  }
+  return null;
+}
+function _prLoadLocal(){ try{ var s=JSON.parse(localStorage.getItem(PR_LS_KEY)||'null'); return (s&&s.rules&&s.rules.length)?s.rules:null; }catch(e){ return null; } }
+function _prSaveLocal(){ try{ localStorage.setItem(PR_LS_KEY,JSON.stringify({rules:prRules})); }catch(e){} }
+async function _prLoadRemote(){
+  if(!HAS_SETTINGS) return null;
+  try{
+    var rows=await supaFetch('app_settings?key=eq.price_rules&select=value');
+    return (rows&&rows[0]&&rows[0].value&&rows[0].value.rules&&rows[0].value.rules.length)?rows[0].value.rules:null;
+  }catch(e){ return null; }
+}
+async function _prSaveRemote(){
+  if(!HAS_SETTINGS) return false;
+  try{
+    await supaFetch('app_settings?on_conflict=key','POST',
+      {key:'price_rules',value:{rules:prRules}},
+      {'Prefer':'resolution=merge-duplicates,return=minimal'});
+    return true;
+  }catch(e){ return false; }
+}
+async function loadPriceRules(){
+  var remote=await _prLoadRemote();
+  prRules = remote || _prLoadLocal() || JSON.parse(JSON.stringify(DEFAULT_PRICE_RULES));
+}
+async function savePriceRules(){
+  _prReadInputs();
+  _prSaveLocal();
+  var remoteOk=await _prSaveRemote();
+  _prRenderSyncNote(remoteOk);
+  return remoteOk;
+}
+function _prRenderSyncNote(saved){
+  var el=document.getElementById('pr-sync-note'); if(!el) return;
+  if(HAS_SETTINGS){
+    el.innerHTML='☁️ ルールはSupabaseに保存され、<b>全端末で共有</b>されます。'+(saved?'（保存済み）':'');
+  }else{
+    el.innerHTML='💾 ルールは<b>この端末のみ</b>に保存されます。全端末で共有するにはSupabaseのSQLエディタで app_settings テーブルを作成してください（作成後は自動で共有に切替わります）。';
+  }
+}
+async function openPriceRules(){
+  prPreviewItems=[];
+  document.getElementById('prPreviewArea').style.display='none';
+  document.getElementById('pr-target-nosell').classList.toggle('active',prTarget==='nosell');
+  document.getElementById('pr-target-all').classList.toggle('active',prTarget==='all');
+  // 入力補助: メーカー・ジャンルの候補
+  document.getElementById('prMakerList').innerHTML=getMakers().map(function(m){return '<option value="'+m.replace(/"/g,'&quot;')+'">';}).join('');
+  var cats=[...new Set(data.products.map(function(p){return (p.category||'').trim();}).filter(Boolean))].sort();
+  document.getElementById('prCatList').innerHTML=cats.map(function(c){return '<option value="'+c.replace(/"/g,'&quot;')+'">';}).join('');
+  if(!prRules) await loadPriceRules();
+  _prRenderSyncNote(false);
+  renderPriceRules();
+  openModal('modalPriceRules');
+}
+function setPrTarget(t){
+  _prReadInputs(); prTarget=t;
+  document.getElementById('pr-target-nosell').classList.toggle('active',t==='nosell');
+  document.getElementById('pr-target-all').classList.toggle('active',t==='all');
+}
+function renderPriceRules(){
+  var el=document.getElementById('pr-rules-list');
+  if(!prRules||!prRules.length){ el.innerHTML='<div class="empty-state">ルールがありません。「＋ ルールを追加」または「初期ルールに戻す」を押してください。</div>'; return; }
+  el.innerHTML=prRules.map(function(r,i){
+    return '<div class="ai-item pr-rule" data-idx="'+i+'">'
+      +'<div class="pr-row">'
+      +'<div class="pr-f" style="flex:1.2;"><div class="ql-lbl">メーカー</div><input type="text" list="prMakerList" class="form-input pr-in ql-input-sm" data-f="maker" value="'+(r.maker||'').replace(/"/g,'&quot;')+'" placeholder="（全メーカー）"></div>'
+      +'<div class="pr-f" style="flex:1;"><div class="ql-lbl">ジャンル</div><input type="text" list="prCatList" class="form-input pr-in ql-input-sm" data-f="cat" value="'+(r.cat||'').replace(/"/g,'&quot;')+'" placeholder="（全ジャンル）"></div>'
+      +'<div class="pr-f" style="flex:0 0 64px;"><div class="ql-lbl">シリーズ</div><input type="text" class="form-input pr-in ql-input-sm" data-f="series" value="'+(r.series||'').replace(/"/g,'&quot;')+'" placeholder="―"></div>'
+      +'<div class="pr-f" style="flex:1;"><div class="ql-lbl">品番の先頭（カンマ区切り可）</div><input type="text" class="form-input pr-in ql-input-sm" data-f="prefix" value="'+(r.prefix||'').replace(/"/g,'&quot;')+'" placeholder="例: V-,VD-"></div>'
+      +'<button type="button" class="ql-del" onclick="removePriceRule('+i+')" title="このルールを削除">×</button>'
+      +'</div>'
+      +'<div class="pr-row">'
+      +'<div class="pr-f" style="flex:0 0 130px;"><div class="ql-lbl">計算方法</div><select class="form-select pr-in ql-input-sm" data-f="calc">'
+      +'<option value="rate"'+((r.calc||'rate')!=='plus3'?' selected':'')+'>ベース×率(%)</option>'
+      +'<option value="plus3"'+((r.calc||'rate')==='plus3'?' selected':'')+'>仕入掛率+◯pt(定価基準)</option>'
+      +'</select></div>'
+      +'<div class="pr-f" style="flex:0 0 96px;"><div class="ql-lbl">計算のベース</div><select class="form-select pr-in ql-input-sm" data-f="base">'
+      +'<option value="teika"'+(r.base!=='cost'?' selected':'')+'>定価（税別）</option>'
+      +'<option value="cost"'+(r.base==='cost'?' selected':'')+'>仕入値</option>'
+      +'</select></div>'
+      +'<div class="pr-f" style="flex:0 0 76px;"><div class="ql-lbl">率(%)／pt</div><input type="number" class="form-input pr-in ql-input-sm" data-f="pct" value="'+(r.pct||'')+'" min="1" max="500" style="text-align:center;font-weight:700;"></div>'
+      +'<div class="pr-f" style="flex:0 0 120px;"><div class="ql-lbl">端数処理</div><select class="form-select pr-in ql-input-sm" data-f="round">'
+      +Object.keys(PR_ROUND_LABELS).map(function(k){return '<option value="'+k+'"'+((r.round||'round1')===k?' selected':'')+'>'+PR_ROUND_LABELS[k]+'</option>';}).join('')
+      +'</select></div>'
+      +'<div class="pr-f" style="flex:1;min-width:120px;"><div class="ql-lbl">メモ</div><input type="text" class="form-input pr-in ql-input-sm" data-f="memo" value="'+(r.memo||'').replace(/"/g,'&quot;')+'" placeholder="用途など"></div>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+function _prReadInputs(){
+  var list=document.querySelectorAll('#pr-rules-list .pr-rule');
+  if(!list.length) return;
+  var rules=[];
+  list.forEach(function(card){
+    var r={maker:'',cat:'',series:'',prefix:'',calc:'rate',base:'teika',pct:0,round:'round1',memo:''};
+    card.querySelectorAll('.pr-in').forEach(function(inp){
+      var f=inp.getAttribute('data-f');
+      if(f==='pct') r.pct=parseFloat(inp.value)||0;
+      else r[f]=inp.value.trim();
+    });
+    rules.push(r);
+  });
+  prRules=rules;
+}
+function addPriceRule(){
+  _prReadInputs();
+  prRules.push({maker:'',cat:'',series:'',prefix:'',base:'teika',pct:0,round:'round1',memo:''});
+  renderPriceRules();
+  var el=document.getElementById('pr-rules-list');
+  el.lastElementChild.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function removePriceRule(i){
+  _prReadInputs();
+  prRules.splice(i,1);
+  renderPriceRules();
+}
+function resetPriceRulesToDefault(){
+  if(!confirm('現在のルールを破棄して、標準得意先版の初期ルール（'+DEFAULT_PRICE_RULES.length+'件）に戻しますか？')) return;
+  prRules=JSON.parse(JSON.stringify(DEFAULT_PRICE_RULES));
+  renderPriceRules();
+}
+function renderPrPreview(){
+  _prReadInputs();
+  var targets=data.products.filter(function(p){
+    return prTarget==='nosell' ? !(p.sell>0) : true;
+  });
+  prPreviewItems=[];
+  targets.forEach(function(p){
+    var hit=_prBestCalc(p); if(!hit) return;
+    prPreviewItems.push({pid:p.id,name:p.name,maker:p.maker||'',cat:p.category||'',rule:hit.rule,newSell:hit.newSell,oldSell:p.sell||0});
+  });
+  document.getElementById('prPreviewArea').style.display='block';
+  if(!prPreviewItems.length){
+    document.getElementById('prPreviewTitle').textContent='ルールに一致する対象商品がありません（対象条件・ベース価格の入力をご確認ください）';
+    document.getElementById('prPreviewBody').innerHTML='';
+    return;
+  }
+  document.getElementById('prPreviewTitle').textContent='計算結果 — '+prPreviewItems.length+'件が対象';
+  document.getElementById('prPreviewBody').innerHTML=prPreviewItems.map(function(it,i){
+    var diff=it.newSell-it.oldSell;
+    var diffStr=it.oldSell>0?(diff>0?'<span style="color:var(--accent);">+¥'+diff.toLocaleString()+'</span>':diff<0?'<span style="color:var(--blue);">-¥'+Math.abs(diff).toLocaleString()+'</span>':'変化なし'):'新規設定';
+    var ruleStr=((it.rule.calc||'rate')==='plus3'
+      ? '仕入掛率+'+it.rule.pct+'pt（定価基準）'
+      : (it.rule.base==='cost'?'仕入':'定価')+'×'+it.rule.pct+'%')+'・'+(PR_ROUND_LABELS[it.rule.round]||'');
+    return '<div style="display:flex;align-items:center;gap:6px;padding:6px 4px;border-bottom:1px solid var(--border);">'
+      +'<label style="display:flex;align-items:center;gap:5px;flex:0 0 auto;"><input type="checkbox" id="pr-check-'+i+'" checked style="width:16px;height:16px;"></label>'
+      +'<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:700;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+it.name+'</div>'
+      +'<div style="font-size:10px;color:var(--ink3);">'+(it.cat?it.cat+' ・ ':'')+it.maker+' ｜ '+ruleStr+(it.rule.memo?' ｜ '+it.rule.memo:'')+'</div></div>'
+      +'<div style="text-align:right;font-size:12px;">'
+      +'<div style="font-weight:700;color:var(--green);">¥'+it.newSell.toLocaleString()+'</div>'
+      +'<div style="font-size:10px;color:var(--ink3);">'+diffStr+'</div>'
+      +'</div></div>';
+  }).join('');
+}
+async function applyPriceRules(){
+  if(!prPreviewItems.length) return;
+  var saved=0;
+  showLoading(true);
+  try{
+    for(var i=0;i<prPreviewItems.length;i++){
+      var chk=document.getElementById('pr-check-'+i); if(!chk||!chk.checked) continue;
+      var item=prPreviewItems[i];
+      var p=data.products.find(function(x){return x.id===item.pid;});
+      if(!p) continue;
+      p.sell=item.newSell;
+      await upsertProduct(p); saved++;
+    }
+    await savePriceRules();
+    if(priceUnlocked) renderPriceList();
+    closeModal('modalPriceRules');
+    alert('✅ 価格ルールで売値を設定しました\n'+saved+'件を更新');
+  }catch(e){ alert('エラー: '+e.message); }
+  finally{ showLoading(false); }
+}
+async function savePriceRulesAndClose(){
+  showLoading(true);
+  try{
+    var remoteOk=await savePriceRules();
+    closeModal('modalPriceRules');
+    alert(remoteOk?'✅ ルールを保存しました（全端末で共有）':'✅ ルールをこの端末に保存しました');
+  }finally{ showLoading(false); }
+}
+
 // ═══ 売値一括計算（定価・仕入値の%） ════════════════════════
 const SR_LS_KEY = 'sell_rate_settings_v2';
 let srBase   = 'teika';   // 'teika' | 'cost'
@@ -3139,6 +3602,8 @@ function renderList(){
   if(btnAuto) btnAuto.style.display=data.products.length>0?'inline-block':'none';
   var btnMk=document.getElementById('btnMakerUnify');
   if(btnMk) btnMk.style.display=getMakers().length>=2?'inline-block':'none';
+  var btnMa=document.getElementById('btnMakerAssign');
+  if(btnMa) btnMa.style.display=data.products.some(function(p){return !(p.maker||'').trim();})?'inline-block':'none';
   var btnYr=document.getElementById('btnYearDetect');
   if(btnYr) btnYr.style.display=data.products.some(function(p){return isRoomAC(p.category);})?'inline-block':'none';
   var btnSr=document.getElementById('btnSeriesDetect');
