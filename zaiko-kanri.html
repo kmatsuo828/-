@@ -282,6 +282,7 @@ body.font-xl #priceMakerFilter{width:124px;}
 .pdf-toolbar button{border:none;border-radius:8px;padding:8px 12px;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;color:#fff;white-space:nowrap;}
 .pdf-close{background:var(--accent);}
 .pdf-print-btn{background:var(--green);}
+.pdf-download-btn{background:#6a1b9a;}
 .pdf-share-btn{background:#1565c0;}
 .pdf-save-btn{background:#2d7a4f;}
 @page{size:A4;margin:12mm;}
@@ -1663,6 +1664,7 @@ body.font-xl #priceMakerFilter{width:124px;}
   <div class="pdf-toolbar">
     <button class="pdf-save-btn" onclick="saveCurrentDoc()">💾 保存</button>
     <button class="pdf-share-btn" onclick="doSharePdf()">📤 共有</button>
+    <button class="pdf-download-btn" onclick="doDownloadPdf()">⬇ PDFダウンロード</button>
     <button class="pdf-print-btn" onclick="doPrintPdf()">🖨 印刷/PDF保存</button>
     <button class="pdf-close" onclick="closePdfPreview()">✕ 閉じる</button>
   </div>
@@ -6539,6 +6541,55 @@ function closePdfPreview(){
 function doPrintPdf(){
   window.focus();
   setTimeout(function(){ window.print(); }, 150);
+}
+// ─── PDF直接ダウンロード（印刷ダイアログ不要・自動化対応） ────────
+// html2pdf.js をCDNから遅延ロードし、#pdf-content をそのままPDF化して
+// Downloadsへ保存する。CDN到達不可などで失敗した場合は従来の印刷にフォールバック。
+var _html2pdfLoading=null;
+function _loadHtml2pdf(){
+  if(window.html2pdf) return Promise.resolve();
+  if(_html2pdfLoading) return _html2pdfLoading;
+  _html2pdfLoading=new Promise(function(resolve,reject){
+    var s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js';
+    s.onload=function(){ resolve(); };
+    s.onerror=function(){ _html2pdfLoading=null; reject(new Error('html2pdf load failed')); };
+    document.head.appendChild(s);
+  });
+  return _html2pdfLoading;
+}
+async function doDownloadPdf(){
+  var btn=document.querySelector('.pdf-download-btn');
+  var orig=btn?btn.textContent:'';
+  if(btn){ btn.disabled=true; btn.textContent='⏳ 生成中...'; }
+  try{
+    await _loadHtml2pdf();
+    var el=document.getElementById('pdf-content');
+    var fname=(document.title||'document').replace(/[\\/:*?"<>|]/g,'_')+'.pdf';
+    // 中央寄せマージンがあるとhtml2canvasの取り込みが左にズレて欠けるため、
+    // 生成中だけ margin:0 / 幅700px に固定して原点から描画させる
+    var prevStyle={margin:el.style.margin,maxWidth:el.style.maxWidth,width:el.style.width};
+    el.style.margin='0'; el.style.maxWidth='700px'; el.style.width='700px';
+    try{
+      await html2pdf().set({
+        margin:12,
+        filename:fname,
+        image:{type:'jpeg',quality:0.95},
+        html2canvas:{scale:2,useCORS:true,windowWidth:700,scrollX:0,scrollY:0},
+        jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+        pagebreak:{mode:['css','legacy'],avoid:['tr']}
+      }).from(el).save();
+    }finally{
+      el.style.margin=prevStyle.margin; el.style.maxWidth=prevStyle.maxWidth; el.style.width=prevStyle.width;
+    }
+    if(btn) btn.textContent='✅ 保存完了';
+    setTimeout(function(){ if(btn){ btn.textContent=orig; btn.disabled=false; } },2000);
+  }catch(e){
+    console.error('doDownloadPdf failed:',e);
+    if(btn){ btn.textContent=orig; btn.disabled=false; }
+    alert('PDF自動生成に失敗しました。\n従来の印刷ダイアログでPDF保存してください。\n('+e.message+')');
+    doPrintPdf();
+  }
 }
 async function doSharePdf(){
   if(navigator.share){
