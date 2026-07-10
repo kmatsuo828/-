@@ -1460,6 +1460,13 @@ body.font-xl #priceMakerFilter{width:124px;}
           <button id="bpai-mode-all" type="button" onclick="setBPAiMode('all')">全商品</button>
         </div>
       </div>
+      <div class="form-group" style="margin-bottom:8px;">
+        <label class="form-label">絞り込み（任意）</label>
+        <div style="display:flex;gap:6px;">
+          <select class="form-select" id="bpai-filter-maker" onchange="_updateBpAiNote()" style="flex:1;min-width:0;font-size:13px;"><option value="">全メーカー</option></select>
+          <select class="form-select" id="bpai-filter-cat" onchange="_updateBpAiNote()" style="flex:1;min-width:0;font-size:13px;"><option value="">全ジャンル</option></select>
+        </div>
+      </div>
       <div id="bpAiModeNote" style="font-size:12px;color:var(--ink2);background:var(--surface2);border-radius:8px;padding:9px 11px;margin-bottom:12px;line-height:1.6;"></div>
       <div id="bpAiProgress" style="display:none;margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
@@ -1476,6 +1483,13 @@ body.font-xl #priceMakerFilter{width:124px;}
     <!-- 未入力補完 -->
     <div id="bprice-fill-mode" style="display:none;">
       <div style="font-size:12px;color:var(--ink3);margin-bottom:10px;line-height:1.6;">🔧 AIが空白のフィールドを補完します。価格はAIの知識をもとにした推定です（web検索なし・高速）。</div>
+      <div class="form-group" style="margin-bottom:10px;">
+        <label class="form-label">絞り込み（任意）</label>
+        <div style="display:flex;gap:6px;">
+          <select class="form-select" id="bpfill-filter-maker" style="flex:1;min-width:0;font-size:13px;"><option value="">全メーカー</option></select>
+          <select class="form-select" id="bpfill-filter-cat" style="flex:1;min-width:0;font-size:13px;"><option value="">全ジャンル</option></select>
+        </div>
+      </div>
       <div style="margin-bottom:12px;">
         <label style="display:flex;align-items:center;gap:8px;padding:9px;background:var(--surface);border-radius:8px;margin-bottom:6px;cursor:pointer;">
           <input type="checkbox" id="fill-teika" checked style="width:18px;height:18px;">
@@ -1533,14 +1547,17 @@ body.font-xl #priceMakerFilter{width:124px;}
     </div>
 
     <div style="background:var(--surface2);border-radius:10px;padding:10px;margin-bottom:10px;">
-      <div style="font-size:12px;font-weight:700;margin-bottom:6px;color:var(--ink2);">明細を追加</div>
-      <select class="form-select" id="quote-add-maker" onchange="updateQuoteProductOptions()" style="margin-bottom:6px;font-size:13px;"><option value="">── メーカー選択 ──</option></select>
-      <select class="form-select" id="quote-add-product" style="margin-bottom:6px;font-size:13px;"><option value="">── 品番選択 ──</option></select>
-      <div style="display:flex;gap:6px;align-items:center;">
-        <input type="number" class="form-input" id="quote-add-qty" value="1" min="1" style="width:80px;text-align:center;">
-        <span style="font-size:13px;color:var(--ink3);">数量</span>
-        <button class="btn btn-blue" style="flex:1;padding:9px;" type="button" onclick="addQuoteLine()">＋ 明細に追加</button>
+      <div style="font-size:12px;font-weight:700;margin-bottom:6px;color:var(--ink2);">明細を追加（登録商品から検索）</div>
+      <div style="display:flex;gap:6px;margin-bottom:6px;">
+        <select class="form-select" id="quote-add-maker" onchange="renderQuoteAddResults()" style="flex:1;min-width:0;font-size:13px;"><option value="">全メーカー</option></select>
+        <select class="form-select" id="quote-add-cat" onchange="renderQuoteAddResults()" style="flex:1;min-width:0;font-size:13px;"><option value="">全ジャンル</option></select>
       </div>
+      <input type="text" class="form-input" id="quote-add-q" placeholder="🔍 品番・品名・キーワードで検索" autocomplete="off" oninput="renderQuoteAddResults()" style="font-size:14px;margin-bottom:6px;">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+        <input type="number" class="form-input" id="quote-add-qty" value="1" min="1" style="width:80px;text-align:center;">
+        <span style="font-size:13px;color:var(--ink3);">数量（「＋追加」タップ時に適用）</span>
+      </div>
+      <div id="quote-add-results" style="max-height:220px;overflow-y:auto;margin-bottom:4px;"></div>
       <div style="font-size:11px;color:var(--ink3);margin-top:6px;">※登録済みの定価・売値が自動で入ります。手入力で明細を追加することも可能です。</div>
       <button class="btn btn-secondary" style="width:100%;margin-top:6px;padding:8px;font-size:12px;" type="button" onclick="addQuoteLineManual()">✏️ 手入力で1行追加</button>
       <div style="height:1px;background:var(--border);margin:10px 0;"></div>
@@ -2666,9 +2683,30 @@ function openBulkPrice(){
   document.getElementById('bpriceBody').innerHTML='';
   document.getElementById('bpriceActions').style.display='none';
   document.getElementById('bpricePreview').style.display='none';
+  _bpPopulateFilters();
   _updateBpAiNote();
   _initBPFileType();
   openModal('modalBulkPrice');
+}
+// ─── メーカー・ジャンル絞り込み（AI一括検索/未入力補完 共通） ──────
+function _bpPopulateFilters(){
+  var makers=getMakers();
+  var cats=getAllCategories();
+  ['bpai','bpfill'].forEach(function(pre){
+    var mkSel=document.getElementById(pre+'-filter-maker');
+    var ctSel=document.getElementById(pre+'-filter-cat');
+    if(mkSel){ var mv=mkSel.value; mkSel.innerHTML='<option value="">全メーカー</option>'+makers.map(function(m){return '<option value="'+m+'">'+m+'</option>';}).join(''); mkSel.value=mv; }
+    if(ctSel){ var cv=ctSel.value; ctSel.innerHTML='<option value="">全ジャンル</option>'+cats.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join(''); ctSel.value=cv; }
+  });
+}
+function _bpFilterTargets(prefix, list){
+  var mk=(document.getElementById(prefix+'-filter-maker')||{value:''}).value;
+  var ct=(document.getElementById(prefix+'-filter-cat')||{value:''}).value;
+  return list.filter(function(p){
+    if(mk&&(p.maker||'')!==mk) return false;
+    if(ct&&(p.category||'')!==ct) return false;
+    return true;
+  });
 }
 function closeBulkPrice(){ bpAiSearchCancelled=true; closeModal('modalBulkPrice'); }
 
@@ -2691,10 +2729,12 @@ function setBPAiMode(m){
   _updateBpAiNote();
 }
 function _updateBpAiNote(){
-  var missingCnt=data.products.filter(function(p){return !(p.teika>0);}).length;
+  var base=_bpFilterTargets('bpai', data.products);
+  var missingCnt=base.filter(function(p){return !(p.teika>0);}).length;
+  var filtered=base.length!==data.products.length;
   var note = bpAiMode==='missing'
-    ? '定価が未入力の商品 <b>'+missingCnt+'件</b> を検索します。'
-    : '全商品 <b>'+data.products.length+'件</b> の定価を再検索します（時間がかかります）。';
+    ? (filtered?'絞り込み後、':'')+'定価が未入力の商品 <b>'+missingCnt+'件</b> を検索します。'
+    : (filtered?'絞り込んだ商品':'全商品')+' <b>'+base.length+'件</b> の定価を再検索します（時間がかかります）。';
   var el=document.getElementById('bpAiModeNote'); if(el) el.innerHTML=note;
 }
 
@@ -2763,10 +2803,11 @@ async function handleBPriceFile(event){
 
 // ─── AI 一括定価検索 ─────────────────────────────────────────
 async function startBPriceAiSearch(){
+  var base=_bpFilterTargets('bpai', data.products);
   var targets=bpAiMode==='missing'
-    ? data.products.filter(function(p){return !(p.teika>0);})
-    : data.products.slice();
-  if(!targets.length){ alert('対象商品がありません'); return; }
+    ? base.filter(function(p){return !(p.teika>0);})
+    : base.slice();
+  if(!targets.length){ alert('対象商品がありません（絞り込み条件をご確認ください）'); return; }
   bpAiSearchCancelled=false; bpriceItems=[];
   document.getElementById('bpAiStartBtn').disabled=true;
   document.getElementById('bpAiProgress').style.display='block';
@@ -2820,10 +2861,10 @@ async function startBPriceFill(){
   var fillCat=document.getElementById('fill-category').checked;
   var fillMaker=document.getElementById('fill-maker').checked;
   if(!fillTeika&&!fillCat&&!fillMaker){ alert('補完する項目を1つ以上選択してください'); return; }
-  var targets=data.products.filter(function(p){
+  var targets=_bpFilterTargets('bpfill', data.products).filter(function(p){
     return (fillTeika&&!(p.teika>0))||(fillCat&&!(p.category||'').trim())||(fillMaker&&!(p.maker||'').trim());
   });
-  if(!targets.length){ alert('補完対象の商品がありません（対象フィールドはすべて入力済みです）'); return; }
+  if(!targets.length){ alert('補完対象の商品がありません（対象フィールドはすべて入力済みか、絞り込みで対象外です）'); return; }
   var st=document.getElementById('bpriceStatus');
   st.style.display='block'; st.className='ai-status loading';
   st.innerHTML='<span class="spinner"></span>AIが補完中…（'+targets.length+'件）';
@@ -4729,21 +4770,63 @@ function openQuote(){
   var qfn=document.getElementById('quote-footer-note'); if(qfn) qfn.value='';
   var n=new Date();
   document.getElementById('quote-date').value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');
-  // メーカー選択肢
-  var makers=getMakers();
-  document.getElementById('quote-add-maker').innerHTML='<option value="">── メーカー選択 ──</option>'+makers.map(function(m){return '<option value="'+m+'">'+m+'</option>';}).join('');
-  document.getElementById('quote-add-product').innerHTML='<option value="">── 品番選択 ──</option>';
+  // 検索式の明細追加UIを初期化
+  initQuoteAddSearch();
   renderQuoteLines();
   openModal('modalQuote');
 }
-function updateQuoteProductOptions(){
-  var mk=document.getElementById('quote-add-maker').value;
-  var prods=data.products.filter(function(p){return (p.maker||'')===mk;});
-  document.getElementById('quote-add-product').innerHTML='<option value="">── 品番選択 ──</option>'+prods.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>';}).join('');
+// ─── 明細追加: メーカー・ジャンル・キーワード検索 ─────────────────
+function initQuoteAddSearch(){
+  var makers=getMakers();
+  var cats=getAllCategories();
+  document.getElementById('quote-add-maker').innerHTML='<option value="">全メーカー</option>'+makers.map(function(m){return '<option value="'+m+'">'+m+'</option>';}).join('');
+  document.getElementById('quote-add-cat').innerHTML='<option value="">全ジャンル</option>'+cats.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');
+  var q=document.getElementById('quote-add-q'); if(q) q.value='';
+  renderQuoteAddResults();
 }
-function addQuoteLine(){
-  var pid=document.getElementById('quote-add-product').value;
-  if(!pid){ alert('品番を選択してください'); return; }
+function quoteAddFilteredProducts(){
+  var mk=(document.getElementById('quote-add-maker')||{value:''}).value;
+  var ct=(document.getElementById('quote-add-cat')||{value:''}).value;
+  var q=((document.getElementById('quote-add-q')||{value:''}).value||'').trim().toLowerCase();
+  return data.products.filter(function(p){
+    if(mk&&(p.maker||'')!==mk) return false;
+    if(ct&&(p.category||'')!==ct) return false;
+    if(q){
+      var hay=((p.name||'')+' '+(p.maker||'')+' '+(p.category||'')+' '+(p.series||'')+' '+(p.note||'')).toLowerCase();
+      if(hay.indexOf(q)<0) return false;
+    }
+    return true;
+  });
+}
+function renderQuoteAddResults(){
+  var box=document.getElementById('quote-add-results'); if(!box) return;
+  var mk=(document.getElementById('quote-add-maker')||{value:''}).value;
+  var ct=(document.getElementById('quote-add-cat')||{value:''}).value;
+  var q=((document.getElementById('quote-add-q')||{value:''}).value||'').trim();
+  if(!mk&&!ct&&!q){
+    box.innerHTML='<div style="font-size:11px;color:var(--ink3);padding:6px;">メーカー・ジャンル・キーワードで登録商品（'+data.products.length+'件）を絞り込んでください。</div>';
+    return;
+  }
+  var list=quoteAddFilteredProducts();
+  if(!list.length){ box.innerHTML='<div style="font-size:11px;color:var(--ink3);padding:6px;">該当する登録商品がありません。下の商品マスタ検索・手入力をご利用ください。</div>'; return; }
+  var LIMIT=30;
+  var shown=list.slice(0,LIMIT);
+  box.innerHTML=shown.map(function(p){
+    var total=WH_KEYS.reduce(function(s,w){return s+(p[w]||0);},0);
+    var sub=[(p.maker||''),(p.category||'')].filter(Boolean).join(' ｜ ');
+    var priceStr=p.sell>0?'売値 ¥'+Number(p.sell).toLocaleString():'';
+    var info=[sub,priceStr,'在庫'+total].filter(Boolean).join(' ｜ ');
+    return '<div onclick="addQuoteLineByPid(\''+p.id+'\')" style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 9px;margin-bottom:4px;cursor:pointer;">'
+      +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-size:12px;font-weight:700;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+p.name+'</div>'
+      +'<div style="font-size:10px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+info+'</div>'
+      +'</div>'
+      +'<span style="flex:none;background:var(--blue);color:#fff;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;">＋追加</span>'
+      +'</div>';
+  }).join('')
+  +(list.length>LIMIT?'<div style="font-size:11px;color:var(--ink3);padding:6px;text-align:center;">他 '+(list.length-LIMIT)+' 件 — キーワードでさらに絞り込めます</div>':'');
+}
+function addQuoteLineByPid(pid){
   var qty=parseInt(document.getElementById('quote-add-qty').value)||1;
   var p=data.products.find(function(x){return x.id===pid;});
   if(!p) return;
@@ -5110,10 +5193,8 @@ function editSavedQuote(idx){
   document.getElementById('quote-date').value=q.date||'';
   var qfn=document.getElementById('quote-footer-note');
   if(qfn) qfn.value=q.footerNote||'';
-  // メーカー選択肢を更新
-  var makers=getMakers();
-  document.getElementById('quote-add-maker').innerHTML='<option value="">── メーカー選択 ──</option>'+makers.map(function(m){return '<option value="'+m+'">'+m+'</option>';}).join('');
-  document.getElementById('quote-add-product').innerHTML='<option value="">── 品番選択 ──</option>';
+  // 検索式の明細追加UIを初期化
+  initQuoteAddSearch();
   // 編集元のインデックスを記憶（保存時に上書き用）
   _editingQuoteIdx=idx;
   // 保存済み一覧を閉じて明細を描画
