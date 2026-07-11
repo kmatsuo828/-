@@ -6647,22 +6647,18 @@ async function doDownloadPdf(){
     await _loadHtml2pdf();
     var el=document.getElementById('pdf-content');
     var fname=(document.title||'document').replace(/[\\/:*?"<>|]/g,'_')+'.pdf';
-    // 中央寄せマージンがあるとhtml2canvasの取り込みが左にズレて欠けるため、
-    // 生成中だけ margin:0 / 幅700px に固定して原点から描画させる
-    var prevStyle={margin:el.style.margin,maxWidth:el.style.maxWidth,width:el.style.width};
-    el.style.margin='0'; el.style.maxWidth='700px'; el.style.width='700px';
-    try{
-      await html2pdf().set({
-        margin:12,
-        filename:fname,
-        image:{type:'jpeg',quality:0.95},
-        html2canvas:{scale:2,useCORS:true,windowWidth:700,scrollX:0,scrollY:0},
-        jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
-        pagebreak:{mode:['css','legacy'],avoid:['tr']}
-      }).from(el).save();
-    }finally{
-      el.style.margin=prevStyle.margin; el.style.maxWidth=prevStyle.maxWidth; el.style.width=prevStyle.width;
-    }
+    // .pdf-doc の中央寄せ margin-left を html2canvas が内部レイアウトに誤反映して
+    // 左端が欠けるため、html2canvas のクローン文書側でマージンを 0 にして描画する
+    // （2026-07-11 検証済み: onclone 方式で全列・宛先・備考まで欠けなし）
+    await html2pdf().set({
+      margin:12,
+      filename:fname,
+      image:{type:'jpeg',quality:0.95},
+      html2canvas:{scale:2,useCORS:true,scrollX:0,scrollY:0,
+        onclone:function(doc){ var d=doc.getElementById('pdf-content'); if(d){ d.style.margin='0'; d.style.maxWidth='none'; } }},
+      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+      pagebreak:{mode:['css','legacy'],avoid:['tr']}
+    }).from(el).save();
     if(btn) btn.textContent='✅ 保存完了';
     setTimeout(function(){ if(btn){ btn.textContent=orig; btn.disabled=false; } },2000);
   }catch(e){
