@@ -4840,6 +4840,32 @@ function addQuoteLineManual(){
   quoteLines.push({pid:null,maker:'その他',name:'',hinmei:'',qty:1,teika:0,rate:0,tanka:0,bikou:''});
   renderQuoteLines();
 }
+// ─── 明細一括投入API（自動操作用・2026-07-13追加） ─────────────────
+// 見積書の宛先・件名・明細全行をJSON1回で投入する。javascript_toolから
+// importQuoteData({title,customer,staff,date,footerNote,lines:[{maker,name,hinmei,qty,teika,tanka,bikou}]})
+// を呼ぶと、モーダルを開いて全明細をセットし、検算用に{lines,sub,tax,total}を返す。
+// 商品データへの自動登録は行わない（在庫リストを汚さないため。pidは常にnull）。
+function importQuoteData(q){
+  q=q||{};
+  openQuote();
+  if(q.title!==undefined) document.getElementById('quote-title').value=q.title||'';
+  if(q.customer!==undefined) document.getElementById('quote-customer').value=q.customer||'';
+  if(q.staff){ var st=document.getElementById('quote-staff'); if(st) st.value=q.staff; }
+  if(q.date) document.getElementById('quote-date').value=q.date;
+  var qfn=document.getElementById('quote-footer-note');
+  if(qfn&&q.footerNote!==undefined) qfn.value=q.footerNote||'';
+  quoteLines=(q.lines||[]).map(function(L){
+    var teika=Number(L.teika)||0, tanka=Number(L.tanka)||0;
+    return {pid:null,maker:(L.maker||'その他'),name:L.name||'',hinmei:L.hinmei||'',
+      qty:parseInt(L.qty)||1,teika:teika,
+      rate:(teika>0&&tanka>0)?Math.round(tanka/teika*100):0,
+      tanka:tanka,bikou:L.bikou||''};
+  });
+  renderQuoteLines();
+  var sub=quoteLines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
+  var tax=Math.round(sub*0.1);
+  return {ok:true,lines:quoteLines.length,sub:sub,tax:tax,total:sub+tax};
+}
 // ─── 写真から見積明細を読み取り追加（AI） ─────────────────────────
 async function handleQuotePhoto(event){
   const file=event.target.files[0]; if(!file) return;
@@ -5083,6 +5109,7 @@ function _loadSavedQuotes(){
 }
 function _saveSavedQuotes(arr){
   try{ localStorage.setItem(QUOTE_STORAGE_KEY,JSON.stringify(arr)); }catch(e){}
+  _docSyncPush('saved_quotes');
 }
 function _cleanupOldQuotes(){
   var list=_loadSavedQuotes();
@@ -5206,9 +5233,70 @@ function deleteSavedQuote(idx){
   var list=_loadSavedQuotes();
   var q=list[idx]; if(!q) return;
   if(!confirm('「'+(q.title||q.filename)+'」を削除しますか？')) return;
+  _tombAdd('saved_quotes', q.filename);
   list.splice(idx,1);
   _saveSavedQuotes(list);
   renderSavedQuotes();
+}
+
+// ═══ 保存見積・請求書のSupabase共有（2026-07-13追加） ═════════════
+// localStorageを作業キャッシュとして維持しつつ、app_settingsテーブルの
+// saved_quotes / saved_invoices キーに全端末共有する（テーブル新設不要）。
+// 値の形式: {docs:[保存文書…], deleted:[{filename,deletedAt}…]}
+// 削除はトゥームストーン方式: 他端末のローカルに残る同名文書がマージで
+// 復活しないよう、削除記録より古いcreatedAtの文書を除外する。
+var _docSyncTimers={};
+function _docKeepDays(kind){ return kind==='saved_invoices'?INVOICE_KEEP_DAYS:QUOTE_KEEP_DAYS; }
+function _docLoad(kind){ return kind==='saved_invoices'?_loadSavedInvoices():_loadSavedQuotes(); }
+function _tombLoad(kind){
+  try{ return JSON.parse(localStorage.getItem('zaiko_tomb_'+kind)||'[]'); }catch(e){ return []; }
+}
+function _tombStore(kind, tombs){
+  // filenameごとに最新の削除記録だけ残し、保持期限切れは捨てる
+  var cutoff=new Date(); cutoff.setDate(cutoff.getDate()-_docKeepDays(kind));
+  var tm={};
+  (tombs||[]).forEach(function(t){
+    if(!t||!t.filename||!(new Date(t.deletedAt)>=cutoff)) return;
+    if(!tm[t.filename]||new Date(t.deletedAt)>new Date(tm[t.filename].deletedAt)) tm[t.filename]=t;
+  });
+  var arr=Object.keys(tm).map(function(k){return tm[k];});
+  try{ localStorage.setItem('zaiko_tomb_'+kind, JSON.stringify(arr)); }catch(e){}
+  return arr;
+}
+function _tombAdd(kind, filename){
+  if(!filename) return;
+  var t=_tombLoad(kind);
+  t.push({filename:filename, deletedAt:new Date().toISOString()});
+  _tombStore(kind, t);
+}
+// 変更をSupabaseへ反映（0.8秒デバウンス・失敗しても静かにローカル運用継続）
+function _docSyncPush(kind){
+  if(!HAS_SETTINGS) return;
+  clearTimeout(_docSyncTimers[kind]);
+  _docSyncTimers[kind]=setTimeout(function(){
+    supaFetch('app_settings?on_conflict=key','POST',
+      {key:kind, value:{docs:_docLoad(kind), deleted:_tombLoad(kind)}},
+      {'Prefer':'resolution=merge-duplicates,return=minimal'}).catch(function(){});
+  },800);
+}
+// 起動時にSupabaseから取得してローカルとマージ（filenameキー・createdAtが新しい方を採用）
+async function _docSyncPull(kind){
+  if(!HAS_SETTINGS) return;
+  try{
+    var rows=await supaFetch('app_settings?key=eq.'+kind+'&select=value');
+    var remote=(rows&&rows[0]&&rows[0].value)||{};
+    var tombs=_tombStore(kind, _tombLoad(kind).concat(remote.deleted||[]));
+    var map={};
+    (remote.docs||[]).concat(_docLoad(kind)).forEach(function(d){
+      if(!d||!d.filename) return;
+      if(!map[d.filename]||new Date(d.createdAt||0)>new Date(map[d.filename].createdAt||0)) map[d.filename]=d;
+    });
+    var merged=Object.keys(map).map(function(k){return map[k];}).filter(function(d){
+      return !tombs.some(function(t){ return t.filename===d.filename && new Date(t.deletedAt)>new Date(d.createdAt||0); });
+    });
+    merged.sort(function(a,b){ return new Date(b.createdAt||0)-new Date(a.createdAt||0); });
+    if(kind==='saved_invoices') _saveSavedInvoices(merged); else _saveSavedQuotes(merged);
+  }catch(e){}
 }
 
 // ─── PDFプレビュー: 見積書/請求書どちらの操作か振り分け ───────────
@@ -5465,6 +5553,7 @@ function _loadSavedInvoices(){
 }
 function _saveSavedInvoices(arr){
   try{ localStorage.setItem(INVOICE_STORAGE_KEY,JSON.stringify(arr)); }catch(e){}
+  _docSyncPush('saved_invoices');
 }
 function _cleanupOldInvoices(){
   var list=_loadSavedInvoices();
@@ -5577,6 +5666,7 @@ function deleteSavedInvoice(idx){
   var list=_loadSavedInvoices();
   var q=list[idx]; if(!q) return;
   if(!confirm('「'+(q.title||q.filename)+'」を削除しますか？')) return;
+  _tombAdd('saved_invoices', q.filename);
   list.splice(idx,1);
   _saveSavedInvoices(list);
   renderSavedInvoices();
@@ -6748,6 +6838,8 @@ document.addEventListener('DOMContentLoaded', async function(){
     // ─────────────────────────────────────────────────────────────
     renderMakerFilter(); renderSummary(); renderList();
     startRealtime();
+    // 保存見積・請求書を全端末共有（バックグラウンド・失敗してもローカル運用継続）
+    _docSyncPull('saved_quotes'); _docSyncPull('saved_invoices');
   }catch(e){
     var el=document.getElementById('productList');
     if(el) el.innerHTML='<div class="empty-state">\u63a5\u7d9a\u30a8\u30e9\u30fc: '+e.message+'</div>';
