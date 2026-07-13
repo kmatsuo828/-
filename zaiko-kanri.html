@@ -6729,6 +6729,23 @@ function _loadHtml2pdf(){
   });
   return _html2pdfLoading;
 }
+// .pdf-doc の中央寄せ margin-left を html2canvas が内部レイアウトに誤反映して
+// 左端が欠けるため、html2canvas のクローン文書側でマージンを 0 にして描画する
+// （2026-07-11 検証済み: onclone 方式で全列・宛先・備考まで欠けなし）
+function _pdfWorkerOpts(fname){
+  return {
+    margin:12,
+    filename:fname,
+    image:{type:'jpeg',quality:0.95},
+    html2canvas:{scale:2,useCORS:true,scrollX:0,scrollY:0,
+      onclone:function(doc){ var d=doc.getElementById('pdf-content'); if(d){ d.style.margin='0'; d.style.maxWidth='none'; } }},
+    jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+    pagebreak:{mode:['css','legacy'],avoid:['tr']}
+  };
+}
+function _pdfFileName(){
+  return (document.title||'document').replace(/[\\/:*?"<>|]/g,'_')+'.pdf';
+}
 async function doDownloadPdf(){
   var btn=document.querySelector('.pdf-download-btn');
   var orig=btn?btn.textContent:'';
@@ -6736,19 +6753,7 @@ async function doDownloadPdf(){
   try{
     await _loadHtml2pdf();
     var el=document.getElementById('pdf-content');
-    var fname=(document.title||'document').replace(/[\\/:*?"<>|]/g,'_')+'.pdf';
-    // .pdf-doc の中央寄せ margin-left を html2canvas が内部レイアウトに誤反映して
-    // 左端が欠けるため、html2canvas のクローン文書側でマージンを 0 にして描画する
-    // （2026-07-11 検証済み: onclone 方式で全列・宛先・備考まで欠けなし）
-    await html2pdf().set({
-      margin:12,
-      filename:fname,
-      image:{type:'jpeg',quality:0.95},
-      html2canvas:{scale:2,useCORS:true,scrollX:0,scrollY:0,
-        onclone:function(doc){ var d=doc.getElementById('pdf-content'); if(d){ d.style.margin='0'; d.style.maxWidth='none'; } }},
-      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
-      pagebreak:{mode:['css','legacy'],avoid:['tr']}
-    }).from(el).save();
+    await html2pdf().set(_pdfWorkerOpts(_pdfFileName())).from(el).save();
     if(btn) btn.textContent='✅ 保存完了';
     setTimeout(function(){ if(btn){ btn.textContent=orig; btn.disabled=false; } },2000);
   }catch(e){
@@ -6756,6 +6761,32 @@ async function doDownloadPdf(){
     if(btn){ btn.textContent=orig; btn.disabled=false; }
     alert('PDF自動生成に失敗しました。\n従来の印刷ダイアログでPDF保存してください。\n('+e.message+')');
     doPrintPdf();
+  }
+}
+// ─── PDFのクラウド受け渡し（2026-07-14追加・自動化用） ─────────────
+// ダウンロード保存が使えないブラウザ（Claudeブラウザ等）から、生成した
+// PDFをapp_settingsの pdf_transfer キーへbase64で一時置きする。
+// ローカル側は「クラウドPDF受信.py」で取得・保存する（受信時にキーを空にする）。
+async function uploadPdfToCloud(){
+  var el=document.getElementById('pdf-content');
+  if(!el||!el.innerHTML.trim()) return {ok:false,error:'PDFプレビューがありません。先に「見積書PDFを作成」を実行してください。'};
+  if(!HAS_SETTINGS) return {ok:false,error:'app_settingsテーブルが無いためクラウド受け渡しは使えません。'};
+  try{
+    await _loadHtml2pdf();
+    var fname=_pdfFileName();
+    var blob=await html2pdf().set(_pdfWorkerOpts(fname)).from(el).outputPdf('blob');
+    var b64=await new Promise(function(resolve,reject){
+      var fr=new FileReader();
+      fr.onload=function(){ resolve(String(fr.result).split(',')[1]); };
+      fr.onerror=function(){ reject(new Error('base64変換に失敗')); };
+      fr.readAsDataURL(blob);
+    });
+    await supaFetch('app_settings?on_conflict=key','POST',
+      {key:'pdf_transfer', value:{filename:fname, size:blob.size, at:new Date().toISOString(), b64:b64}},
+      {'Prefer':'resolution=merge-duplicates,return=minimal'});
+    return {ok:true, filename:fname, size:blob.size};
+  }catch(e){
+    return {ok:false, error:e.message};
   }
 }
 async function doSharePdf(){
