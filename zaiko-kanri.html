@@ -1580,9 +1580,17 @@ body.font-xl #priceMakerFilter{width:124px;}
     <div id="quote-total" style="margin-bottom:10px;"></div>
 
     <div class="form-group" style="margin-bottom:10px;">
+      <label class="form-label" style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" id="quote-show-rate" checked style="width:16px;height:16px;">
+        掛率を明細に表示する（定価・掛率列）
+      </label>
+      <div style="font-size:11px;color:var(--ink3);margin-top:2px;">オフにすると見積書PDFの「定価」「掛率」列を非表示にします（品番・品名・数量・単価・金額・備考のみ表示）。</div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:10px;">
       <label class="form-label">備考欄（見積書の下部に表示・自由入力）</label>
       <textarea class="form-textarea" id="quote-footer-note" placeholder="例: ・本見積には配管配線・高所足場代は含みません&#10;・特記事項など自由に入力" style="min-height:70px;"></textarea>
-      <div style="font-size:11px;color:var(--ink3);margin-top:4px;">空欄の場合は標準の条件文（有効期限・支払条件など）を表示します。</div>
+      <div style="font-size:11px;color:var(--ink3);margin-top:4px;">空欄の場合は標準の条件文（定価消費税・有効期限・納入場所）を表示します。支払条件・納期は案件ごとに異なるため既定文言には含まれません。必要な場合はここに個別入力してください。</div>
     </div>
 
     <button class="btn btn-amber btn-full" onclick="generateQuotePdf()" style="padding:13px;font-size:15px;margin-bottom:8px;">📄 見積書PDFを作成</button>
@@ -4768,6 +4776,7 @@ function openQuote(){
   document.getElementById('quote-title').value='';
   document.getElementById('quote-customer').value='';
   var qfn=document.getElementById('quote-footer-note'); if(qfn) qfn.value='';
+  var qsr=document.getElementById('quote-show-rate'); if(qsr) qsr.checked=true;
   var n=new Date();
   document.getElementById('quote-date').value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');
   // 検索式の明細追加UIを初期化
@@ -4854,6 +4863,8 @@ function importQuoteData(q){
   if(q.date) document.getElementById('quote-date').value=q.date;
   var qfn=document.getElementById('quote-footer-note');
   if(qfn&&q.footerNote!==undefined) qfn.value=q.footerNote||'';
+  var qsr=document.getElementById('quote-show-rate');
+  if(qsr) qsr.checked=(q.showRate===false)?false:true;
   quoteLines=(q.lines||[]).map(function(L){
     var teika=Number(L.teika)||0, tanka=Number(L.tanka)||0;
     return {pid:null,maker:(L.maker||'その他'),name:L.name||'',hinmei:L.hinmei||'',
@@ -5017,6 +5028,8 @@ function buildQuoteHtml(q){
   var dateVal=q.date||'';
   var dispDate=dateVal?dateVal.replace(/-/g,'/'):'';
   var lines=q.lines||[];
+  var showRate=(q.showRate===false)?false:true;
+  var colCount=showRate?9:7;
   var sub=lines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
   var tax=Math.floor(sub*0.1), tot=sub+tax;
   // メーカーごとにグループ化（出現順）
@@ -5029,7 +5042,7 @@ function buildQuoteHtml(q){
   var no=0, rowsHtml='';
   groups.forEach(function(g,gi){
     var color=QUOTE_MAKER_COLORS[gi%QUOTE_MAKER_COLORS.length];
-    rowsHtml+='<tr><td colspan="9" style="background:'+color+';font-weight:700;text-align:left;padding:6px 8px;border-bottom:1px solid #ccc;"><span style="display:inline-flex;align-items:center;gap:6px;">'+makerLogoHtml(g.maker,16)+'【'+g.maker+'】</span></td></tr>';
+    rowsHtml+='<tr><td colspan="'+colCount+'" style="background:'+color+';font-weight:700;text-align:left;padding:6px 8px;border-bottom:1px solid #ccc;"><span style="display:inline-flex;align-items:center;gap:6px;">'+makerLogoHtml(g.maker,16)+'【'+g.maker+'】</span></td></tr>';
     g.lines.forEach(function(L){
       no++;
       var amt=L.qty*L.tanka;
@@ -5038,8 +5051,8 @@ function buildQuoteHtml(q){
         +'<td class="q-code">'+(L.name||'')+'</td>'
         +'<td style="text-align:left;">'+(L.hinmei||'')+'</td>'
         +'<td>'+L.qty+'</td>'
-        +'<td style="text-align:right;">'+(L.teika>0?Number(L.teika).toLocaleString():'')+'</td>'
-        +'<td>'+(L.rate>0?L.rate+'%':'')+'</td>'
+        +(showRate?'<td style="text-align:right;">'+(L.teika>0?Number(L.teika).toLocaleString():'')+'</td>':'')
+        +(showRate?'<td>'+(L.rate>0?L.rate+'%':'')+'</td>':'')
         +'<td style="text-align:right;">'+(L.tanka>0?Number(L.tanka).toLocaleString():'')+'</td>'
         +'<td style="text-align:right;font-weight:700;">'+(amt>0?Number(amt).toLocaleString():'')+'</td>'
         +'<td style="text-align:left;font-size:10px;">'+(L.bikou||'')+'</td>'
@@ -5050,7 +5063,7 @@ function buildQuoteHtml(q){
   var footerNote=(q.footerNote||'').trim();
   var footerHtml = footerNote
     ? footerNote.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>')
-    : '・定価には消費税は含まれておりません。<br>・お見積有効期限：発行日より30日間<br>・お支払条件：末締め翌月末払い<br>・納期：ご注文後 約2〜3週間<br>・納入場所：貴社ご指定場所';
+    : '・定価には消費税は含まれておりません。<br>・お見積有効期限：発行日より30日間<br>・納入場所：貴社ご指定場所';
   return '<div style="text-align:center;font-size:22px;font-weight:700;letter-spacing:.3em;margin-bottom:14px;">御 見 積 書</div>'
     +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">'
     +'<div style="font-size:12px;line-height:1.8;">'
@@ -5073,7 +5086,7 @@ function buildQuoteHtml(q){
     +'<span style="font-size:13px;">合計金額(税込) <b style="font-size:18px;">¥'+tot.toLocaleString()+'</b></span></div>'
     +'<table class="pdf-table quote-table"><thead><tr>'
     +'<th style="width:28px;">No.</th><th style="min-width:90px;">品番</th><th style="text-align:left;min-width:140px;">品名</th>'
-    +'<th style="width:36px;">数量</th><th style="width:60px;">定価</th><th style="width:40px;">掛率</th><th style="width:64px;">単価</th><th style="width:74px;">金額</th><th style="text-align:left;min-width:90px;">記号(備考)</th>'
+    +'<th style="width:36px;">数量</th>'+(showRate?'<th style="width:60px;">定価</th><th style="width:40px;">掛率</th>':'')+'<th style="width:64px;">単価</th><th style="width:74px;">金額</th><th style="text-align:left;min-width:90px;">記号(備考)</th>'
     +'</tr></thead><tbody>'+rowsHtml+'</tbody></table>'
     +'<div style="display:flex;justify-content:flex-end;margin-top:10px;">'
     +'<table style="font-size:13px;border-collapse:collapse;min-width:240px;">'
@@ -5151,10 +5164,11 @@ function _collectQuoteFormData(){
   var staff=(document.getElementById('quote-staff').value||'').trim();
   var dateVal=document.getElementById('quote-date').value||'';
   var footerNote=((document.getElementById('quote-footer-note')||{value:''}).value||'').trim();
+  var showRate=((document.getElementById('quote-show-rate')||{checked:true}).checked)!==false;
   var sub=quoteLines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
   var tax=Math.floor(sub*0.1), tot=sub+tax;
   var pdfFilename=getQuotePdfFilename(title,dateVal);
-  return {title:title,customer:cust,staff:staff,date:dateVal,lines:JSON.parse(JSON.stringify(quoteLines)),footerNote:footerNote,total:tot,sub:sub,tax:tax,filename:pdfFilename,createdAt:new Date().toISOString()};
+  return {title:title,customer:cust,staff:staff,date:dateVal,lines:JSON.parse(JSON.stringify(quoteLines)),footerNote:footerNote,showRate:showRate,total:tot,sub:sub,tax:tax,filename:pdfFilename,createdAt:new Date().toISOString()};
 }
 function _autoSaveQuoteDraft(){
   if(!quoteLines.length) return; // 明細がなければ保存しない
