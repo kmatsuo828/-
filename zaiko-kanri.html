@@ -293,7 +293,7 @@ body.font-xl #priceMakerFilter{width:124px;}
   .pdf-toolbar,.pdf-close,.pdf-print-btn,.pdf-share-btn,.pdf-save-btn{display:none!important;}
   .pdf-doc{width:700px!important;max-width:700px!important;margin:0 auto!important;}
 }
-.pdf-doc{max-width:740px;margin:0 auto;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;}
+.pdf-doc{max-width:740px;margin:0 auto;padding-right:14px;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;}
 .pdf-doc h1{font-size:20px;font-weight:700;text-align:center;margin-bottom:4px;}
 .pdf-date{text-align:center;font-size:12px;color:#888;margin-bottom:20px;}
 .pdf-table{width:100%;border-collapse:collapse;font-size:12px;}
@@ -4863,7 +4863,7 @@ function importQuoteData(q){
   });
   renderQuoteLines();
   var sub=quoteLines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
-  var tax=Math.round(sub*0.1);
+  var tax=Math.floor(sub*0.1);
   return {ok:true,lines:quoteLines.length,sub:sub,tax:tax,total:sub+tax};
 }
 // ─── 写真から見積明細を読み取り追加（AI） ─────────────────────────
@@ -4976,7 +4976,7 @@ function renderQuoteLines(){
 }
 function renderQuoteTotal(){
   var sub=quoteLines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
-  var tax=Math.round(sub*0.1);
+  var tax=Math.floor(sub*0.1);
   var tot=sub+tax;
   document.getElementById('quote-total').innerHTML='<div style="background:var(--surface);border-radius:8px;padding:10px 12px;font-size:13px;">'
     +'<div style="display:flex;justify-content:space-between;padding:2px 0;"><span style="color:var(--ink3);">小計</span><span>'+fmt(sub)+'</span></div>'
@@ -5018,7 +5018,7 @@ function buildQuoteHtml(q){
   var dispDate=dateVal?dateVal.replace(/-/g,'/'):'';
   var lines=q.lines||[];
   var sub=lines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
-  var tax=Math.round(sub*0.1), tot=sub+tax;
+  var tax=Math.floor(sub*0.1), tot=sub+tax;
   // メーカーごとにグループ化（出現順）
   var groups=[], gmap={};
   lines.forEach(function(L){
@@ -5050,7 +5050,7 @@ function buildQuoteHtml(q){
   var footerNote=(q.footerNote||'').trim();
   var footerHtml = footerNote
     ? footerNote.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>')
-    : '・お見積有効期限：発行日より30日間<br>・お支払条件：末締め翌月末払い<br>・納期：ご注文後 約2〜3週間<br>・納入場所：貴社ご指定場所';
+    : '・定価には消費税は含まれておりません。<br>・お見積有効期限：発行日より30日間<br>・お支払条件：末締め翌月末払い<br>・納期：ご注文後 約2〜3週間<br>・納入場所：貴社ご指定場所';
   return '<div style="text-align:center;font-size:22px;font-weight:700;letter-spacing:.3em;margin-bottom:14px;">御 見 積 書</div>'
     +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">'
     +'<div style="font-size:12px;line-height:1.8;">'
@@ -5152,7 +5152,7 @@ function _collectQuoteFormData(){
   var dateVal=document.getElementById('quote-date').value||'';
   var footerNote=((document.getElementById('quote-footer-note')||{value:''}).value||'').trim();
   var sub=quoteLines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
-  var tax=Math.round(sub*0.1), tot=sub+tax;
+  var tax=Math.floor(sub*0.1), tot=sub+tax;
   var pdfFilename=getQuotePdfFilename(title,dateVal);
   return {title:title,customer:cust,staff:staff,date:dateVal,lines:JSON.parse(JSON.stringify(quoteLines)),footerNote:footerNote,total:tot,sub:sub,tax:tax,filename:pdfFilename,createdAt:new Date().toISOString()};
 }
@@ -5432,7 +5432,7 @@ function renderInvoiceLines(){
 }
 function renderInvoiceTotal(){
   var sub=invoiceLines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
-  var tax=Math.round(sub*0.1);
+  var tax=Math.floor(sub*0.1);
   var tot=sub+tax;
   document.getElementById('invoice-total').innerHTML='<div style="background:var(--surface);border-radius:8px;padding:10px 12px;font-size:13px;">'
     +'<div style="display:flex;justify-content:space-between;padding:2px 0;"><span style="color:var(--ink3);">小計</span><span>'+fmt(sub)+'</span></div>'
@@ -5471,7 +5471,7 @@ function buildInvoiceHtml(q){
   }
   var lines=q.lines||[];
   var sub=lines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
-  var tax=Math.round(sub*0.1), tot=sub+tax;
+  var tax=Math.floor(sub*0.1), tot=sub+tax;
   var rowsHtml='';
   lines.forEach(function(L,i){
     var amt=L.qty*L.tanka;
@@ -5593,7 +5593,7 @@ function _collectInvoiceFormData(){
   var dateVal=document.getElementById('invoice-date').value||'';
   var footerNote=((document.getElementById('invoice-footer-note')||{value:''}).value||'').trim();
   var sub=invoiceLines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
-  var tax=Math.round(sub*0.1), tot=sub+tax;
+  var tax=Math.floor(sub*0.1), tot=sub+tax;
   var pdfFilename=getInvoicePdfFilename(title,dateVal);
   return {title:title,customer:cust,staff:staff,invNo:invNo,date:dateVal,lines:JSON.parse(JSON.stringify(invoiceLines)),footerNote:footerNote,total:tot,sub:sub,tax:tax,filename:pdfFilename,createdAt:new Date().toISOString()};
 }
