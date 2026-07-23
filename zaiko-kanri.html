@@ -480,10 +480,14 @@ body.font-xl #priceMakerFilter{width:124px;}
       </select>
     </div>
     <div class="form-group">
-      <label class="form-label">② 品番を選択</label>
-      <select class="form-select" id="nyuko-product" onchange="updateNyukoStockInfo()">
-        <option value="">── 品番を選択 ──</option>
-      </select>
+      <label class="form-label">② 品番を検索・選択</label>
+      <div class="maker-combo">
+        <input type="text" class="maker-combo-input" id="nyuko-product-input" placeholder="品番の一部を入力して検索 or ▼で選択" autocomplete="off"
+          oninput="filterProductDropdown('nyuko')" onfocus="openProductDropdown('nyuko')">
+        <button class="maker-combo-toggle" type="button" onclick="toggleProductDropdown('nyuko')">▼</button>
+        <div class="maker-dropdown" id="nyuko-product-dd"></div>
+      </div>
+      <input type="hidden" id="nyuko-product">
     </div>
     <div id="nyuko-stock-info" style="display:none;" class="stock-info-box">
       <div class="stock-info-label">現在の在庫</div>
@@ -590,10 +594,14 @@ body.font-xl #priceMakerFilter{width:124px;}
       </select>
     </div>
     <div class="form-group">
-      <label class="form-label">② 品番を選択</label>
-      <select class="form-select" id="shukka-product" onchange="updateShukkaStock()">
-        <option value="">── 品番を選択 ──</option>
-      </select>
+      <label class="form-label">② 品番を検索・選択</label>
+      <div class="maker-combo">
+        <input type="text" class="maker-combo-input" id="shukka-product-input" placeholder="品番の一部を入力して検索 or ▼で選択" autocomplete="off"
+          oninput="filterProductDropdown('shukka')" onfocus="openProductDropdown('shukka')">
+        <button class="maker-combo-toggle" type="button" onclick="toggleProductDropdown('shukka')">▼</button>
+        <div class="maker-dropdown" id="shukka-product-dd"></div>
+      </div>
+      <input type="hidden" id="shukka-product">
     </div>
     <div id="shukka-stock-info" style="display:none;" class="stock-info-box">
       <div class="stock-info-label">現在の在庫</div>
@@ -760,10 +768,14 @@ body.font-xl #priceMakerFilter{width:124px;}
       </select>
     </div>
     <div class="form-group">
-      <label class="form-label">② 品番を選択</label>
-      <select class="form-select" id="tr-product" onchange="updateToriokiStockInfo()">
-        <option value="">── 品番を選択 ──</option>
-      </select>
+      <label class="form-label">② 品番を検索・選択</label>
+      <div class="maker-combo">
+        <input type="text" class="maker-combo-input" id="tr-product-input" placeholder="品番の一部を入力して検索 or ▼で選択" autocomplete="off"
+          oninput="filterProductDropdown('torioki')" onfocus="openProductDropdown('torioki')">
+        <button class="maker-combo-toggle" type="button" onclick="toggleProductDropdown('torioki')">▼</button>
+        <div class="maker-dropdown" id="tr-product-dd"></div>
+      </div>
+      <input type="hidden" id="tr-product">
     </div>
     <div id="tr-stock-info" style="display:none;" class="stock-info-box">
       <div class="stock-info-label">現在の在庫</div>
@@ -1947,17 +1959,44 @@ async function upsertProduct(p){
 }
 
 // ─── 手動入力・AI読み取りで初めて出てきた商品名を商品データへ自動登録 ─────
-async function ensureProductExists(name, maker, category, sell){
+async function ensureProductExists(name, maker, category, sell, teika){
   name = (name||'').trim();
   if(!name) return null;
   var existing = findProductByName(name);
   if(existing) return existing;
   var qo={}; WH_KEYS.forEach(function(w){qo[w]=0;});
   var newP = Object.assign({id:uid(),maker:(maker||'').trim(),category:(category||'').trim(),name:name},qo,
-    {teika:0,cost:0,sell:sell||0,note:'',reserves:[]});
+    {teika:teika||0,cost:0,sell:sell||0,note:'',reserves:[]});
   data.products.push(newP);
   try{ await upsertProduct(newP); }catch(e){ /* non-fatal: keep local */ }
   return newP;
+}
+
+// ─── 定価が変わった既存商品の定価更新（見積作成時の自動更新用・2026-07-23追加）
+// 定価が変われば連動する仕入値・売値も古い値のままでは整合しなくなるためcost/sellは0クリアする
+async function updateProductTeikaResetPricing(id, newTeika){
+  var p = data.products.find(function(x){return x.id===id;});
+  if(p){ p.teika=newTeika; p.cost=0; p.sell=0; }
+  return supaFetch('products?id=eq.'+encodeURIComponent(id),'PATCH',
+    {teika:newTeika, cost:0, sell:0},
+    {'Prefer':'return=minimal'});
+}
+
+// ─── 見積明細から商品データへ自動登録・定価更新（工事明細＝品番なし行は対象外・2026-07-23追加）
+// importQuoteData実行後にバックグラウンドで実行し、見積表示・PDF作成をブロックしない（fire-and-forget）
+async function _syncQuoteLinesToProducts(lines){
+  for(const L of (lines||[])){
+    var name=(L.name||'').trim();
+    if(!name) continue; // 品番なし＝工事・一式明細のため登録対象外
+    try{
+      var existing=findProductByName(name);
+      if(!existing){
+        await ensureProductExists(name, L.maker, '', L.tanka, L.teika);
+      }else if(L.teika>0 && Number(existing.teika)!==Number(L.teika)){
+        await updateProductTeikaResetPricing(existing.id, L.teika);
+      }
+    }catch(e){ /* non-fatal: 見積作成自体には影響させない */ }
+  }
 }
 
 async function deleteProductDB(id){
@@ -2163,6 +2202,14 @@ function startRealtime(){
       renderSummary(); renderList(); renderMakerFilter();
       if(priceUnlocked) renderPriceList();
       if(currentScreen==='torioki') renderToriokiList();
+    }catch(e){}
+    try{
+      await _docSyncPull('saved_quotes');
+      var qEl=document.getElementById('saved-quotes-list');
+      if(qEl && qEl.style.display==='block') renderSavedQuotes();
+      await _docSyncPull('saved_invoices');
+      var iEl=document.getElementById('saved-invoices-list');
+      if(iEl && iEl.style.display==='block') renderSavedInvoices();
     }catch(e){}
   }
   setInterval(syncNow, 30000);
@@ -4034,6 +4081,132 @@ document.addEventListener('click',e=>{
   }
 });
 
+// ─── 入荷・出荷・取り置きの品番検索コンボ（2026-07-23追加） ───────────
+// メーカー選択のみ→品番はプルダウン選択、という旧方式は品番が多いメーカーで
+// 実質検索できず不便だったため、テキスト入力での絞り込み検索に変更。
+// ローカル(data.products=登録済み在庫)検索に加え、商品マスタ(product_master、
+// 約6万件)側もデバウンス検索し、未登録品番は「＋登録して選択」でproductsへ登録できる。
+const PRODUCT_COMBOS = {
+  nyuko:  { maker:'nyuko-maker',  input:'nyuko-product-input',  dd:'nyuko-product-dd',  hidden:'nyuko-product',  stockInfo:'nyuko-stock-info',  onSelect:function(){updateNyukoStockInfo();} },
+  shukka: { maker:'shukka-maker', input:'shukka-product-input', dd:'shukka-product-dd', hidden:'shukka-product', stockInfo:'shukka-stock-info', onSelect:function(){updateShukkaStock();} },
+  torioki:{ maker:'tr-maker',     input:'tr-product-input',     dd:'tr-product-dd',     hidden:'tr-product',     stockInfo:'tr-stock-info',     onSelect:function(){updateToriokiStockInfo();} }
+};
+const PRODUCT_DD_MAX = 50;
+const _pdMasterTimer = {};
+const _pdMasterResultsStore = {};
+
+// 検索用正規化: 小文字化＋全角英数字・全角ハイフン類→半角（品番は全角/半角混在が多いため）
+function normalizePN(s){
+  return (s||'')
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0xFEE0))
+    .replace(/[－ー―‐−]/g,'-')
+    .replace(/　/g,' ')
+    .toLowerCase();
+}
+
+function populateProductDropdown(key){
+  const cfg=PRODUCT_COMBOS[key]; if(!cfg) return;
+  const dd=document.getElementById(cfg.dd); if(!dd) return;
+  const inp=document.getElementById(cfg.input); if(!inp) return;
+  const selectedId=document.getElementById(cfg.hidden).value;
+  const mk=document.getElementById(cfg.maker).value;
+  const q=normalizePN(inp.value);
+  let prods=mk?data.products.filter(p=>(p.maker||'')===mk):data.products.slice();
+  if(q) prods=prods.filter(p=>normalizePN(p.name).includes(q)||normalizePN(p.maker).includes(q));
+  const total=prods.length;
+  const shown=prods.slice(0,PRODUCT_DD_MAX);
+  let localHtml=shown.map(p=>{
+    const stock=getTotalFreeQty?getTotalFreeQty(p):0;
+    const sub=`${p.maker||'メーカー未設定'}・在庫${stock}台`;
+    return `<div class="maker-dropdown-item${p.id===selectedId?' selected':''}" onclick="selectProduct('${key}','${p.id}')">${p.name}<span style="display:block;font-size:11px;color:var(--ink3);">${sub}</span></div>`;
+  }).join('');
+  if(total>PRODUCT_DD_MAX){
+    localHtml+=`<div class="maker-dropdown-item" style="color:var(--ink3);cursor:default;">他${total-PRODUCT_DD_MAX}件 — 入力で絞り込んでください</div>`;
+  }
+  if(!total){
+    localHtml=`<div class="maker-dropdown-item" style="color:var(--ink3);cursor:default;">${q?'登録済み商品に該当なし':'登録済みの商品はまだありません'}</div>`;
+  }
+  dd.innerHTML=`<div id="${cfg.dd}-local">${localHtml}</div><div id="${cfg.dd}-master"></div>`;
+  clearTimeout(_pdMasterTimer[key]);
+  const mEl=document.getElementById(cfg.dd+'-master');
+  if(q.length>=2){
+    if(mEl) mEl.innerHTML='<div class="maker-dropdown-item" style="color:var(--ink3);cursor:default;">🔍 商品マスタ検索中…</div>';
+    _pdMasterTimer[key]=setTimeout(function(){ searchMasterForProductDropdown(key, inp.value); },350);
+  }else if(mEl){ mEl.innerHTML=''; }
+}
+function openProductDropdown(key){populateProductDropdown(key);document.getElementById(PRODUCT_COMBOS[key].dd).classList.add('open');}
+function toggleProductDropdown(key){
+  const dd=document.getElementById(PRODUCT_COMBOS[key].dd);
+  if(dd.classList.contains('open')){dd.classList.remove('open');}
+  else{populateProductDropdown(key);dd.classList.add('open');}
+}
+function filterProductDropdown(key){
+  const cfg=PRODUCT_COMBOS[key];
+  const hidden=document.getElementById(cfg.hidden);
+  // 入力テキストが確定済み商品名と一致しなくなったら選択を解除（古いIDのまま実行される事故防止）
+  if(hidden.value){
+    const p=data.products.find(x=>x.id===hidden.value);
+    if(!p||p.name!==document.getElementById(cfg.input).value){
+      hidden.value='';
+      const info=document.getElementById(cfg.stockInfo);if(info)info.style.display='none';
+    }
+  }
+  openProductDropdown(key);
+}
+function selectProduct(key,productId){
+  const cfg=PRODUCT_COMBOS[key];
+  const p=data.products.find(x=>x.id===productId);if(!p)return;
+  document.getElementById(cfg.input).value=p.name;
+  document.getElementById(cfg.hidden).value=p.id;
+  document.getElementById(cfg.dd).classList.remove('open');
+  // 全体検索から選んだ場合はメーカーも自動セット
+  const makerSel=document.getElementById(cfg.maker);
+  if(makerSel.value!==(p.maker||''))makerSel.value=p.maker||'';
+  cfg.onSelect();
+}
+// 商品マスタ(product_master・約6万件)側の検索。ローカル未登録の品番をここから見つける
+async function searchMasterForProductDropdown(key, qRaw){
+  const cfg=PRODUCT_COMBOS[key]; if(!cfg) return;
+  const mEl=document.getElementById(cfg.dd+'-master'); if(!mEl) return;
+  if(!HAS_MASTER){ mEl.innerHTML=''; return; }
+  const q=(qRaw||'').replace(/[,()*%"']/g,' ').trim();
+  if(q.length<2){ mEl.innerHTML=''; return; }
+  try{
+    var pat='*'+q+'*';
+    var rows=await supaFetch('product_master?select=name,hinmei,unit,cost,sell&limit=10&or='+encodeURIComponent('(name.ilike.'+pat+',hinmei.ilike.'+pat+')'));
+    // 検索中に入力内容が変わっていたら古い結果は無視（レース対策）
+    var curInp=document.getElementById(cfg.input);
+    if(!curInp || normalizePN(curInp.value)!==normalizePN(qRaw)) return;
+    _pdMasterResultsStore[key]=rows||[];
+    if(!rows||!rows.length){ mEl.innerHTML='<div class="maker-dropdown-item" style="color:var(--ink3);cursor:default;">商品マスタにも該当なし</div>'; return; }
+    mEl.innerHTML='<div class="maker-dropdown-item" style="color:var(--ink3);cursor:default;font-size:11px;">─ 商品マスタから（未登録） ─</div>'
+      + rows.map(function(r,i){
+        var v=_msParse(r);
+        var priceStr=v.teika>0?('定価¥'+v.teika.toLocaleString()):'';
+        return '<div class="maker-dropdown-item" onclick="selectFromMasterIntoInventory(\''+key+'\','+i+')">'
+          +(v.maker?v.maker+' ':'')+v.name
+          +'<span style="display:block;font-size:11px;color:var(--ink3);">'+(v.hinmei||'')+(priceStr?'　'+priceStr:'')+'　＋登録して選択</span></div>';
+      }).join('');
+  }catch(e){
+    mEl.innerHTML='<div class="maker-dropdown-item" style="color:var(--accent);cursor:default;">検索エラー</div>';
+  }
+}
+// 商品マスタの検索結果からproductsテーブルへ登録し、選択状態にする
+async function selectFromMasterIntoInventory(key, idx){
+  const cfg=PRODUCT_COMBOS[key]; if(!cfg) return;
+  const r=(_pdMasterResultsStore[key]||[])[idx]; if(!r) return;
+  const v=_msParse(r);
+  const mEl=document.getElementById(cfg.dd+'-master');
+  if(mEl) mEl.innerHTML='<div class="maker-dropdown-item" style="color:var(--ink3);cursor:default;">登録中…</div>';
+  try{
+    const p=await ensureProductExists(v.name, v.maker, '', v.sell, v.teika);
+    if(!p) return;
+    selectProduct(key, p.id);
+  }catch(e){
+    if(mEl) mEl.innerHTML='<div class="maker-dropdown-item" style="color:var(--accent);cursor:default;">登録エラー: '+e.message+'</div>';
+  }
+}
+
 // ═══ AI 定価検索 ═════════════════════════════════════════════════
 
 async function searchTeika(){
@@ -4236,7 +4409,8 @@ function initNyuko(){
   const makers=getMakers();
   const sel=document.getElementById('nyuko-maker');
   sel.innerHTML='<option value="">── メーカーを選択 ──</option>'+makers.map(m=>`<option value="${m}">${m}</option>`).join('');
-  document.getElementById('nyuko-product').innerHTML='<option value="">── 品番を選択 ──</option>';
+  document.getElementById('nyuko-product').value='';
+  var npi0=document.getElementById('nyuko-product-input'); if(npi0) npi0.value='';
   document.getElementById('nyuko-stock-info').style.display='none';
   // reset AI
   document.getElementById('aiPreviewImg').style.display='none';
@@ -4247,10 +4421,8 @@ function initNyuko(){
 }
 
 function updateNyukoProducts(){
-  const mk=document.getElementById('nyuko-maker').value;
-  const prods=data.products.filter(p=>(p.maker||'')===mk);
-  const sel=document.getElementById('nyuko-product');
-  sel.innerHTML='<option value="">── 品番を選択 ──</option>'+prods.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  document.getElementById('nyuko-product').value='';
+  document.getElementById('nyuko-product-input').value='';
   document.getElementById('nyuko-stock-info').style.display='none';
 }
 
@@ -4374,7 +4546,8 @@ function initShukka(){
   const makers=getMakers();
   const sel=document.getElementById('shukka-maker');
   sel.innerHTML='<option value="">── メーカーを選択 ──</option>'+makers.map(m=>`<option value="${m}">${m}</option>`).join('');
-  document.getElementById('shukka-product').innerHTML='<option value="">── 品番を選択 ──</option>';
+  document.getElementById('shukka-product').value='';
+  var spi0=document.getElementById('shukka-product-input'); if(spi0) spi0.value='';
   document.getElementById('shukka-stock-info').style.display='none';
   setShukkaMode('select');
   // reset shukka AI
@@ -4386,10 +4559,8 @@ function initShukka(){
 }
 
 function updateShukkaProducts(){
-  const mk=document.getElementById('shukka-maker').value;
-  const prods=data.products.filter(p=>(p.maker||'')===mk);
-  const sel=document.getElementById('shukka-product');
-  sel.innerHTML='<option value="">── 品番を選択 ──</option>'+prods.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  document.getElementById('shukka-product').value='';
+  document.getElementById('shukka-product-input').value='';
   document.getElementById('shukka-stock-info').style.display='none';
 }
 
@@ -4853,7 +5024,8 @@ function addQuoteLineManual(){
 // 見積書の宛先・件名・明細全行をJSON1回で投入する。javascript_toolから
 // importQuoteData({title,customer,staff,date,footerNote,lines:[{maker,name,hinmei,qty,teika,tanka,bikou}]})
 // を呼ぶと、モーダルを開いて全明細をセットし、検算用に{lines,sub,tax,total}を返す。
-// 商品データへの自動登録は行わない（在庫リストを汚さないため。pidは常にnull）。
+// 商品データ（productsテーブル）への自動登録・定価更新はバックグラウンドで非同期実行する
+// （戻り値・PDF作成をブロックしない。品番のない行＝工事・一式明細は対象外・2026-07-23追加）。
 function importQuoteData(q){
   q=q||{};
   openQuote();
@@ -4875,6 +5047,7 @@ function importQuoteData(q){
   renderQuoteLines();
   var sub=quoteLines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
   var tax=Math.floor(sub*0.1);
+  _syncQuoteLinesToProducts(quoteLines).catch(function(){});
   return {ok:true,lines:quoteLines.length,sub:sub,tax:tax,total:sub+tax};
 }
 // ─── 写真から見積明細を読み取り追加（AI） ─────────────────────────
@@ -5921,7 +6094,8 @@ function initTorioki(){
   const makers=getMakers();
   const sel=document.getElementById('tr-maker');
   sel.innerHTML='<option value="">── メーカーを選択 ──</option>'+makers.map(function(m){return`<option value="${m}">${m}</option>`;}).join('');
-  document.getElementById('tr-product').innerHTML='<option value="">── 品番を選択 ──</option>';
+  document.getElementById('tr-product').value='';
+  var tpi0=document.getElementById('tr-product-input'); if(tpi0) tpi0.value='';
   document.getElementById('tr-stock-info').style.display='none';
   document.getElementById('tr-deduct-on').classList.toggle('active',reserveDeductMode);
   document.getElementById('tr-deduct-off').classList.toggle('active',!reserveDeductMode);
@@ -5936,10 +6110,8 @@ function initTorioki(){
   aiToriokiItems=[];
 }
 function updateToriokiProducts(){
-  const mk=document.getElementById('tr-maker').value;
-  const prods=data.products.filter(function(p){return (p.maker||'')===mk;});
-  const sel=document.getElementById('tr-product');
-  sel.innerHTML='<option value="">── 品番を選択 ──</option>'+prods.map(function(p){return`<option value="${p.id}">${p.name}</option>`;}).join('');
+  document.getElementById('tr-product').value='';
+  document.getElementById('tr-product-input').value='';
   document.getElementById('tr-stock-info').style.display='none';
 }
 function updateToriokiStockInfo(){
@@ -5981,6 +6153,7 @@ async function execTorioki(){
     await addHistoryDB('torioki',p.name,customer+'分を'+WH_LABELS[wh]+'で'+qty+'台取り置き'+(reserveDeductMode?'（在庫引き）':'（在庫そのまま）'));
     renderSummary();renderList();
     document.getElementById('tr-product').value='';
+    document.getElementById('tr-product-input').value='';
     document.getElementById('tr-qty').value=1;
     document.getElementById('tr-dest').value='';
     document.getElementById('tr-stock-info').style.display='none';
@@ -6516,6 +6689,7 @@ async function execNyuko(mode){
       await addHistoryDB('nyuko',p.name,'['+(p.maker||'')+'] '+WH_LABELS[wh]+'\u306b'+qty+'\u53f0\u5165\u8377'+(memo?' ('+memo+')':''));
       renderSummary();renderList();
       document.getElementById('nyuko-product').value='';
+      document.getElementById('nyuko-product-input').value='';
       document.getElementById('nyuko-qty-select').value=1;
       document.getElementById('nyuko-memo-select').value='';
       document.getElementById('nyuko-stock-info').style.display='none';
@@ -6583,6 +6757,7 @@ async function execShukka(){
     await addHistoryDB('shuko',p.name,'['+(p.maker||'')+'] '+WH_LABELS[wh]+'\u304b\u3089'+qty+'\u53f0\u51fa\u8377'+(dest?' \u2192 '+dest:''));
     renderSummary();renderList();
     document.getElementById('shukka-product').value='';
+    document.getElementById('shukka-product-input').value='';
     document.getElementById('shukka-qty').value=1;
     document.getElementById('shukka-dest').value='';
     document.getElementById('shukka-stock-info').style.display='none';
