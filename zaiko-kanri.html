@@ -287,7 +287,7 @@ body.font-xl #priceMakerFilter{width:124px;}
 .pdf-save-btn{background:#2d7a4f;}
 @page{size:A4;margin:12mm;}
 @media print{
-  html,body{width:auto!important;-webkit-text-size-adjust:100%!important;text-size-adjust:100%!important;}
+  html,body{width:auto!important;-webkit-text-size-adjust:100%!important;text-size-adjust:100%!important;background:#fff!important;}
   body>*:not(#pdf-preview){display:none!important;}
   #pdf-preview{position:static!important;overflow:visible!important;height:auto!important;width:auto!important;padding:0!important;background:#fff!important;inset:unset!important;}
   .pdf-toolbar,.pdf-close,.pdf-print-btn,.pdf-share-btn,.pdf-save-btn{display:none!important;}
@@ -7094,14 +7094,15 @@ document.addEventListener('DOMContentLoaded', async function(){
     startRealtime();
     // 保存見積・請求書を全端末共有（バックグラウンド・失敗してもローカル運用継続）
     _docSyncPull('saved_quotes'); _docSyncPull('saved_invoices');
-    // URLに見積データが付いていれば見積モーダルを開いて反映する
-    try{ applyQuoteFromUrl(); }catch(e){ console.error(e); }
   }catch(e){
     var el=document.getElementById('productList');
     if(el) el.innerHTML='<div class="empty-state">\u63a5\u7d9a\u30a8\u30e9\u30fc: '+e.message+'</div>';
     console.error(e);
   }finally{
     showLoading(false);
+    // URLに見積データが付いていれば見積モーダルを開いて反映する。
+    // DB接続が失敗しても見積リンクは開けるよう finally で実行する。
+    try{ applyQuoteFromUrl(); }catch(e){ console.error(e); }
   }
 });
 
