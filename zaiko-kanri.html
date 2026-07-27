@@ -3045,6 +3045,7 @@ async function saveBPriceItems(){
 //   売値 = 定価 ×（仕入値÷定価 + 3pt）→ 千円未満切上（○万○千円単位で管理）。
 //   定価なしのオープン価格品は 仕入×1.1 千円繰上。
 const PR_LS_KEY='price_rules_v1';
+const PR_SEEN_KEY='price_rules_seen_v1'; // 既定ルールを一度取り込んだ記録（削除したルールの復活防止）
 const PR_ROUND_LABELS={none:'端数処理なし',round1:'1円四捨五入',up10:'10円未満切上',up100:'100円未満切上',up1000:'千円未満切上',round1000:'千円四捨五入'};
 let DEFAULT_PRICE_RULES=[];
 let prRules=null;
@@ -3132,9 +3133,37 @@ async function _prSaveRemote(){
     return true;
   }catch(e){ return false; }
 }
+// ルールの同一性キー（メーカー・ジャンル・シリーズ・品番接頭辞の組）
+function _prSig(r){ return [r.maker||'',r.cat||'',r.series||'',r.prefix||''].join('|'); }
+function _prLoadSeen(){ try{ return JSON.parse(localStorage.getItem(PR_SEEN_KEY)||'[]'); }catch(e){ return []; } }
+function _prSaveSeen(a){ try{ localStorage.setItem(PR_SEEN_KEY,JSON.stringify(a)); }catch(e){} }
+// 保存済みルールに、まだ取り込んだことのない既定ルールだけを追記する。
+// 利用者が消したルールは「取り込み済み」として記録されるため復活しない。
+function _prMergeNewDefaults(rules){
+  var seen=_prLoadSeen(), have={}, added=0;
+  rules.forEach(function(r){ have[_prSig(r)]=true; });
+  DEFAULT_PRICE_RULES.forEach(function(d){
+    var sig=_prSig(d);
+    if(have[sig] || seen.indexOf(sig)>=0) return;
+    rules.push(JSON.parse(JSON.stringify(d)));
+    seen.push(sig); added++;
+  });
+  // 既存分も「既知」として記録しておく（次回以降の誤復活を防ぐ）
+  rules.forEach(function(r){ var sg=_prSig(r); if(seen.indexOf(sg)<0) seen.push(sg); });
+  _prSaveSeen(seen);
+  return added;
+}
 async function loadPriceRules(){
   var remote=await _prLoadRemote();
-  prRules = remote || _prLoadLocal() || JSON.parse(JSON.stringify(DEFAULT_PRICE_RULES));
+  var saved = remote || _prLoadLocal();
+  if(saved){
+    prRules = saved;
+    var n=_prMergeNewDefaults(prRules);
+    if(n>0){ _prSaveLocal(); console.info('価格ルール: 既定ルール'+n+'件を追加しました'); }
+  }else{
+    prRules = JSON.parse(JSON.stringify(DEFAULT_PRICE_RULES));
+    _prMergeNewDefaults(prRules);
+  }
 }
 async function savePriceRules(){
   _prReadInputs();
