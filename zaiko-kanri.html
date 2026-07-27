@@ -7041,6 +7041,40 @@ function setupEscClose(){
   });
 }
 
+// ═══ URLから見積を読み込む（#quote=<base64url(JSON)>） ══════════
+// importQuoteData と同じ形のJSONをURLに載せて渡す。スマホでもリンクを
+// 開くだけで見積モーダルに全明細が入るため、コンソール操作が不要になる。
+// 例: index.html#quote=eyJ0aXRsZSI6...
+function _b64urlDecode(s){
+  s=String(s||'').replace(/-/g,'+').replace(/_/g,'/');
+  while(s.length%4) s+='=';
+  var bin=atob(s), bytes=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  return new TextDecoder('utf-8').decode(bytes);
+}
+function _b64urlEncode(str){
+  var bytes=new TextEncoder().encode(str), bin='';
+  for(var i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+// 見積データからリンクを生成してクリップボードにコピー（他端末への受け渡し用）
+function copyQuoteLink(q){
+  var url=location.origin+location.pathname+'#quote='+_b64urlEncode(JSON.stringify(q||collectQuoteData()));
+  if(navigator.clipboard) navigator.clipboard.writeText(url);
+  return url;
+}
+function applyQuoteFromUrl(){
+  var m=(location.hash||'').match(/[#&]quote=([^&]+)/);
+  if(!m) return false;
+  var q;
+  try{ q=JSON.parse(_b64urlDecode(m[1])); }
+  catch(e){ alert('見積リンクを読み取れませんでした: '+e.message); return false; }
+  // 読み込み後はハッシュを消す（リロードで二重に入らないように）
+  history.replaceState(null,'',location.pathname+location.search);
+  importQuoteData(q);
+  return true;
+}
+
 document.addEventListener('DOMContentLoaded', async function(){
   updateDate(); setInterval(updateDate, 30000);
   applyFontSize(localStorage.getItem(FONT_LS_KEY)||'normal');
@@ -7060,6 +7094,8 @@ document.addEventListener('DOMContentLoaded', async function(){
     startRealtime();
     // 保存見積・請求書を全端末共有（バックグラウンド・失敗してもローカル運用継続）
     _docSyncPull('saved_quotes'); _docSyncPull('saved_invoices');
+    // URLに見積データが付いていれば見積モーダルを開いて反映する
+    try{ applyQuoteFromUrl(); }catch(e){ console.error(e); }
   }catch(e){
     var el=document.getElementById('productList');
     if(el) el.innerHTML='<div class="empty-state">\u63a5\u7d9a\u30a8\u30e9\u30fc: '+e.message+'</div>';
