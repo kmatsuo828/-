@@ -349,6 +349,8 @@ body.font-xl #priceMakerFilter{width:124px;}
 .ql-input-sm{font-size:11px;padding:4px 6px;}
 .ql-input-name{flex:1;min-width:0;font-size:12px;font-weight:700;padding:4px 6px;}
 .ql-del{border:none;background:var(--accent);color:#fff;border-radius:5px;width:26px;height:26px;font-size:14px;cursor:pointer;flex:none;}
+.ql-move{border:1px solid var(--border);background:var(--surface2);color:var(--ink2);border-radius:5px;width:24px;height:26px;font-size:10px;line-height:1;padding:0;cursor:pointer;flex:none;}
+.ql-move:disabled{opacity:.22;cursor:default;}
 .ql-hinmei{width:100%;margin-bottom:5px;}
 .ql-nums{display:flex;gap:5px;align-items:flex-end;}
 .ql-lbl{font-size:9px;color:var(--ink3);}
@@ -365,6 +367,7 @@ body.font-xl #priceMakerFilter{width:124px;}
 /* ═══ マウス操作環境（PC）: ホバー反応 ═══ */
 @media (hover:hover) and (pointer:fine){
   .btn:hover,.ql-del:hover,.ql-stock-btn:hover,.pdf-toolbar button:hover{filter:brightness(.93);}
+  .ql-move:enabled:hover{background:var(--surface);filter:brightness(.93);}
   .nav-btn:hover{color:#fff;}
   .summary-card:hover,.product-card:hover{box-shadow:0 3px 10px var(--shadow);}
   .maker-dropdown-item:hover{background:var(--surface2);}
@@ -5095,6 +5098,22 @@ async function handleQuotePhoto(event){
   }
 }
 function removeQuoteLine(i){ quoteLines.splice(i,1); renderQuoteLines(); }
+// ─── 明細行の並べ替え（同じメーカー内のみ・2026-08-08追加） ──────────
+// PDFはメーカーの初出順でグループ化するため、同じメーカー同士だけを入れ替える。
+// これならメーカーグループの並び順は絶対に変わらず、グループ内の順番だけが変わる。
+function _quoteSwapTarget(i,dir){
+  var L=quoteLines[i]; if(!L) return -1;
+  var mk=L.maker||'その他';
+  for(var j=i+dir; j>=0 && j<quoteLines.length; j+=dir){
+    if((quoteLines[j].maker||'その他')===mk) return j;
+  }
+  return -1;
+}
+function moveQuoteLine(i,dir){
+  var j=_quoteSwapTarget(i,dir); if(j<0) return;
+  var t=quoteLines[i]; quoteLines[i]=quoteLines[j]; quoteLines[j]=t;
+  renderQuoteLines();
+}
 function insertQuoteStock(i){
   var L=quoteLines[i];
   var total=0;
@@ -5139,10 +5158,13 @@ function renderQuoteLines(){
   if(!quoteLines.length){ el.innerHTML='<div style="text-align:center;color:var(--ink3);font-size:13px;padding:16px;">明細がありません。上から商品を追加してください。</div>'; renderQuoteTotal(); return; }
   el.innerHTML=quoteLines.map(function(L,i){
     var amt=L.qty*L.tanka;
+    var canUp=_quoteSwapTarget(i,-1)>=0, canDn=_quoteSwapTarget(i,1)>=0;
     return '<div class="ai-item ql-item">'
       +'<div class="ql-head">'
       +'<input type="text" id="q-maker-'+i+'" value="'+(L.maker||'').replace(/"/g,'&quot;')+'" placeholder="メーカー" class="form-input ql-input-sm" style="width:90px;" oninput="_quoteRecalc('+i+')">'
       +'<input type="text" id="q-name-'+i+'" value="'+(L.name||'').replace(/"/g,'&quot;')+'" placeholder="品番" list="productNameList" class="form-input ql-input-name" oninput="_quoteRecalc('+i+')" onblur="_quoteLineBlur('+i+')">'
+      +'<button type="button" onclick="moveQuoteLine('+i+',-1)" class="ql-move" title="上へ（同じメーカー内）"'+(canUp?'':' disabled')+'>▲</button>'
+      +'<button type="button" onclick="moveQuoteLine('+i+',1)" class="ql-move" title="下へ（同じメーカー内）"'+(canDn?'':' disabled')+'>▼</button>'
       +'<button onclick="removeQuoteLine('+i+')" class="ql-del">×</button>'
       +'</div>'
       +'<input type="text" id="q-hinmei-'+i+'" value="'+(L.hinmei||'').replace(/"/g,'&quot;')+'" placeholder="品名・仕様" class="form-input ql-input-sm ql-hinmei" oninput="_quoteRecalc('+i+')">'
@@ -5584,6 +5606,13 @@ async function handleInvoicePhoto(event){
   }
 }
 function removeInvoiceLine(i){ invoiceLines.splice(i,1); renderInvoiceLines(); }
+// ─── 明細行の並べ替え（2026-08-08追加） ─────────────────────────
+// 請求書はメーカーでグループ化せず明細を並び順どおり出すため、隣の行と単純に入れ替える。
+function moveInvoiceLine(i,dir){
+  var j=i+dir; if(j<0||j>=invoiceLines.length) return;
+  var t=invoiceLines[i]; invoiceLines[i]=invoiceLines[j]; invoiceLines[j]=t;
+  renderInvoiceLines();
+}
 function _invoiceRecalc(i){
   invoiceLines[i].name=(document.getElementById('inv-name-'+i)||{value:''}).value;
   invoiceLines[i].hinmei=(document.getElementById('inv-hinmei-'+i)||{value:''}).value;
@@ -5603,6 +5632,8 @@ function renderInvoiceLines(){
     return '<div class="ai-item ql-item">'
       +'<div class="ql-head">'
       +'<input type="text" id="inv-name-'+i+'" value="'+(L.name||'').replace(/"/g,'&quot;')+'" placeholder="商品名" list="productNameList" class="form-input ql-input-name" oninput="_invoiceRecalc('+i+')" onblur="_invoiceLineBlur('+i+')">'
+      +'<button type="button" onclick="moveInvoiceLine('+i+',-1)" class="ql-move" title="上へ"'+(i>0?'':' disabled')+'>▲</button>'
+      +'<button type="button" onclick="moveInvoiceLine('+i+',1)" class="ql-move" title="下へ"'+(i<invoiceLines.length-1?'':' disabled')+'>▼</button>'
       +'<button onclick="removeInvoiceLine('+i+')" class="ql-del">×</button>'
       +'</div>'
       +'<input type="text" id="inv-hinmei-'+i+'" value="'+(L.hinmei||'').replace(/"/g,'&quot;')+'" placeholder="品名・仕様" class="form-input ql-input-sm ql-hinmei" oninput="_invoiceRecalc('+i+')">'
