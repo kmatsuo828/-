@@ -301,6 +301,23 @@ body.font-xl #priceMakerFilter{width:124px;}
 .pdf-table td{padding:6px 8px;border-bottom:1px solid #e0ddd8;text-align:center;}
 .pdf-table tr:nth-child(even) td{background:#f7f5f2;}
 .pdf-table .item-name{text-align:left;font-weight:700;font-family:'JetBrains Mono',monospace;font-size:11px;}
+/* ─── 出荷証明書 ─────────────────────────────────────────────── */
+.cert-page{color:#000;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;}
+.cert-title{text-align:center;font-size:19px;letter-spacing:.18em;margin:0 0 16px;}
+.cert-table{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;border:1px solid #000;}
+.cert-table th{border-bottom:1px solid #000;border-right:1px solid #000;background:#fff;color:#000;font-weight:400;padding:4px 6px;text-align:center;}
+.cert-table td{border-right:1px solid #000;padding:0 6px;height:18px;line-height:18px;white-space:nowrap;overflow:hidden;text-align:left;}
+.cert-table th:last-child,.cert-table td:last-child{border-right:none;}
+.cert-table td.cq{text-align:right;}
+.cert-table td.cu{text-align:center;}
+.cert-table td.cd{text-align:center;}
+.cl-item{background:var(--surface);border-radius:9px;padding:8px;margin-bottom:6px;box-shadow:0 1px 3px var(--shadow);}
+.cl-head{display:flex;gap:5px;align-items:center;margin-bottom:5px;}
+.cl-del{background:var(--accent);color:#fff;border:none;border-radius:6px;width:26px;height:26px;font-size:14px;cursor:pointer;flex:none;}
+.cl-move{background:var(--surface2);color:var(--ink2);border:1px solid var(--border);border-radius:6px;width:24px;height:26px;font-size:10px;cursor:pointer;flex:none;}
+.cl-move:disabled{opacity:.3;cursor:default;}
+.cl-nums{display:flex;gap:6px;align-items:flex-end;}
+.cl-lbl{font-size:10px;color:var(--ink3);margin-bottom:2px;}
 .quote-table td{font-size:11px;padding:5px 6px;border-bottom:1px solid #ddd;}
 .quote-table .q-code{font-family:'JetBrains Mono',monospace;font-weight:700;text-align:left;font-size:11px;}
 .empty-state{text-align:center;padding:32px 16px;color:var(--ink3);font-size:13px;}
@@ -710,7 +727,10 @@ body.font-xl #priceMakerFilter{width:124px;}
   <button class="btn btn-amber btn-full" onclick="openQuote()" style="padding:14px;font-size:16px;margin-bottom:10px;">📋 見積書を作成する</button>
 
   <!-- 請求書作成 -->
-  <button class="btn btn-blue btn-full" onclick="openInvoice()" style="padding:14px;font-size:16px;margin-bottom:14px;">🧾 請求書を作成する</button>
+  <button class="btn btn-blue btn-full" onclick="openInvoice()" style="padding:14px;font-size:16px;margin-bottom:10px;">🧾 請求書を作成する</button>
+
+  <!-- 出荷証明書作成 -->
+  <button class="btn btn-secondary btn-full" onclick="openShipCert()" style="padding:14px;font-size:16px;margin-bottom:14px;">🚚 出荷証明書を作成する</button>
 
   <div style="height:1px;background:var(--border);margin-bottom:14px;"></div>
 
@@ -1700,6 +1720,89 @@ body.font-xl #priceMakerFilter{width:124px;}
 </div>
 
 <!-- PDF PREVIEW -->
+<!-- MODAL: SHIPPING CERTIFICATE BUILDER -->
+<div class="modal-overlay" id="modalShipCert">
+  <div class="modal modal-wide">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🚚 出荷証明書作成</div>
+
+    <div class="form-group" style="margin-bottom:8px;">
+      <label class="form-label">宛名</label>
+      <div style="display:flex;gap:6px;">
+        <div class="maker-combo" style="flex:1;min-width:0;">
+          <input type="text" class="maker-combo-input" id="cert-customer" placeholder="宛名を入力 or ▼で選択" autocomplete="off"
+            oninput="filterCustomerDropdown('cert-customer','certCustDD')" onfocus="openCustomerDropdown('cert-customer','certCustDD')">
+          <button class="maker-combo-toggle" type="button" onclick="toggleCustomerDropdown('cert-customer','certCustDD')">▼</button>
+          <div class="maker-dropdown" id="certCustDD"></div>
+        </div>
+        <select class="form-select" id="cert-honorific" style="width:90px;flex:none;">
+          <option value="御中">御中</option>
+          <option value="殿">殿</option>
+          <option value="様">様</option>
+          <option value="">（なし）</option>
+        </select>
+      </div>
+      <div style="font-size:11px;color:var(--ink3);margin-top:3px;">官公庁宛は「殿」（例: 和泉市長　殿）、会社宛は「御中」。</div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:8px;">
+      <label class="form-label">件名</label>
+      <input type="text" class="form-input" id="cert-title" placeholder="例: 北中道小学校">
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <div class="form-group" style="flex:1;margin:0;"><label class="form-label">発行日</label><input type="date" class="form-input" id="cert-date"></div>
+      <div class="form-group" style="flex:1;margin:0;"><label class="form-label">証明書No.</label><input type="text" class="form-input" id="cert-no" placeholder="00000066"></div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:10px;">
+      <label class="form-label">出荷日（納品日）</label>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="date" class="form-input" id="cert-shipdate" style="flex:1;min-width:0;">
+        <button class="btn btn-secondary" type="button" onclick="applyCertShipDate()" style="flex:none;padding:9px 12px;font-size:12px;white-space:nowrap;">全明細に反映</button>
+      </div>
+      <div style="font-size:11px;color:var(--ink3);margin-top:3px;">明細を追加すると、この日付が各行の納品日に入ります。行ごとに変更・空欄にもできます。</div>
+    </div>
+
+    <div style="background:var(--surface2);border-radius:10px;padding:10px;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:700;margin-bottom:6px;color:var(--ink2);">明細を追加（登録商品から検索）</div>
+      <div style="display:flex;gap:6px;margin-bottom:6px;">
+        <select class="form-select" id="cert-add-maker" onchange="renderCertAddResults()" style="flex:1;min-width:0;font-size:13px;"><option value="">全メーカー</option></select>
+        <select class="form-select" id="cert-add-cat" onchange="renderCertAddResults()" style="flex:1;min-width:0;font-size:13px;"><option value="">全ジャンル</option></select>
+      </div>
+      <input type="text" class="form-input" id="cert-add-q" placeholder="🔍 品番・品名・キーワードで検索" autocomplete="off" oninput="renderCertAddResults()" style="font-size:14px;margin-bottom:6px;">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+        <input type="number" class="form-input" id="cert-add-qty" value="1" min="0" step="any" style="width:80px;text-align:center;">
+        <span style="font-size:13px;color:var(--ink3);">数量（「＋追加」タップ時に適用）</span>
+      </div>
+      <div id="cert-add-results" style="max-height:220px;overflow-y:auto;margin-bottom:4px;"></div>
+      <button class="btn btn-secondary" style="width:100%;margin-top:6px;padding:8px;font-size:12px;" type="button" onclick="addCertLineManual()">✏️ 手入力で1行追加</button>
+      <div style="height:1px;background:var(--border);margin:10px 0;"></div>
+      <div style="font-size:11px;color:var(--ink3);margin-bottom:6px;">🔍 商品マスタ検索（販売管理システム・約6万件）— 品番・品名の一部で検索してタップ追加</div>
+      <input type="text" class="form-input" id="cert-master-q" placeholder="例: NF125-CV / 圧着端子" autocomplete="off" oninput="masterSearchInput('cert')" style="font-size:14px;margin-bottom:6px;">
+      <div id="cert-master-results" style="max-height:220px;overflow-y:auto;"></div>
+    </div>
+
+    <div id="cert-lines"></div>
+    <div id="cert-count" style="margin-bottom:10px;"></div>
+
+    <div style="font-size:11px;color:var(--ink3);background:var(--surface2);border-radius:8px;padding:9px 11px;margin-bottom:10px;line-height:1.7;">
+      ※ 出荷証明書に金額は記載されません（品番・品名・数量・単位・納品日のみ）。社印はPDF出力時に自動で押されます。
+    </div>
+
+    <button class="btn btn-amber btn-full" onclick="generateShipCertPdf()" style="padding:13px;font-size:15px;margin-bottom:8px;">📄 出荷証明書PDFを作成</button>
+
+    <div style="margin-bottom:10px;">
+      <button class="btn btn-secondary btn-full" onclick="toggleSavedCerts()" style="padding:10px;font-size:13px;">📂 保存済み出荷証明書一覧</button>
+      <div id="saved-certs-list" style="display:none;margin-top:8px;max-height:300px;overflow-y:auto;"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary btn-full" onclick="closeShipCertModal()">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <div id="pdf-preview">
   <div class="pdf-toolbar">
     <button class="pdf-save-btn" onclick="saveCurrentDoc()">💾 保存</button>
@@ -2215,6 +2318,9 @@ function startRealtime(){
       await _docSyncPull('saved_invoices');
       var iEl=document.getElementById('saved-invoices-list');
       if(iEl && iEl.style.display==='block') renderSavedInvoices();
+      await _docSyncPull('saved_shipcerts');
+      var cEl=document.getElementById('saved-certs-list');
+      if(cEl && cEl.style.display==='block') renderSavedCerts();
     }catch(e){}
   }
   setInterval(syncNow, 30000);
@@ -4905,7 +5011,7 @@ function generatePdf(){
 // 販売管理システムの商品マスタを見積書・請求書の明細追加時に検索する。
 // 全件読み込みはしない（起動速度・通信量を守るため必ず検索APIで絞り込む）。
 let _msTimer=null;
-let _msResults={quote:[],invoice:[]};
+let _msResults={quote:[],invoice:[],cert:[]};
 function masterSearchInput(target){
   clearTimeout(_msTimer);
   _msTimer=setTimeout(function(){ doMasterSearch(target); }, 350);
@@ -4964,6 +5070,9 @@ function addLineFromMaster(target,i){
     var rate=(v.teika>0&&v.sell>0)?Math.round(v.sell/v.teika*100):0;
     quoteLines.push({pid:null,maker:v.maker||'その他',name:v.name,hinmei:v.hinmei,qty:1,teika:v.teika,rate:rate,tanka:v.sell,bikou:''});
     renderQuoteLines();
+  }else if(target==='cert'){
+    certLines.push({name:(v.maker?v.maker+'　':'')+v.name,hinmei:v.hinmei,qty:1,unit:v.unit||'個',ddate:_certDefaultDate()});
+    renderCertLines();
   }else{
     invoiceLines.push({pid:null,name:(v.maker?v.maker+' ':'')+v.name,hinmei:v.hinmei,qty:1,unit:v.unit||'個',tanka:v.sell,bikou:''});
     renderInvoiceLines();
@@ -5489,8 +5598,8 @@ function deleteSavedQuote(idx){
 // 削除はトゥームストーン方式: 他端末のローカルに残る同名文書がマージで
 // 復活しないよう、削除記録より古いcreatedAtの文書を除外する。
 var _docSyncTimers={};
-function _docKeepDays(kind){ return kind==='saved_invoices'?INVOICE_KEEP_DAYS:QUOTE_KEEP_DAYS; }
-function _docLoad(kind){ return kind==='saved_invoices'?_loadSavedInvoices():_loadSavedQuotes(); }
+function _docKeepDays(kind){ if(kind==='saved_shipcerts') return CERT_KEEP_DAYS; return kind==='saved_invoices'?INVOICE_KEEP_DAYS:QUOTE_KEEP_DAYS; }
+function _docLoad(kind){ if(kind==='saved_shipcerts') return _loadSavedCerts(); return kind==='saved_invoices'?_loadSavedInvoices():_loadSavedQuotes(); }
 function _tombLoad(kind){
   try{ return JSON.parse(localStorage.getItem('zaiko_tomb_'+kind)||'[]'); }catch(e){ return []; }
 }
@@ -5538,20 +5647,24 @@ async function _docSyncPull(kind){
       return !tombs.some(function(t){ return t.filename===d.filename && new Date(t.deletedAt)>new Date(d.createdAt||0); });
     });
     merged.sort(function(a,b){ return new Date(b.createdAt||0)-new Date(a.createdAt||0); });
-    if(kind==='saved_invoices') _saveSavedInvoices(merged); else _saveSavedQuotes(merged);
+    if(kind==='saved_shipcerts') _saveSavedCerts(merged);
+    else if(kind==='saved_invoices') _saveSavedInvoices(merged);
+    else _saveSavedQuotes(merged);
   }catch(e){}
 }
 
 // ─── PDFプレビュー: 見積書/請求書どちらの操作か振り分け ───────────
-var _pdfDocType='none'; // 'quote' | 'invoice' | 'none'
+var _pdfDocType='none'; // 'quote' | 'invoice' | 'shipcert' | 'none'
 function saveCurrentDoc(){
   if(_pdfDocType==='invoice') saveCurrentInvoice();
   else if(_pdfDocType==='quote') saveCurrentQuote();
+  else if(_pdfDocType==='shipcert') saveCurrentCert();
   else alert('この画面には保存機能はありません。');
 }
 function _autoSaveCurrentDoc(){
   if(_pdfDocType==='invoice') _autoSaveInvoiceDraft();
   else if(_pdfDocType==='quote') _autoSaveQuoteDraft();
+  else if(_pdfDocType==='shipcert') _autoSaveCertDraft();
 }
 
 // ═══ 請求書作成 ═══════════════════════════════════════════════
@@ -5922,6 +6035,363 @@ function deleteSavedInvoice(idx){
   list.splice(idx,1);
   _saveSavedInvoices(list);
   renderSavedInvoices();
+}
+
+// ═══ 出荷証明書作成 ════════════════════════════════════════════
+// 得意先へ提出する出荷証明書（金額は一切記載しない）。書式は従来の
+// 販売管理システム帳票に準拠: 宛名・件名・証明書No.・頁・発行日・
+// 自社情報（社印を自動押印）・明細（商品名1／商品名2／数量／単位／納品日）。
+const SHIPCERT_COMPANY={lead:'電気設備資材総合卸',name:'株式会社マツオ',regno:'登録番号：T7120101048746',zip:'〒594-0023',addr:'大阪府和泉市伯太町2-33-37',tel:'TEL　0725-41-1306 ㈹ FAX　0725-41-1308'};
+// 社印（角印）: 従来の押印済み出荷証明書から印影を抽出した透過PNG
+const SHIPCERT_SEAL='data:image/png;base64,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';
+const CERT_LAST_ISSUED_NO=65;   // 販売管理システムでの最終発行番号（次はここ+1から）
+const CERT_ROWS_PER_PAGE=44;    // 1頁あたりの明細行数（従来帳票と同じ）
+var CERT_STORAGE_KEY='zaiko_saved_shipcerts_v1';
+var CERT_KEEP_DAYS=365;         // 出荷証明書は再発行依頼が来るため1年保持
+let certLines=[];               // {name,hinmei,qty,unit,ddate}
+var _editingCertIdx=-1;
+var _lastCertData=null;
+
+function _certEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _certDefaultDate(){ return (document.getElementById('cert-shipdate')||{value:''}).value||''; }
+function _certDispDate(d){ return (d&&/^\d{4}-\d{2}-\d{2}$/.test(d))?d.replace(/-/g,'/'):(d||''); }
+function _certDispIssue(d){ return (d&&/^\d{4}-\d{2}-\d{2}$/.test(d))?(d.slice(0,4)+'年'+d.slice(5,7)+'月'+d.slice(8,10)+'日'):(d||''); }
+function _certFmtQty(q){
+  if(q===''||q==null) return '';
+  var n=Number(q);
+  if(isNaN(n)) return String(q);
+  return (Math.round(n*100)/100).toString();
+}
+// 保存済みの最大No.（無ければ販売管理システムの最終発行番号）+1 を8桁で返す
+function _nextCertNo(){
+  var max=CERT_LAST_ISSUED_NO;
+  _loadSavedCerts().forEach(function(c){
+    var n=parseInt(String(c.no||'').replace(/[^0-9]/g,''),10);
+    if(!isNaN(n)&&n>max) max=n;
+  });
+  return String(max+1).padStart(8,'0');
+}
+
+function openShipCert(){
+  certLines=[];
+  _editingCertIdx=-1;
+  document.getElementById('cert-title').value='';
+  document.getElementById('cert-customer').value='';
+  document.getElementById('cert-honorific').value='御中';
+  var n=new Date();
+  var today=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');
+  document.getElementById('cert-date').value=today;
+  document.getElementById('cert-shipdate').value=today;
+  document.getElementById('cert-no').value=_nextCertNo();
+  initCertAddSearch();
+  renderCertLines();
+  openModal('modalShipCert');
+}
+function closeShipCertModal(){
+  _autoSaveCertDraft();
+  closeModal('modalShipCert');
+}
+
+// ─── 明細追加: 登録商品の検索 ────────────────────────────────────
+function initCertAddSearch(){
+  var makers=getMakers(), cats=getAllCategories();
+  document.getElementById('cert-add-maker').innerHTML='<option value="">全メーカー</option>'+makers.map(function(m){return '<option value="'+m+'">'+m+'</option>';}).join('');
+  document.getElementById('cert-add-cat').innerHTML='<option value="">全ジャンル</option>'+cats.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');
+  var q=document.getElementById('cert-add-q'); if(q) q.value='';
+  var mq=document.getElementById('cert-master-q'); if(mq) mq.value='';
+  var mr=document.getElementById('cert-master-results'); if(mr) mr.innerHTML='';
+  renderCertAddResults();
+}
+function certAddFilteredProducts(){
+  var mk=(document.getElementById('cert-add-maker')||{value:''}).value;
+  var ct=(document.getElementById('cert-add-cat')||{value:''}).value;
+  var q=((document.getElementById('cert-add-q')||{value:''}).value||'').trim().toLowerCase();
+  return data.products.filter(function(p){
+    if(mk&&(p.maker||'')!==mk) return false;
+    if(ct&&(p.category||'')!==ct) return false;
+    if(!q) return true;
+    return ((p.name||'')+' '+(p.maker||'')+' '+(p.note||'')+' '+(p.category||'')).toLowerCase().indexOf(q)>=0;
+  }).slice(0,30);
+}
+function renderCertAddResults(){
+  var box=document.getElementById('cert-add-results'); if(!box) return;
+  var list=certAddFilteredProducts();
+  if(!list.length){ box.innerHTML='<div style="font-size:11px;color:var(--ink3);padding:6px;">該当する登録商品がありません</div>'; return; }
+  box.innerHTML=list.map(function(p){
+    return '<div onclick="addCertLineByPid(\''+p.id+'\')" style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 9px;margin-bottom:4px;cursor:pointer;">'
+      +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-size:12px;font-weight:700;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+_certEsc(p.name||'')+'</div>'
+      +'<div style="font-size:10px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+_certEsc((p.maker||'')+(p.category?' ｜ '+p.category:''))+'</div>'
+      +'</div>'
+      +'<span style="flex:none;background:var(--blue);color:#fff;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;">＋追加</span>'
+      +'</div>';
+  }).join('');
+}
+function addCertLineByPid(pid){
+  var p=data.products.find(function(x){return String(x.id)===String(pid);}); if(!p) return;
+  var qty=parseFloat((document.getElementById('cert-add-qty')||{value:'1'}).value);
+  if(isNaN(qty)) qty=1;
+  certLines.push({name:((p.maker||'')?p.maker+'　':'')+(p.name||''),hinmei:(p.note||''),qty:qty,unit:'個',ddate:_certDefaultDate()});
+  renderCertLines();
+}
+function addCertLineManual(){
+  certLines.push({name:'',hinmei:'',qty:1,unit:'個',ddate:_certDefaultDate()});
+  renderCertLines();
+}
+function removeCertLine(i){ _certReadLines(); certLines.splice(i,1); renderCertLines(); }
+function moveCertLine(i,dir){
+  _certReadLines();
+  var j=i+dir; if(j<0||j>=certLines.length) return;
+  var t=certLines[i]; certLines[i]=certLines[j]; certLines[j]=t;
+  renderCertLines();
+}
+function applyCertShipDate(){
+  _certReadLines();
+  var d=_certDefaultDate();
+  certLines.forEach(function(L){ L.ddate=d; });
+  renderCertLines();
+}
+// 入力欄の現在値を certLines へ取り込む
+function _certReadLines(){
+  for(var i=0;i<certLines.length;i++){
+    var el;
+    el=document.getElementById('c-name-'+i);   if(el) certLines[i].name=el.value;
+    el=document.getElementById('c-hinmei-'+i); if(el) certLines[i].hinmei=el.value;
+    el=document.getElementById('c-qty-'+i);    if(el) certLines[i].qty=(el.value===''?'':(isNaN(parseFloat(el.value))?'':parseFloat(el.value)));
+    el=document.getElementById('c-unit-'+i);   if(el) certLines[i].unit=el.value;
+    el=document.getElementById('c-ddate-'+i);  if(el) certLines[i].ddate=el.value;
+  }
+}
+function renderCertLines(){
+  var el=document.getElementById('cert-lines');
+  if(!certLines.length){
+    el.innerHTML='<div style="text-align:center;color:var(--ink3);font-size:13px;padding:16px;">明細がありません。上から品目を追加してください。</div>';
+    document.getElementById('cert-count').innerHTML='';
+    return;
+  }
+  el.innerHTML=certLines.map(function(L,i){
+    return '<div class="cl-item">'
+      +'<div class="cl-head">'
+      +'<span style="font-size:11px;color:var(--ink3);width:22px;flex:none;text-align:right;">'+(i+1)+'</span>'
+      +'<input type="text" id="c-name-'+i+'" value="'+String(L.name||'').replace(/"/g,'&quot;')+'" placeholder="商品名1（メーカー・品番）" class="form-input" style="flex:1;min-width:0;font-size:13px;padding:7px 8px;">'
+      +'<button type="button" onclick="moveCertLine('+i+',-1)" class="cl-move" title="上へ"'+(i===0?' disabled':'')+'>▲</button>'
+      +'<button type="button" onclick="moveCertLine('+i+',1)" class="cl-move" title="下へ"'+(i===certLines.length-1?' disabled':'')+'>▼</button>'
+      +'<button type="button" onclick="removeCertLine('+i+')" class="cl-del">×</button>'
+      +'</div>'
+      +'<input type="text" id="c-hinmei-'+i+'" value="'+String(L.hinmei||'').replace(/"/g,'&quot;')+'" placeholder="商品名2（品名・仕様）" class="form-input" style="width:100%;font-size:13px;padding:7px 8px;margin-bottom:5px;">'
+      +'<div class="cl-nums">'
+      +'<div style="flex:0 0 70px;"><div class="cl-lbl">数量</div><input type="number" id="c-qty-'+i+'" value="'+(L.qty===''||L.qty==null?'':L.qty)+'" step="any" class="form-input" style="text-align:center;font-size:13px;padding:7px 4px;"></div>'
+      +'<div style="flex:0 0 64px;"><div class="cl-lbl">単位</div><input type="text" id="c-unit-'+i+'" value="'+String(L.unit||'').replace(/"/g,'&quot;')+'" class="form-input" style="text-align:center;font-size:13px;padding:7px 4px;"></div>'
+      +'<div style="flex:1;min-width:0;"><div class="cl-lbl">納品日</div><input type="date" id="c-ddate-'+i+'" value="'+(L.ddate||'')+'" class="form-input" style="font-size:12px;padding:7px 6px;"></div>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+  var pages=Math.max(1,Math.ceil(certLines.length/CERT_ROWS_PER_PAGE));
+  document.getElementById('cert-count').innerHTML='<div style="background:var(--surface);border-radius:8px;padding:9px 12px;font-size:13px;display:flex;justify-content:space-between;">'
+    +'<span style="color:var(--ink3);">明細</span><span><b>'+certLines.length+'</b> 行 ／ '+pages+' 頁</span></div>';
+}
+
+// ─── PDFファイル名 ───────────────────────────────────────────────
+function getShipCertPdfFilename(subject,dateVal){
+  var dateStr;
+  if(dateVal&&dateVal.match(/^\d{4}-\d{2}-\d{2}$/)){ dateStr=dateVal.replace(/-/g,''); }
+  else{ var n=new Date(); dateStr=n.getFullYear().toString()+String(n.getMonth()+1).padStart(2,'0')+String(n.getDate()).padStart(2,'0'); }
+  var s=(subject||'').trim();
+  var base=s?(s.indexOf('出荷証明書')>=0?s:s+'　出荷証明書'):'出荷証明書';
+  return base+dateStr;
+}
+
+// ─── 出荷証明書HTMLの生成（明細が多い場合は頁を分ける） ──────────
+function buildShipCertHtml(c){
+  var lines=c.lines||[];
+  var per=CERT_ROWS_PER_PAGE;
+  var pages=Math.max(1,Math.ceil(lines.length/per));
+  var cm=SHIPCERT_COMPANY;
+  var honor=(c.honorific===undefined?'御中':c.honorific);
+  var custHtml=_certEsc(c.customer||'')+(honor?'　'+_certEsc(honor):'');
+  var html='';
+  for(var p=0;p<pages;p++){
+    var chunk=lines.slice(p*per,(p+1)*per);
+    var rows='';
+    chunk.forEach(function(L){
+      rows+='<tr>'
+        +'<td>'+_certEsc(L.name||'')+'</td>'
+        +'<td>'+_certEsc(L.hinmei||'')+'</td>'
+        +'<td class="cq">'+_certFmtQty(L.qty)+'</td>'
+        +'<td class="cu">'+_certEsc(L.unit||'')+'</td>'
+        +'<td class="cd">'+_certEsc(_certDispDate(L.ddate))+'</td>'
+        +'</tr>';
+    });
+    for(var k=chunk.length;k<per;k++){
+      rows+='<tr><td>&nbsp;</td><td></td><td class="cq"></td><td class="cu"></td><td class="cd"></td></tr>';
+    }
+    html+='<div class="cert-page"'+(p<pages-1?' style="page-break-after:always;"':'')+'>'
+      +'<div class="cert-title">出荷証明書</div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
+      +'<div style="font-size:14px;padding-left:18px;">'+custHtml+'</div>'
+      +'<div style="font-size:12px;text-align:right;line-height:1.85;">'
+      +'<div>No.'+_certEsc(c.no||'')+'</div>'
+      +'<div>'+(p+1)+'頁</div>'
+      +'<div>'+_certEsc(_certDispIssue(c.date))+'</div>'
+      +'</div></div>'
+      +'<div style="font-size:13px;padding-left:8px;margin-top:10px;">件名： '+_certEsc(c.title||'')+'</div>'
+      +'<div style="display:flex;justify-content:flex-end;margin-top:6px;margin-bottom:10px;">'
+      +'<div style="position:relative;font-size:11px;line-height:1.85;text-align:right;padding-right:4px;">'
+      +'<div><span style="font-size:9px;vertical-align:3px;">'+cm.lead+'</span><span style="font-size:17px;font-weight:700;letter-spacing:.04em;">'+cm.name+'</span></div>'
+      +'<div>'+cm.regno+'</div>'
+      +'<div>'+cm.zip+'　'+cm.addr+'</div>'
+      +'<div>'+cm.tel+'</div>'
+      +'<img src="'+SHIPCERT_SEAL+'" alt="社印" style="position:absolute;top:-13px;right:4px;width:74px;height:74px;">'
+      +'</div></div>'
+      +'<table class="cert-table"><thead><tr>'
+      +'<th style="width:31%;">商品名１</th><th style="width:31%;">商品名２</th>'
+      +'<th style="width:11%;">数　量</th><th style="width:9%;">単位</th><th style="width:18%;">納　品　日</th>'
+      +'</tr></thead><tbody>'+rows+'</tbody></table>'
+      +'</div>';
+  }
+  return html;
+}
+
+function _collectCertFormData(){
+  _certReadLines();
+  var title=(document.getElementById('cert-title').value||'').trim();
+  var cust=(document.getElementById('cert-customer').value||'').trim();
+  var honor=(document.getElementById('cert-honorific')||{value:'御中'}).value;
+  var dateVal=document.getElementById('cert-date').value||'';
+  var shipDate=document.getElementById('cert-shipdate').value||'';
+  var no=((document.getElementById('cert-no')||{value:''}).value||'').trim();
+  if(!no) no=_nextCertNo();
+  if(/^[0-9]+$/.test(no)) no=no.padStart(8,'0');
+  return {title:title,customer:cust,honorific:honor,date:dateVal,shipDate:shipDate,no:no,
+    lines:JSON.parse(JSON.stringify(certLines)),
+    filename:getShipCertPdfFilename(title,dateVal),createdAt:new Date().toISOString()};
+}
+
+function generateShipCertPdf(){
+  if(!certLines.length){ alert('明細を1件以上追加してください'); return; }
+  var c=_collectCertFormData();
+  if(c.customer) addCustomerIfNew(c.customer);
+  document.getElementById('cert-no').value=c.no;
+  document.getElementById('pdf-content').innerHTML=buildShipCertHtml(c);
+  closeModal('modalShipCert');
+  document.title=c.filename;
+  _pdfDocType='shipcert';
+  document.getElementById('pdf-preview').style.display='block';
+  _lastCertData=c;
+}
+
+// ─── 一括投入API（自動化用） ─────────────────────────────────────
+// importShipCertData({title,customer,honorific,date,no,shipDate,
+//   lines:[{name,hinmei,qty,unit,ddate}]}) → {lines,pages,no,filename}
+function importShipCertData(c){
+  c=c||{};
+  openShipCert();
+  if(c.title!==undefined) document.getElementById('cert-title').value=c.title;
+  if(c.customer!==undefined) document.getElementById('cert-customer').value=c.customer;
+  if(c.honorific!==undefined) document.getElementById('cert-honorific').value=c.honorific;
+  if(c.date) document.getElementById('cert-date').value=c.date;
+  if(c.shipDate) document.getElementById('cert-shipdate').value=c.shipDate;
+  if(c.no) document.getElementById('cert-no').value=c.no;
+  var def=_certDefaultDate();
+  certLines=(c.lines||[]).map(function(L){
+    return {name:L.name||'',hinmei:L.hinmei||'',
+      qty:(L.qty===''||L.qty==null)?'':L.qty,
+      unit:(L.unit===undefined?'個':L.unit),
+      ddate:(L.ddate===undefined?def:L.ddate)};
+  });
+  renderCertLines();
+  return {lines:certLines.length,pages:Math.max(1,Math.ceil(certLines.length/CERT_ROWS_PER_PAGE)),
+    no:document.getElementById('cert-no').value,
+    filename:getShipCertPdfFilename(document.getElementById('cert-title').value,document.getElementById('cert-date').value)};
+}
+
+// ─── 保存（localStorage＋Supabaseで全端末共有・1年保持） ──────────
+function _loadSavedCerts(){
+  try{ var s=localStorage.getItem(CERT_STORAGE_KEY); return s?JSON.parse(s):[]; }catch(e){ return []; }
+}
+function _saveSavedCerts(arr){
+  try{ localStorage.setItem(CERT_STORAGE_KEY,JSON.stringify(arr)); }catch(e){}
+  _docSyncPush('saved_shipcerts');
+}
+function _cleanupOldCerts(){
+  var list=_loadSavedCerts();
+  var cutoff=new Date(); cutoff.setDate(cutoff.getDate()-CERT_KEEP_DAYS);
+  var filtered=list.filter(function(c){ return new Date(c.createdAt)>=cutoff; });
+  if(filtered.length!==list.length) _saveSavedCerts(filtered);
+  return filtered;
+}
+function saveCurrentCert(){
+  if(!_lastCertData){ alert('保存する出荷証明書がありません'); return; }
+  var list=_cleanupOldCerts();
+  var idx=list.findIndex(function(c){ return c.filename===_lastCertData.filename; });
+  if(idx>=0) list[idx]=_lastCertData; else list.unshift(_lastCertData);
+  _saveSavedCerts(list);
+  alert('出荷証明書を保存しました（'+list.length+'件保存中）');
+}
+function _autoSaveCertDraft(){
+  if(!certLines.length) return;
+  var cd=_collectCertFormData();
+  var list=_cleanupOldCerts();
+  var existIdx=(_editingCertIdx>=0&&_editingCertIdx<list.length)?_editingCertIdx:list.findIndex(function(c){return c.filename===cd.filename;});
+  if(existIdx>=0) list[existIdx]=cd; else list.unshift(cd);
+  _saveSavedCerts(list);
+  _editingCertIdx=-1;
+}
+function toggleSavedCerts(){
+  var el=document.getElementById('saved-certs-list');
+  if(el.style.display==='none'){ el.style.display='block'; renderSavedCerts(); }
+  else{ el.style.display='none'; }
+}
+function renderSavedCerts(){
+  var el=document.getElementById('saved-certs-list');
+  var list=_cleanupOldCerts();
+  if(!list.length){ el.innerHTML='<div style="text-align:center;color:var(--ink3);font-size:13px;padding:12px;">保存済みの出荷証明書はありません</div>'; return; }
+  el.innerHTML=list.map(function(c,i){
+    var d=c.date?c.date.replace(/-/g,'/'):'';
+    return '<div style="display:flex;align-items:center;gap:5px;padding:8px 10px;background:var(--surface);border-radius:8px;margin-bottom:4px;box-shadow:0 1px 3px var(--shadow);">'
+      +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+_certEsc(c.title||'（件名なし）')+'</div>'
+      +'<div style="font-size:11px;color:var(--ink3);">'+_certEsc(c.customer||'（宛名なし）')+' ｜ '+d+' ｜ No.'+_certEsc(c.no||'')+' ｜ '+((c.lines||[]).length)+'行</div>'
+      +'</div>'
+      +'<button onclick="editSavedCert('+i+')" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">✏️編集</button>'
+      +'<button onclick="openSavedCert('+i+')" style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">📄表示</button>'
+      +'<button onclick="deleteSavedCert('+i+')" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer;">✕</button>'
+      +'</div>';
+  }).join('');
+}
+function openSavedCert(idx){
+  var list=_loadSavedCerts();
+  var c=list[idx]; if(!c) return;
+  document.getElementById('pdf-content').innerHTML=buildShipCertHtml(c);
+  document.title=c.filename||'出荷証明書';
+  _lastCertData=c;
+  _pdfDocType='shipcert';
+  closeModal('modalShipCert');
+  document.getElementById('pdf-preview').style.display='block';
+}
+function editSavedCert(idx){
+  var list=_loadSavedCerts();
+  var c=list[idx]; if(!c) return;
+  certLines=c.lines?JSON.parse(JSON.stringify(c.lines)):[];
+  document.getElementById('cert-title').value=c.title||'';
+  document.getElementById('cert-customer').value=c.customer||'';
+  document.getElementById('cert-honorific').value=(c.honorific===undefined?'御中':c.honorific);
+  document.getElementById('cert-date').value=c.date||'';
+  document.getElementById('cert-shipdate').value=c.shipDate||'';
+  document.getElementById('cert-no').value=c.no||'';
+  initCertAddSearch();
+  _editingCertIdx=idx;
+  document.getElementById('saved-certs-list').style.display='none';
+  renderCertLines();
+}
+function deleteSavedCert(idx){
+  var list=_loadSavedCerts();
+  var c=list[idx]; if(!c) return;
+  if(!confirm('「'+(c.title||c.filename)+'」を削除しますか？')) return;
+  _tombAdd('saved_shipcerts', c.filename);
+  list.splice(idx,1);
+  _saveSavedCerts(list);
+  renderSavedCerts();
 }
 
 // ═══ DATE ════════════════════════════════════════════════════════
@@ -7158,7 +7628,7 @@ document.addEventListener('DOMContentLoaded', async function(){
     renderMakerFilter(); renderSummary(); renderList();
     startRealtime();
     // 保存見積・請求書を全端末共有（バックグラウンド・失敗してもローカル運用継続）
-    _docSyncPull('saved_quotes'); _docSyncPull('saved_invoices');
+    _docSyncPull('saved_quotes'); _docSyncPull('saved_invoices'); _docSyncPull('saved_shipcerts');
   }catch(e){
     var el=document.getElementById('productList');
     if(el) el.innerHTML='<div class="empty-state">\u63a5\u7d9a\u30a8\u30e9\u30fc: '+e.message+'</div>';
