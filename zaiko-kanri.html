@@ -306,7 +306,7 @@ body.font-xl #priceMakerFilter{width:124px;}
 .cert-title{text-align:center;font-size:19px;letter-spacing:.18em;margin:0 0 16px;}
 .cert-table{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;border:1px solid #000;}
 .cert-table th{border-bottom:1px solid #000;border-right:1px solid #000;background:#fff;color:#000;font-weight:400;padding:4px 6px;text-align:center;}
-.cert-table td{border-right:1px solid #000;padding:0 6px;height:18px;line-height:18px;white-space:nowrap;overflow:hidden;text-align:left;}
+.cert-table td{border-right:1px solid #000;padding:0 6px;height:18px;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;}
 .cert-table th:last-child,.cert-table td:last-child{border-right:none;}
 .cert-table td.cq{text-align:right;}
 .cert-table td.cu{text-align:center;}
@@ -6247,7 +6247,7 @@ function buildShipCertHtml(c){
       +'<img src="'+SHIPCERT_SEAL+'" alt="社印" style="position:absolute;top:-13px;right:4px;width:74px;height:74px;">'
       +'</div></div>'
       +'<table class="cert-table"><thead><tr>'
-      +'<th style="width:31%;">商品名１</th><th style="width:31%;">商品名２</th>'
+      +'<th style="width:27%;">商品名１</th><th style="width:36%;">商品名２</th>'
       +'<th style="width:11%;">数　量</th><th style="width:9%;">単位</th><th style="width:18%;">納　品　日</th>'
       +'</tr></thead><tbody>'+rows+'</tbody></table>'
       +'</div>';
