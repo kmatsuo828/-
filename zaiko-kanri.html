@@ -7462,7 +7462,11 @@ function _pdfWorkerOpts(fname){
     filename:fname,
     image:{type:'jpeg',quality:0.95},
     html2canvas:{scale:2,useCORS:true,scrollX:0,scrollY:0,
-      onclone:function(doc){ var d=doc.getElementById('pdf-content'); if(d){ d.style.margin='0'; d.style.maxWidth='none'; } }},
+      onclone:function(doc){ var d=doc.getElementById('pdf-content'); if(d){ d.style.margin='0'; d.style.maxWidth='none';
+        // 出荷証明書は1頁の行数が決まった帳票なので、描画幅を固定して
+        // 画面幅（端末差）でPDFの縦横比が変わり1頁に収まらなくなるのを防ぐ
+        if(_pdfDocType==='shipcert'){ d.style.width='740px'; d.style.maxWidth='740px'; d.style.paddingRight='0'; }
+      } }},
     jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
     pagebreak:{mode:['css','legacy'],avoid:['tr']}
   };
