@@ -30,24 +30,26 @@ def front(u):
     x0=X0; y0=BASE-h
     cx=x0+w/2; cy=y0+h/2
     hx=u['pw']*S/2; hy=u['ph']*S/2
+    lx,ly=cx-hx,cy-hy   # 左上の取付穴
+    rx,ry=cx+hx,cy+hy   # 右下の取付穴
     s=[f'<rect x="{x0}" y="{y0}" width="{w}" height="{h}" rx="4" fill="{u["fill"]}" stroke="{u["col"]}" stroke-width="3"/>']
     s.append(f'<rect x="{x0+6}" y="{y0+6}" width="{w-12}" height="15" fill="#fff" stroke="{u["col"]}" stroke-width="1.2" opacity=".75"/>')
     s.append(f'<rect x="{x0+6}" y="{y0+h-21}" width="{w-12}" height="15" fill="#fff" stroke="{u["col"]}" stroke-width="1.2" opacity=".75"/>')
-    s.append(f'<rect x="{cx-hx}" y="{cy-hy}" width="{hx*2}" height="{hy*2}" fill="none" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="7 5"/>')
-    for dx in(-hx,hx):
-        for dy in(-hy,hy):
-            s.append(f'<circle cx="{cx+dx}" cy="{cy+dy}" r="6" fill="#fff" stroke="#c0392b" stroke-width="2.4"/>')
-            s.append(f'<line x1="{cx+dx-9.5}" y1="{cy+dy}" x2="{cx+dx+9.5}" y2="{cy+dy}" stroke="#c0392b" stroke-width="1.2"/>')
-            s.append(f'<line x1="{cx+dx}" y1="{cy+dy-9.5}" x2="{cx+dx}" y2="{cy+dy+9.5}" stroke="#c0392b" stroke-width="1.2"/>')
-    # 引出線（取付穴 → 下のピッチ寸法線 / 右の縦ピッチ寸法線）
-    for dx in(-hx,hx):
-        s.append(f'<line x1="{cx+dx}" y1="{cy+hy}" x2="{cx+dx}" y2="{BASE+80}" stroke="#c0392b" stroke-width="0.9" stroke-dasharray="4 4" opacity=".7"/>')
-    for dy in(-hy,hy):
-        s.append(f'<line x1="{cx+hx}" y1="{cy+dy}" x2="{x0+w+30}" y2="{cy+dy}" stroke="#c0392b" stroke-width="0.9" stroke-dasharray="4 4" opacity=".7"/>')
+    # 対角の取付穴 2箇所（左上・右下）
+    s.append(f'<line x1="{lx}" y1="{ly}" x2="{rx}" y2="{ry}" stroke="#c0392b" stroke-width="1.4" stroke-dasharray="7 5" opacity=".8"/>')
+    for (hxx,hyy) in ((lx,ly),(rx,ry)):
+        s.append(f'<circle cx="{hxx}" cy="{hyy}" r="7" fill="#fff" stroke="#c0392b" stroke-width="2.6"/>')
+        s.append(f'<line x1="{hxx-11}" y1="{hyy}" x2="{hxx+11}" y2="{hyy}" stroke="#c0392b" stroke-width="1.3"/>')
+        s.append(f'<line x1="{hxx}" y1="{hyy-11}" x2="{hxx}" y2="{hyy+11}" stroke="#c0392b" stroke-width="1.3"/>')
+    # 引出線（穴 → 下の横ピッチ寸法線 / 右の縦ピッチ寸法線）
+    for xx in (lx,rx):
+        s.append(f'<line x1="{xx}" y1="{ry if xx==rx else ly}" x2="{xx}" y2="{BASE+80}" stroke="#c0392b" stroke-width="0.9" stroke-dasharray="4 4" opacity=".65"/>')
+    for yy in (ly,ry):
+        s.append(f'<line x1="{lx if yy==ly else rx}" y1="{yy}" x2="{x0+w+30}" y2="{yy}" stroke="#c0392b" stroke-width="0.9" stroke-dasharray="4 4" opacity=".65"/>')
     s.append(dim_h(x0,x0+w,BASE+30,f'幅 {u["W"]}'))
-    s.append(dim_h(cx-hx,cx+hx,BASE+80,f'取付ピッチ 横 {u["pw"]}','#c0392b'))
+    s.append(dim_h(lx,rx,BASE+80,f'取付ピッチ 横 {u["pw"]}','#c0392b'))
     s.append(dim_v(y0,BASE,x0-30,f'高さ {u["H"]}'))
-    s.append(dim_v(cy-hy,cy+hy,x0+w+30,f'縦 {u["ph"]}','#c0392b'))
+    s.append(dim_v(ly,ry,x0+w+30,f'縦 {u["ph"]}','#c0392b'))
     return ''.join(s)
 
 def side(u):
@@ -93,11 +95,11 @@ td.n{{font-weight:700}}
 tr.old td{{background:#f4f4f4;color:#555}}
 </style></head><body>
 <h1>三菱電機 S-K25 / S-T25 / S-T35 寸法比較図</h1>
-<div class="lead">同一縮尺で作図し、左端と底面をそろえています。赤い破線と⊕が<b>取付穴のピッチ</b>です。</div>
+<div class="lead">同一縮尺で作図し、左端と底面をそろえています。赤い⊕が<b>取付穴</b>で、<b>左上・右下の対角2箇所</b>です。破線はその対角線とピッチ寸法の引出線です。</div>
 
 <h2>正面図<small>幅 × 高さ ／ 取付ピッチ（mm）</small></h2>
 <div class="row">{fronts}</div>
-<div class="legend">単位：mm　　⊕＝取付穴</div>
+<div class="legend">単位：mm　　⊕＝取付穴（<b style="color:#c0392b">左上・右下の対角2箇所</b>）</div>
 
 <h2>側面図<small>奥行 × 高さ（mm）</small></h2>
 <div class="row">{sides}</div>
@@ -112,7 +114,7 @@ tr.old td{{background:#f4f4f4;color:#555}}
 </table>
 
 <div class="note"><ul>
-<li><b>取付ピッチが3機種とも違うため、取付互換はありません。</b>変換アダプタの設定もありません。</li>
+<li>取付穴は<b>左上・右下の対角2箇所</b>です。<b>ピッチが3機種とも違うため取付互換はありません。</b>変換アダプタの設定もありません。</li>
 <li>S-T25／S-T35 とも S-K25 より小さくなります（特に奥行）。</li>
 <li>既設のヒーター（サーマル）は流用できません。</li>
 </ul></div>
