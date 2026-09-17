@@ -3158,6 +3158,7 @@ async function saveBPriceItems(){
 const PR_LS_KEY='price_rules_v1';
 const PR_SEEN_KEY='price_rules_seen_v1'; // 既定ルールを一度取り込んだ記録（削除したルールの復活防止）
 const PR_ROUND_LABELS={none:'端数処理なし',round1:'1円四捨五入',up10:'10円未満切上',up100:'100円未満切上',up1000:'千円未満切上',round1000:'千円四捨五入'};
+// 既定の掛率ルールは公開ページに載せず、DB（app_settings の price_rules_default）から読む（2026-09-17）
 let DEFAULT_PRICE_RULES=[];
 let prRules=null;
 let prTarget='nosell';
@@ -3264,7 +3265,17 @@ function _prMergeNewDefaults(rules){
   _prSaveSeen(seen);
   return added;
 }
+async function _prLoadDefaults(){
+  if(!HAS_SETTINGS) return false;
+  try{
+    var rows=await supaFetch('app_settings?key=eq.price_rules_default&select=value');
+    var r=rows&&rows[0]&&rows[0].value&&rows[0].value.rules;
+    if(r&&r.length){ DEFAULT_PRICE_RULES=r; return true; }
+  }catch(e){}
+  return false;
+}
 async function loadPriceRules(){
+  await _prLoadDefaults();
   var remote=await _prLoadRemote();
   var saved = remote || _prLoadLocal();
   if(saved){
@@ -3368,6 +3379,7 @@ function removePriceRule(i){
   renderPriceRules();
 }
 function resetPriceRulesToDefault(){
+  if(!DEFAULT_PRICE_RULES.length){ alert('初期ルールを読み込めませんでした。通信状態を確認して、画面を開き直してください。'); return; }
   if(!confirm('現在のルールを破棄して、標準得意先版の初期ルール（'+DEFAULT_PRICE_RULES.length+'件）に戻しますか？')) return;
   prRules=JSON.parse(JSON.stringify(DEFAULT_PRICE_RULES));
   renderPriceRules();
