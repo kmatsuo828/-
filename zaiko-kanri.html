@@ -319,6 +319,8 @@ body.font-xl #priceMakerFilter{width:124px;}
 .cl-nums{display:flex;gap:6px;align-items:flex-end;}
 .cl-lbl{font-size:10px;color:var(--ink3);margin-bottom:2px;}
 .quote-table td{font-size:11px;padding:5px 6px;border-bottom:1px solid #ddd;}
+.inv-table td{color:#000;}
+.inv-table .inv-code{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:11px;}
 .quote-table .q-code{font-family:'JetBrains Mono',monospace;font-weight:700;text-align:left;font-size:11px;}
 .empty-state{text-align:center;padding:32px 16px;color:var(--ink3);font-size:13px;}
 /* AI PRICE SEARCH */
@@ -5827,7 +5829,7 @@ function buildInvoiceHtml(q){
     var amt=L.qty*L.tanka;
     rowsHtml+='<tr>'
       +'<td>'+(i+1)+'</td>'
-      +'<td style="text-align:left;">'+(L.name||'')+(L.hinmei?'<br><span style="font-size:10px;color:#666;">'+L.hinmei+'</span>':'')+'</td>'
+      +'<td style="text-align:left;"><span class="inv-code">'+(L.name||'')+'</span>'+(L.hinmei?'<br><span style="font-size:11px;">'+L.hinmei+'</span>':'')+'</td>'
       +'<td>'+L.qty+'</td>'
       +'<td>'+(L.unit||'')+'</td>'
       +'<td style="text-align:right;">'+(L.tanka>0?Number(L.tanka).toLocaleString():'')+'</td>'
@@ -5861,23 +5863,23 @@ function buildInvoiceHtml(q){
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
     +'<span style="font-size:12px;">下記の通りご請求申し上げます。</span>'
     +'<span style="font-size:13px;">ご請求金額(税込) <b style="font-size:18px;">¥'+tot.toLocaleString()+'</b></span></div>'
-    +'<table class="pdf-table quote-table"><thead><tr>'
+    +'<table class="pdf-table quote-table inv-table"><thead><tr>'
     +'<th style="width:28px;">No.</th><th style="text-align:left;min-width:160px;">商品名</th>'
     +'<th style="width:40px;">数量</th><th style="width:40px;">単位</th><th style="width:64px;">単価</th><th style="width:74px;">金額</th><th style="text-align:left;min-width:90px;">摘要</th>'
     +'</tr></thead><tbody>'+rowsHtml+'</tbody></table>'
     +'<div style="display:flex;justify-content:flex-end;margin-top:10px;">'
     +'<table style="font-size:13px;border-collapse:collapse;min-width:240px;">'
-    +'<tr><td style="padding:4px 12px;color:#555;">小計</td><td style="padding:4px 12px;text-align:right;">¥'+sub.toLocaleString()+'</td></tr>'
-    +'<tr><td style="padding:4px 12px;color:#555;">消費税(10%)</td><td style="padding:4px 12px;text-align:right;">¥'+tax.toLocaleString()+'</td></tr>'
+    +'<tr><td style="padding:4px 12px;color:#000;">小計</td><td style="padding:4px 12px;text-align:right;">¥'+sub.toLocaleString()+'</td></tr>'
+    +'<tr><td style="padding:4px 12px;color:#000;">消費税(10%)</td><td style="padding:4px 12px;text-align:right;">¥'+tax.toLocaleString()+'</td></tr>'
     +'<tr style="border-top:2px solid #1a1714;"><td style="padding:5px 12px;font-weight:700;">合計</td><td style="padding:5px 12px;text-align:right;font-weight:700;font-size:16px;">¥'+tot.toLocaleString()+'</td></tr>'
     +'</table></div>'
-    +'<div style="font-size:11px;color:#333;margin-top:16px;line-height:1.9;border-top:1px solid #ddd;padding-top:10px;">'
+    +'<div style="font-size:11px;color:#000;margin-top:16px;line-height:1.9;border-top:1px solid #ddd;padding-top:10px;">'
     +'<div style="font-weight:700;margin-bottom:3px;">お振込先</div>'
     +INVOICE_BANK_INFO.holder+'　振込先<br>'+INVOICE_BANK_INFO.bank+'　'+INVOICE_BANK_INFO.type+'　'+INVOICE_BANK_INFO.no+'<br>登録番号: '+INVOICE_REG_NO
     +'<br>お支払期限: '+(dueDateStr?dueDateStr+'（発行日より14日以内）':'発行日より14日以内')
     +'</div>'
-    +'<div style="font-size:11px;color:#555;margin-top:10px;line-height:1.9;">'
-    +'<div style="font-weight:700;color:#333;margin-bottom:3px;">備考</div>'+footerHtml+'</div>';
+    +'<div style="font-size:11px;color:#000;margin-top:10px;line-height:1.9;">'
+    +'<div style="font-weight:700;color:#000;margin-bottom:3px;">備考</div>'+footerHtml+'</div>';
 }
 function generateInvoicePdf(){
   if(!invoiceLines.length){ alert('明細を1件以上追加してください'); return; }
