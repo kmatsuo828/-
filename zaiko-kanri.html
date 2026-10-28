@@ -1619,10 +1619,18 @@ body.font-xl #priceMakerFilter{width:124px;}
 
     <div class="form-group" style="margin-bottom:10px;">
       <label class="form-label" style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-        <input type="checkbox" id="quote-show-rate" checked style="width:16px;height:16px;">
-        掛率を明細に表示する（定価・掛率列）
+        <input type="checkbox" id="quote-show-teika" checked style="width:16px;height:16px;">
+        定価を明細に表示する
       </label>
-      <div style="font-size:11px;color:var(--ink3);margin-top:2px;">オフにすると見積書PDFの「定価」「掛率」列を非表示にします（品番・品名・数量・単価・金額・備考のみ表示）。</div>
+      <div style="font-size:11px;color:var(--ink3);margin-top:2px;">オフにすると見積書PDFの「定価」列を非表示にします。</div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:10px;">
+      <label class="form-label" style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" id="quote-show-rate" checked style="width:16px;height:16px;">
+        掛率を明細に表示する
+      </label>
+      <div style="font-size:11px;color:var(--ink3);margin-top:2px;">オフにすると見積書PDFの「掛率」列を非表示にします。</div>
     </div>
 
     <div class="form-group" style="margin-bottom:10px;">
@@ -1636,7 +1644,10 @@ body.font-xl #priceMakerFilter{width:124px;}
     <!-- 保存済み見積書一覧 -->
     <div style="margin-bottom:10px;">
       <button class="btn btn-secondary btn-full" onclick="toggleSavedQuotes()" style="padding:10px;font-size:13px;">📂 保存済み見積書一覧</button>
-      <div id="saved-quotes-list" style="display:none;margin-top:8px;max-height:300px;overflow-y:auto;"></div>
+      <div id="saved-quotes-list" style="display:none;margin-top:8px;">
+        <input type="text" class="search-input" id="quote-search-q" placeholder="🔍 件名・宛先で検索" oninput="renderSavedQuotes()" style="margin-bottom:6px;">
+        <div id="saved-quotes-results" style="max-height:300px;overflow-y:auto;"></div>
+      </div>
     </div>
 
     <div class="modal-actions">
@@ -1713,7 +1724,10 @@ body.font-xl #priceMakerFilter{width:124px;}
     <!-- 保存済み請求書一覧 -->
     <div style="margin-bottom:10px;">
       <button class="btn btn-secondary btn-full" onclick="toggleSavedInvoices()" style="padding:10px;font-size:13px;">📂 保存済み請求書一覧</button>
-      <div id="saved-invoices-list" style="display:none;margin-top:8px;max-height:300px;overflow-y:auto;"></div>
+      <div id="saved-invoices-list" style="display:none;margin-top:8px;">
+        <input type="text" class="search-input" id="invoice-search-q" placeholder="🔍 件名・宛先で検索" oninput="renderSavedInvoices()" style="margin-bottom:6px;">
+        <div id="saved-invoices-results" style="max-height:300px;overflow-y:auto;"></div>
+      </div>
     </div>
 
     <div class="modal-actions">
@@ -1797,7 +1811,10 @@ body.font-xl #priceMakerFilter{width:124px;}
 
     <div style="margin-bottom:10px;">
       <button class="btn btn-secondary btn-full" onclick="toggleSavedCerts()" style="padding:10px;font-size:13px;">📂 保存済み出荷証明書一覧</button>
-      <div id="saved-certs-list" style="display:none;margin-top:8px;max-height:300px;overflow-y:auto;"></div>
+      <div id="saved-certs-list" style="display:none;margin-top:8px;">
+        <input type="text" class="search-input" id="cert-search-q" placeholder="🔍 件名・宛先・証明書No.で検索" oninput="renderSavedCerts()" style="margin-bottom:6px;">
+        <div id="saved-certs-results" style="max-height:300px;overflow-y:auto;"></div>
+      </div>
     </div>
 
     <div class="modal-actions">
@@ -5077,10 +5094,11 @@ let quoteLines=[]; // {pid,maker,name,hinmei,qty,teika,rate,tanka}
 
 function openQuote(){
   quoteLines=[];
-  _editingQuoteIdx=-1;
+  _editingQuoteId=null;
   document.getElementById('quote-title').value='';
   document.getElementById('quote-customer').value='';
   var qfn=document.getElementById('quote-footer-note'); if(qfn) qfn.value='';
+  var qst=document.getElementById('quote-show-teika'); if(qst) qst.checked=true;
   var qsr=document.getElementById('quote-show-rate'); if(qsr) qsr.checked=true;
   var n=new Date();
   document.getElementById('quote-date').value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');
@@ -5146,7 +5164,7 @@ function addQuoteLineByPid(pid){
   if(!p) return;
   var teika=p.teika||0, tanka=p.sell||0;
   var rate=(teika>0&&tanka>0)?Math.round(tanka/teika*100):0;
-  var hinmeiParts=[p.category||'',p.series?p.series+'シリーズ':'',p.note||''].filter(Boolean);
+  var hinmeiParts=[p.category||'',p.series?p.series+'シリーズ':''].filter(Boolean);
   quoteLines.push({pid:p.id,maker:p.maker||'その他',name:p.name,hinmei:hinmeiParts.join(' '),qty:qty,teika:teika,rate:rate,tanka:tanka,bikou:''});
   renderQuoteLines();
 }
@@ -5169,6 +5187,8 @@ function importQuoteData(q){
   if(q.date) document.getElementById('quote-date').value=q.date;
   var qfn=document.getElementById('quote-footer-note');
   if(qfn&&q.footerNote!==undefined) qfn.value=q.footerNote||'';
+  var qst=document.getElementById('quote-show-teika');
+  if(qst) qst.checked=(q.showTeika===false)?false:true;
   var qsr=document.getElementById('quote-show-rate');
   if(qsr) qsr.checked=(q.showRate===false)?false:true;
   quoteLines=(q.lines||[]).map(function(L){
@@ -5354,8 +5374,9 @@ function buildQuoteHtml(q){
   var dateVal=q.date||'';
   var dispDate=dateVal?dateVal.replace(/-/g,'/'):'';
   var lines=q.lines||[];
+  var showTeika=(q.showTeika===false)?false:true;
   var showRate=(q.showRate===false)?false:true;
-  var colCount=showRate?9:7;
+  var colCount=7+(showTeika?1:0)+(showRate?1:0);
   var sub=lines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
   var tax=Math.floor(sub*0.1), tot=sub+tax;
   // メーカーごとにグループ化（出現順）
@@ -5377,7 +5398,7 @@ function buildQuoteHtml(q){
         +'<td class="q-code">'+(L.name||'')+'</td>'
         +'<td style="text-align:left;">'+(L.hinmei||'')+'</td>'
         +'<td>'+L.qty+'</td>'
-        +(showRate?'<td style="text-align:right;">'+(L.teika>0?Number(L.teika).toLocaleString():'')+'</td>':'')
+        +(showTeika?'<td style="text-align:right;">'+(L.teika>0?Number(L.teika).toLocaleString():'')+'</td>':'')
         +(showRate?'<td>'+(L.rate>0?L.rate+'%':'')+'</td>':'')
         +'<td style="text-align:right;">'+(L.tanka>0?Number(L.tanka).toLocaleString():'')+'</td>'
         +'<td style="text-align:right;font-weight:700;">'+(amt>0?Number(amt).toLocaleString():'')+'</td>'
@@ -5412,7 +5433,7 @@ function buildQuoteHtml(q){
     +'<span style="font-size:13px;">合計金額(税込) <b style="font-size:18px;">¥'+tot.toLocaleString()+'</b></span></div>'
     +'<table class="pdf-table quote-table"><thead><tr>'
     +'<th style="width:28px;">No.</th><th style="min-width:90px;">品番</th><th style="text-align:left;min-width:140px;">品名</th>'
-    +'<th style="width:36px;">数量</th>'+(showRate?'<th style="width:60px;">定価</th><th style="width:40px;">掛率</th>':'')+'<th style="width:64px;">単価</th><th style="width:74px;">金額</th><th style="text-align:left;min-width:90px;">記号(備考)</th>'
+    +'<th style="width:36px;">数量</th>'+(showTeika?'<th style="width:60px;">定価</th>':'')+(showRate?'<th style="width:40px;">掛率</th>':'')+'<th style="width:64px;">単価</th><th style="width:74px;">金額</th><th style="text-align:left;min-width:90px;">記号(備考)</th>'
     +'</tr></thead><tbody>'+rowsHtml+'</tbody></table>'
     +'<div style="display:flex;justify-content:flex-end;margin-top:10px;">'
     +'<table style="font-size:13px;border-collapse:collapse;min-width:240px;">'
@@ -5437,6 +5458,13 @@ function generateQuotePdf(){
   _lastQuoteData=q;
 }
 
+// 保存文書（見積書・請求書・出荷証明書）の固有ID生成。
+// filenameは件名＋日付だけから作られ、同じ件名・同じ日で複数件作ると
+// 衝突して別人の宛先を上書きしてしまうため、編集中の文書の同一性判定は
+// 必ずこのIDで行う（filenameは表示名・簡易フォールバック用に留める）。
+function _genDocId(){
+  return Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+}
 // ═══ 見積書保存機能（localStorage・直近2ヶ月保持） ══════════════
 var _lastQuoteData=null;
 var QUOTE_STORAGE_KEY='zaiko_saved_quotes_v1';
@@ -5460,7 +5488,8 @@ function _cleanupOldQuotes(){
 function saveCurrentQuote(){
   if(!_lastQuoteData){alert('保存する見積書がありません。先に「見積書PDFを作成」してください。');return;}
   var list=_cleanupOldQuotes();
-  var existIdx=(_editingQuoteIdx>=0 && _editingQuoteIdx<list.length)?_editingQuoteIdx:list.findIndex(function(q){return q.filename===_lastQuoteData.filename;});
+  var existIdx=_lastQuoteData.id?list.findIndex(function(q){return q.id===_lastQuoteData.id;}):-1;
+  if(existIdx<0) existIdx=list.findIndex(function(q){return !q.id&&q.filename===_lastQuoteData.filename;});
   if(existIdx>=0){
     if(!confirm('「'+_lastQuoteData.filename+'」を上書き保存しますか？')) return;
     list[existIdx]=_lastQuoteData;
@@ -5468,7 +5497,6 @@ function saveCurrentQuote(){
     list.unshift(_lastQuoteData);
   }
   _saveSavedQuotes(list);
-  _editingQuoteIdx=-1;
   alert('✅ 見積書を保存しました\n「'+_lastQuoteData.filename+'」');
 }
 // ─── 見積書の自動保存（モーダルを閉じるとき自動で保存） ───────────
@@ -5490,25 +5518,27 @@ function _collectQuoteFormData(){
   var staff=(document.getElementById('quote-staff').value||'').trim();
   var dateVal=document.getElementById('quote-date').value||'';
   var footerNote=((document.getElementById('quote-footer-note')||{value:''}).value||'').trim();
+  var showTeika=((document.getElementById('quote-show-teika')||{checked:true}).checked)!==false;
   var showRate=((document.getElementById('quote-show-rate')||{checked:true}).checked)!==false;
   var sub=quoteLines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
   var tax=Math.floor(sub*0.1), tot=sub+tax;
   var pdfFilename=getQuotePdfFilename(title,dateVal);
-  return {title:title,customer:cust,staff:staff,date:dateVal,lines:JSON.parse(JSON.stringify(quoteLines)),footerNote:footerNote,showRate:showRate,total:tot,sub:sub,tax:tax,filename:pdfFilename,createdAt:new Date().toISOString()};
+  if(!_editingQuoteId) _editingQuoteId=_genDocId();
+  return {id:_editingQuoteId,title:title,customer:cust,staff:staff,date:dateVal,lines:JSON.parse(JSON.stringify(quoteLines)),footerNote:footerNote,showTeika:showTeika,showRate:showRate,total:tot,sub:sub,tax:tax,filename:pdfFilename,createdAt:new Date().toISOString()};
 }
 function _autoSaveQuoteDraft(){
   if(!quoteLines.length) return; // 明細がなければ保存しない
   var qd=_collectQuoteFormData();
   var list=_cleanupOldQuotes();
-  // 編集中ならそのインデックスを上書き、なければファイル名で検索、なければ新規追加
-  var existIdx=(_editingQuoteIdx>=0 && _editingQuoteIdx<list.length)?_editingQuoteIdx:list.findIndex(function(q){return q.filename===qd.filename;});
+  // 編集中の文書IDで上書き先を特定（IDの無い旧データのみ件名+日付のファイル名でフォールバック）
+  var existIdx=list.findIndex(function(q){return q.id===qd.id;});
+  if(existIdx<0) existIdx=list.findIndex(function(q){return !q.id&&q.filename===qd.filename;});
   if(existIdx>=0){
     list[existIdx]=qd;
   }else{
     list.unshift(qd);
   }
   _saveSavedQuotes(list);
-  _editingQuoteIdx=-1;
 }
 // closeQuoteModal: 閉じるとき自動保存してからモーダルを閉じる
 function closeQuoteModal(){
@@ -5517,20 +5547,33 @@ function closeQuoteModal(){
 }
 function toggleSavedQuotes(){
   var el=document.getElementById('saved-quotes-list');
-  if(el.style.display==='none'){el.style.display='block';renderSavedQuotes();}
-  else{el.style.display='none';}
+  if(el.style.display==='none'){
+    el.style.display='block';
+    var sq=document.getElementById('quote-search-q'); if(sq) sq.value='';
+    renderSavedQuotes();
+  }else{el.style.display='none';}
 }
 function renderSavedQuotes(){
-  var el=document.getElementById('saved-quotes-list');
-  var list=_cleanupOldQuotes();
-  if(!list.length){el.innerHTML='<div style="text-align:center;color:var(--ink3);font-size:13px;padding:12px;">保存済みの見積書はありません</div>';return;}
-  el.innerHTML=list.map(function(q,i){
-    var d=q.date?q.date.replace(/-/g,'/'):'';
-    var cust=q.customer||'（宛先なし）';
+  var el=document.getElementById('saved-quotes-results');
+  var full=_cleanupOldQuotes();
+  if(!full.length){el.innerHTML='<div style="text-align:center;color:var(--ink3);font-size:13px;padding:12px;">保存済みの見積書はありません</div>';return;}
+  var q=((document.getElementById('quote-search-q')||{value:''}).value||'').trim().toLowerCase();
+  var list=full.map(function(doc,origIdx){return {doc:doc,origIdx:origIdx};});
+  if(q){
+    list=list.filter(function(x){
+      var hay=((x.doc.title||'')+' '+(x.doc.customer||'')+' '+(x.doc.filename||'')).toLowerCase();
+      return hay.indexOf(q)>=0;
+    });
+  }
+  if(!list.length){el.innerHTML='<div style="text-align:center;color:var(--ink3);font-size:13px;padding:12px;">該当する見積書がありません</div>';return;}
+  el.innerHTML=list.map(function(x){
+    var doc=x.doc, i=x.origIdx;
+    var d=doc.date?doc.date.replace(/-/g,'/'):'';
+    var cust=doc.customer||'（宛先なし）';
     return '<div style="display:flex;align-items:center;gap:5px;padding:8px 10px;background:var(--surface);border-radius:8px;margin-bottom:4px;box-shadow:0 1px 3px var(--shadow);">'
       +'<div style="flex:1;min-width:0;">'
-      +'<div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(q.title||'（件名なし）')+'</div>'
-      +'<div style="font-size:11px;color:var(--ink3);">'+cust+' ｜ '+d+' ｜ ¥'+(q.total||0).toLocaleString()+'</div>'
+      +'<div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(doc.title||'（件名なし）')+'</div>'
+      +'<div style="font-size:11px;color:var(--ink3);">'+cust+' ｜ '+d+' ｜ ¥'+(doc.total||0).toLocaleString()+'</div>'
       +'</div>'
       +'<button onclick="editSavedQuote('+i+')" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">✏️編集</button>'
       +'<button onclick="openSavedQuote('+i+')" style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">📄表示</button>'
@@ -5541,6 +5584,7 @@ function renderSavedQuotes(){
 function openSavedQuote(idx){
   var list=_loadSavedQuotes();
   var q=list[idx]; if(!q) return;
+  if(!q.id){ q.id=_genDocId(); list[idx]=q; _saveSavedQuotes(list); }
   // 明細データからHTMLを再生成（旧形式の保存データはq.htmlをフォールバック使用）
   document.getElementById('pdf-content').innerHTML=(q.lines&&q.lines.length)?buildQuoteHtml(q):(q.html||'');
   document.title=q.filename||'御見積書';
@@ -5552,6 +5596,7 @@ function openSavedQuote(idx){
 function editSavedQuote(idx){
   var list=_loadSavedQuotes();
   var q=list[idx]; if(!q) return;
+  if(!q.id){ q.id=_genDocId(); list[idx]=q; _saveSavedQuotes(list); }
   // フォームにデータを復元
   quoteLines=q.lines?JSON.parse(JSON.stringify(q.lines)):[];
   document.getElementById('quote-title').value=q.title||'';
@@ -5560,15 +5605,18 @@ function editSavedQuote(idx){
   document.getElementById('quote-date').value=q.date||'';
   var qfn=document.getElementById('quote-footer-note');
   if(qfn) qfn.value=q.footerNote||'';
+  var qst=document.getElementById('quote-show-teika'); if(qst) qst.checked=(q.showTeika===false)?false:true;
+  var qsr=document.getElementById('quote-show-rate'); if(qsr) qsr.checked=(q.showRate===false)?false:true;
   // 検索式の明細追加UIを初期化
   initQuoteAddSearch();
-  // 編集元のインデックスを記憶（保存時に上書き用）
-  _editingQuoteIdx=idx;
+  // 編集中の文書ID（保存時の上書き先特定に使う。indexは一覧の並び替えで
+  // ズレるため使わない）
+  _editingQuoteId=q.id;
   // 保存済み一覧を閉じて明細を描画
   document.getElementById('saved-quotes-list').style.display='none';
   renderQuoteLines();
 }
-var _editingQuoteIdx=-1;
+var _editingQuoteId=null;
 function deleteSavedQuote(idx){
   var list=_loadSavedQuotes();
   var q=list[idx]; if(!q) return;
@@ -5657,11 +5705,11 @@ function _autoSaveCurrentDoc(){
 
 // ═══ 請求書作成 ═══════════════════════════════════════════════
 let invoiceLines=[]; // {name,hinmei,qty,unit,tanka,bikou}
-var _editingInvoiceIdx=-1;
+var _editingInvoiceId=null;
 
 function openInvoice(){
   invoiceLines=[];
-  _editingInvoiceIdx=-1;
+  _editingInvoiceId=null;
   document.getElementById('invoice-title').value='';
   document.getElementById('invoice-customer').value='';
   document.getElementById('invoice-no').value='';
@@ -5686,7 +5734,7 @@ function addInvoiceLine(){
   var qty=parseInt(document.getElementById('invoice-add-qty').value)||1;
   var p=data.products.find(function(x){return x.id===pid;});
   if(!p) return;
-  var hinmeiParts=[p.maker||'',p.category||'',p.series?p.series+'シリーズ':'',p.note||''].filter(Boolean);
+  var hinmeiParts=[p.maker||'',p.category||'',p.series?p.series+'シリーズ':''].filter(Boolean);
   invoiceLines.push({pid:p.id,name:p.name,hinmei:hinmeiParts.join(' '),qty:qty,unit:'台',tanka:p.sell||0,bikou:''});
   renderInvoiceLines();
 }
@@ -5918,7 +5966,8 @@ function _cleanupOldInvoices(){
 function saveCurrentInvoice(){
   if(!_lastInvoiceData){alert('保存する請求書がありません。先に「請求書PDFを作成」してください。');return;}
   var list=_cleanupOldInvoices();
-  var existIdx=(_editingInvoiceIdx>=0 && _editingInvoiceIdx<list.length)?_editingInvoiceIdx:list.findIndex(function(q){return q.filename===_lastInvoiceData.filename;});
+  var existIdx=_lastInvoiceData.id?list.findIndex(function(q){return q.id===_lastInvoiceData.id;}):-1;
+  if(existIdx<0) existIdx=list.findIndex(function(q){return !q.id&&q.filename===_lastInvoiceData.filename;});
   if(existIdx>=0){
     if(!confirm('「'+_lastInvoiceData.filename+'」を上書き保存しますか？')) return;
     list[existIdx]=_lastInvoiceData;
@@ -5926,7 +5975,6 @@ function saveCurrentInvoice(){
     list.unshift(_lastInvoiceData);
   }
   _saveSavedInvoices(list);
-  _editingInvoiceIdx=-1;
   alert('✅ 請求書を保存しました\n「'+_lastInvoiceData.filename+'」');
 }
 function _collectInvoiceFormData(){
@@ -5948,37 +5996,51 @@ function _collectInvoiceFormData(){
   var sub=invoiceLines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
   var tax=Math.floor(sub*0.1), tot=sub+tax;
   var pdfFilename=getInvoicePdfFilename(title,dateVal);
-  return {title:title,customer:cust,staff:staff,invNo:invNo,date:dateVal,lines:JSON.parse(JSON.stringify(invoiceLines)),footerNote:footerNote,total:tot,sub:sub,tax:tax,filename:pdfFilename,createdAt:new Date().toISOString()};
+  if(!_editingInvoiceId) _editingInvoiceId=_genDocId();
+  return {id:_editingInvoiceId,title:title,customer:cust,staff:staff,invNo:invNo,date:dateVal,lines:JSON.parse(JSON.stringify(invoiceLines)),footerNote:footerNote,total:tot,sub:sub,tax:tax,filename:pdfFilename,createdAt:new Date().toISOString()};
 }
 function _autoSaveInvoiceDraft(){
   if(!invoiceLines.length) return;
   var qd=_collectInvoiceFormData();
   var list=_cleanupOldInvoices();
-  var existIdx=(_editingInvoiceIdx>=0 && _editingInvoiceIdx<list.length)?_editingInvoiceIdx:list.findIndex(function(q){return q.filename===qd.filename;});
+  var existIdx=list.findIndex(function(q){return q.id===qd.id;});
+  if(existIdx<0) existIdx=list.findIndex(function(q){return !q.id&&q.filename===qd.filename;});
   if(existIdx>=0){
     list[existIdx]=qd;
   }else{
     list.unshift(qd);
   }
   _saveSavedInvoices(list);
-  _editingInvoiceIdx=-1;
 }
 function toggleSavedInvoices(){
   var el=document.getElementById('saved-invoices-list');
-  if(el.style.display==='none'){el.style.display='block';renderSavedInvoices();}
-  else{el.style.display='none';}
+  if(el.style.display==='none'){
+    el.style.display='block';
+    var sq=document.getElementById('invoice-search-q'); if(sq) sq.value='';
+    renderSavedInvoices();
+  }else{el.style.display='none';}
 }
 function renderSavedInvoices(){
-  var el=document.getElementById('saved-invoices-list');
-  var list=_cleanupOldInvoices();
-  if(!list.length){el.innerHTML='<div style="text-align:center;color:var(--ink3);font-size:13px;padding:12px;">保存済みの請求書はありません</div>';return;}
-  el.innerHTML=list.map(function(q,i){
-    var d=q.date?q.date.replace(/-/g,'/'):'';
-    var cust=q.customer||'（宛先なし）';
+  var el=document.getElementById('saved-invoices-results');
+  var full=_cleanupOldInvoices();
+  if(!full.length){el.innerHTML='<div style="text-align:center;color:var(--ink3);font-size:13px;padding:12px;">保存済みの請求書はありません</div>';return;}
+  var q=((document.getElementById('invoice-search-q')||{value:''}).value||'').trim().toLowerCase();
+  var list=full.map(function(doc,origIdx){return {doc:doc,origIdx:origIdx};});
+  if(q){
+    list=list.filter(function(x){
+      var hay=((x.doc.title||'')+' '+(x.doc.customer||'')+' '+(x.doc.filename||'')).toLowerCase();
+      return hay.indexOf(q)>=0;
+    });
+  }
+  if(!list.length){el.innerHTML='<div style="text-align:center;color:var(--ink3);font-size:13px;padding:12px;">該当する請求書がありません</div>';return;}
+  el.innerHTML=list.map(function(x){
+    var doc=x.doc, i=x.origIdx;
+    var d=doc.date?doc.date.replace(/-/g,'/'):'';
+    var cust=doc.customer||'（宛先なし）';
     return '<div style="display:flex;align-items:center;gap:5px;padding:8px 10px;background:var(--surface);border-radius:8px;margin-bottom:4px;box-shadow:0 1px 3px var(--shadow);">'
       +'<div style="flex:1;min-width:0;">'
-      +'<div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(q.title||'（件名なし）')+'</div>'
-      +'<div style="font-size:11px;color:var(--ink3);">'+cust+' ｜ '+d+' ｜ ¥'+(q.total||0).toLocaleString()+'</div>'
+      +'<div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(doc.title||'（件名なし）')+'</div>'
+      +'<div style="font-size:11px;color:var(--ink3);">'+cust+' ｜ '+d+' ｜ ¥'+(doc.total||0).toLocaleString()+'</div>'
       +'</div>'
       +'<button onclick="editSavedInvoice('+i+')" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">✏️編集</button>'
       +'<button onclick="openSavedInvoice('+i+')" style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">📄表示</button>'
@@ -5989,6 +6051,7 @@ function renderSavedInvoices(){
 function openSavedInvoice(idx){
   var list=_loadSavedInvoices();
   var q=list[idx]; if(!q) return;
+  if(!q.id){ q.id=_genDocId(); list[idx]=q; _saveSavedInvoices(list); }
   // 明細データからHTMLを再生成（旧形式の保存データはq.htmlをフォールバック使用）
   document.getElementById('pdf-content').innerHTML=(q.lines&&q.lines.length)?buildInvoiceHtml(q):(q.html||'');
   document.title=q.filename||'請求書';
@@ -6000,6 +6063,7 @@ function openSavedInvoice(idx){
 function editSavedInvoice(idx){
   var list=_loadSavedInvoices();
   var q=list[idx]; if(!q) return;
+  if(!q.id){ q.id=_genDocId(); list[idx]=q; _saveSavedInvoices(list); }
   invoiceLines=q.lines?JSON.parse(JSON.stringify(q.lines)):[];
   document.getElementById('invoice-title').value=q.title||'';
   document.getElementById('invoice-customer').value=q.customer||'';
@@ -6011,7 +6075,8 @@ function editSavedInvoice(idx){
   var makers=getMakers();
   document.getElementById('invoice-add-maker').innerHTML='<option value="">── メーカー選択 ──</option>'+makers.map(function(m){return '<option value="'+m+'">'+m+'</option>';}).join('');
   document.getElementById('invoice-add-product').innerHTML='<option value="">── 品番選択 ──</option>';
-  _editingInvoiceIdx=idx;
+  // 編集中の文書ID（保存時の上書き先特定に使う。indexは一覧の並び替えでズレるため使わない）
+  _editingInvoiceId=q.id;
   document.getElementById('saved-invoices-list').style.display='none';
   renderInvoiceLines();
 }
@@ -6040,7 +6105,7 @@ const CERT_ROWS_PER_PAGE=41;
 var CERT_STORAGE_KEY='zaiko_saved_shipcerts_v1';
 var CERT_KEEP_DAYS=365;         // 出荷証明書は再発行依頼が来るため1年保持
 let certLines=[];               // {name,hinmei,qty,unit,ddate}
-var _editingCertIdx=-1;
+var _editingCertId=null;
 var _lastCertData=null;
 
 function _certEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -6065,7 +6130,7 @@ function _nextCertNo(){
 
 function openShipCert(){
   certLines=[];
-  _editingCertIdx=-1;
+  _editingCertId=null;
   document.getElementById('cert-title').value='';
   document.getElementById('cert-customer').value='';
   document.getElementById('cert-honorific').value='御中';
@@ -6122,7 +6187,8 @@ function addCertLineByPid(pid){
   var p=data.products.find(function(x){return String(x.id)===String(pid);}); if(!p) return;
   var qty=parseFloat((document.getElementById('cert-add-qty')||{value:'1'}).value);
   if(isNaN(qty)) qty=1;
-  certLines.push({name:((p.maker||'')?p.maker+'　':'')+(p.name||''),hinmei:(p.note||''),qty:qty,unit:'個',ddate:_certDefaultDate()});
+  var certHinmeiParts=[p.category||'',p.series?p.series+'シリーズ':''].filter(Boolean);
+  certLines.push({name:((p.maker||'')?p.maker+'　':'')+(p.name||''),hinmei:certHinmeiParts.join(' '),qty:qty,unit:'個',ddate:_certDefaultDate()});
   renderCertLines();
 }
 function addCertLineManual(){
@@ -6253,7 +6319,8 @@ function _collectCertFormData(){
   var no=((document.getElementById('cert-no')||{value:''}).value||'').trim();
   if(!no) no=_nextCertNo();
   if(/^[0-9]+$/.test(no)) no=no.padStart(8,'0');
-  return {title:title,customer:cust,honorific:honor,date:dateVal,shipDate:shipDate,no:no,
+  if(!_editingCertId) _editingCertId=_genDocId();
+  return {id:_editingCertId,title:title,customer:cust,honorific:honor,date:dateVal,shipDate:shipDate,no:no,
     lines:JSON.parse(JSON.stringify(certLines)),
     filename:getShipCertPdfFilename(title,dateVal),createdAt:new Date().toISOString()};
 }
@@ -6314,7 +6381,8 @@ function _cleanupOldCerts(){
 function saveCurrentCert(){
   if(!_lastCertData){ alert('保存する出荷証明書がありません'); return; }
   var list=_cleanupOldCerts();
-  var idx=list.findIndex(function(c){ return c.filename===_lastCertData.filename; });
+  var idx=_lastCertData.id?list.findIndex(function(c){return c.id===_lastCertData.id;}):-1;
+  if(idx<0) idx=list.findIndex(function(c){ return !c.id&&c.filename===_lastCertData.filename; });
   if(idx>=0) list[idx]=_lastCertData; else list.unshift(_lastCertData);
   _saveSavedCerts(list);
   alert('出荷証明書を保存しました（'+list.length+'件保存中）');
@@ -6323,21 +6391,34 @@ function _autoSaveCertDraft(){
   if(!certLines.length) return;
   var cd=_collectCertFormData();
   var list=_cleanupOldCerts();
-  var existIdx=(_editingCertIdx>=0&&_editingCertIdx<list.length)?_editingCertIdx:list.findIndex(function(c){return c.filename===cd.filename;});
+  var existIdx=list.findIndex(function(c){return c.id===cd.id;});
+  if(existIdx<0) existIdx=list.findIndex(function(c){return !c.id&&c.filename===cd.filename;});
   if(existIdx>=0) list[existIdx]=cd; else list.unshift(cd);
   _saveSavedCerts(list);
-  _editingCertIdx=-1;
 }
 function toggleSavedCerts(){
   var el=document.getElementById('saved-certs-list');
-  if(el.style.display==='none'){ el.style.display='block'; renderSavedCerts(); }
-  else{ el.style.display='none'; }
+  if(el.style.display==='none'){
+    el.style.display='block';
+    var sq=document.getElementById('cert-search-q'); if(sq) sq.value='';
+    renderSavedCerts();
+  }else{ el.style.display='none'; }
 }
 function renderSavedCerts(){
-  var el=document.getElementById('saved-certs-list');
-  var list=_cleanupOldCerts();
-  if(!list.length){ el.innerHTML='<div style="text-align:center;color:var(--ink3);font-size:13px;padding:12px;">保存済みの出荷証明書はありません</div>'; return; }
-  el.innerHTML=list.map(function(c,i){
+  var el=document.getElementById('saved-certs-results');
+  var full=_cleanupOldCerts();
+  if(!full.length){ el.innerHTML='<div style="text-align:center;color:var(--ink3);font-size:13px;padding:12px;">保存済みの出荷証明書はありません</div>'; return; }
+  var q=((document.getElementById('cert-search-q')||{value:''}).value||'').trim().toLowerCase();
+  var list=full.map(function(doc,origIdx){return {doc:doc,origIdx:origIdx};});
+  if(q){
+    list=list.filter(function(x){
+      var hay=((x.doc.title||'')+' '+(x.doc.customer||'')+' '+(x.doc.filename||'')+' '+(x.doc.no||'')).toLowerCase();
+      return hay.indexOf(q)>=0;
+    });
+  }
+  if(!list.length){ el.innerHTML='<div style="text-align:center;color:var(--ink3);font-size:13px;padding:12px;">該当する出荷証明書がありません</div>'; return; }
+  el.innerHTML=list.map(function(x){
+    var c=x.doc, i=x.origIdx;
     var d=c.date?c.date.replace(/-/g,'/'):'';
     return '<div style="display:flex;align-items:center;gap:5px;padding:8px 10px;background:var(--surface);border-radius:8px;margin-bottom:4px;box-shadow:0 1px 3px var(--shadow);">'
       +'<div style="flex:1;min-width:0;">'
@@ -6353,6 +6434,7 @@ function renderSavedCerts(){
 function openSavedCert(idx){
   var list=_loadSavedCerts();
   var c=list[idx]; if(!c) return;
+  if(!c.id){ c.id=_genDocId(); list[idx]=c; _saveSavedCerts(list); }
   document.getElementById('pdf-content').innerHTML=buildShipCertHtml(c);
   document.title=c.filename||'出荷証明書';
   _lastCertData=c;
@@ -6363,6 +6445,7 @@ function openSavedCert(idx){
 function editSavedCert(idx){
   var list=_loadSavedCerts();
   var c=list[idx]; if(!c) return;
+  if(!c.id){ c.id=_genDocId(); list[idx]=c; _saveSavedCerts(list); }
   certLines=c.lines?JSON.parse(JSON.stringify(c.lines)):[];
   document.getElementById('cert-title').value=c.title||'';
   document.getElementById('cert-customer').value=c.customer||'';
@@ -6371,7 +6454,8 @@ function editSavedCert(idx){
   document.getElementById('cert-shipdate').value=c.shipDate||'';
   document.getElementById('cert-no').value=c.no||'';
   initCertAddSearch();
-  _editingCertIdx=idx;
+  // 編集中の文書ID（保存時の上書き先特定に使う。indexは一覧の並び替えでズレるため使わない）
+  _editingCertId=c.id;
   document.getElementById('saved-certs-list').style.display='none';
   renderCertLines();
 }
