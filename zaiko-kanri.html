@@ -5484,7 +5484,7 @@ function _prepareQuotePdfPagination(root){
   notes.classList.remove('quote-notes-next'); marker.hidden=true;
   var top=root.getBoundingClientRect().top;
   var start=table.getBoundingClientRect().top-top+table.tHead.getBoundingClientRect().height;
-  var plan=null, selected=5;
+  var plan=null, selected=5, best=null;
   // Keep readable type; reduce only vertical cell whitespace for a short footer.
   var pads=[5,4,3,2];
   for(var j=0;j<pads.length;j++){
@@ -5493,11 +5493,17 @@ function _prepareQuotePdfPagination(root){
     var tailHeight=ending.getBoundingClientRect().height;
     plan=_quotePagePlan(start,heights,tailHeight,pageHeight);selected=pads[j];
     var notesHeight=notes.getBoundingClientRect().height+8;
-    if(plan.end%pageHeight+notesHeight<=pageHeight-8) break;
+    var together=plan.end%pageHeight+notesHeight<=pageHeight-8;
+    var pages=Math.ceil(plan.end/pageHeight)+(together?0:Math.ceil(notesHeight/pageHeight));
+    if(!best||pages<best.pages||(pages===best.pages&&together&&!best.together)){
+      best={pad:pads[j],pages:pages,together:together};
+    }
     // Long remarks use a dedicated page, rather than compressing all details.
     if(notesHeight>pageHeight*.25) break;
   }
+  selected=best.pad;
   root.style.setProperty('--quote-row-pad',selected+'px');
+  plan=_quotePagePlan(start,rows.map(function(row){return row.getBoundingClientRect().height;}),ending.getBoundingClientRect().height,pageHeight);
   var notesHeight=notes.getBoundingClientRect().height+8;
   if(plan.end%pageHeight+notesHeight>pageHeight-8){
     marker.hidden=false;notes.classList.add('quote-notes-next');
