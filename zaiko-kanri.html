@@ -301,6 +301,15 @@ body.font-xl #priceMakerFilter{width:124px;}
 .pdf-table td{padding:6px 8px;border-bottom:1px solid #e0ddd8;text-align:center;}
 .pdf-table tr:nth-child(even) td{background:#f7f5f2;}
 .pdf-table .item-name{text-align:left;font-weight:700;font-family:'JetBrains Mono',monospace;font-size:11px;}
+/* 2026-11-14: keep quotation totals and short notes with the final detail. */
+.pdf-doc.quote-paginated{width:702px!important;max-width:702px!important;}
+.quote-paginated .quote-table td{padding-top:var(--quote-row-pad,5px);padding-bottom:var(--quote-row-pad,5px);}
+.quote-paginated .quote-tail-cell{padding:0!important;border:0!important;background:transparent!important;}
+.quote-summary{break-inside:avoid;page-break-inside:avoid;}
+.quote-summary td{font-size:13px;padding:4px 12px!important;border:0!important;background:transparent!important;}
+.quote-ending,.quote-notes{break-inside:avoid;page-break-inside:avoid;}
+.quote-notes-next{break-before:page;page-break-before:always;}
+.quote-notes-marker{font-size:11px;text-align:left;padding:6px 0 0;}
 /* ─── 出荷証明書 ─────────────────────────────────────────────── */
 .cert-page{color:#000;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;}
 .cert-title{text-align:center;font-size:19px;letter-spacing:.18em;margin:0 0 16px;}
@@ -5406,6 +5415,9 @@ function buildQuoteHtml(q){
         +'</tr>';
     });
   });
+  var lastRowAt=rowsHtml.lastIndexOf('<tr style="background:');
+  var lastRowHtml=rowsHtml.slice(lastRowAt);
+  rowsHtml=rowsHtml.slice(0,lastRowAt);
   var c=QUOTE_COMPANY;
   var footerNote=(q.footerNote||'').trim();
   var footerHtml = footerNote
@@ -5431,18 +5443,68 @@ function buildQuoteHtml(q){
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
     +'<span style="font-size:12px;">下記の通りお見積申し上げます。</span>'
     +'<span style="font-size:13px;">合計金額(税込) <b style="font-size:18px;">¥'+tot.toLocaleString()+'</b></span></div>'
-    +'<table class="pdf-table quote-table"><thead><tr>'
+    +'<table class="pdf-table quote-table" data-quote-layout="v1"><thead><tr>'
     +'<th style="width:28px;">No.</th><th style="min-width:90px;">品番</th><th style="text-align:left;min-width:140px;">品名</th>'
     +'<th style="width:36px;">数量</th>'+(showTeika?'<th style="width:60px;">定価</th>':'')+(showRate?'<th style="width:40px;">掛率</th>':'')+'<th style="width:64px;">単価</th><th style="width:74px;">金額</th><th style="text-align:left;min-width:90px;">記号(備考)</th>'
-    +'</tr></thead><tbody>'+rowsHtml+'</tbody></table>'
-    +'<div style="display:flex;justify-content:flex-end;margin-top:10px;">'
+    +'</tr></thead><tbody class="quote-lines-body">'+rowsHtml+'</tbody><tbody class="quote-ending">'+lastRowHtml
+    +'<tr><td class="quote-tail-cell" colspan="'+colCount+'"><div class="quote-summary" style="display:flex;justify-content:flex-end;margin-top:8px;">'
     +'<table style="font-size:13px;border-collapse:collapse;min-width:240px;">'
     +'<tr><td style="padding:4px 12px;color:#555;">小計</td><td style="padding:4px 12px;text-align:right;">¥'+sub.toLocaleString()+'</td></tr>'
     +'<tr><td style="padding:4px 12px;color:#555;">消費税(10%)</td><td style="padding:4px 12px;text-align:right;">¥'+tax.toLocaleString()+'</td></tr>'
     +'<tr style="border-top:2px solid #1a1714;"><td style="padding:5px 12px;font-weight:700;">合計</td><td style="padding:5px 12px;text-align:right;font-weight:700;font-size:16px;">¥'+tot.toLocaleString()+'</td></tr>'
-    +'</table></div>'
-    +'<div style="font-size:11px;color:#555;margin-top:16px;line-height:1.9;border-top:1px solid #ddd;padding-top:10px;">'
+    +'</table></div><div class="quote-notes-marker" hidden>次ページに備考欄あり</div></td></tr></tbody></table>'
+    +'<div class="quote-notes" style="font-size:11px;color:#555;margin-top:8px;line-height:1.9;border-top:1px solid #ddd;padding-top:8px;">'
     +'<div style="font-weight:700;color:#333;margin-bottom:3px;">備考</div>'+footerHtml+'</div>';
+}
+// Plan at the same A4 inner size as html2pdf (12 mm margins, CSS px rounded down).
+// The final detail row and all three total rows are one unbreakable unit.
+function _quotePagePlan(start, rowHeights, endingHeight, pageHeight){
+  var cursor=start, breaks=[];
+  rowHeights.forEach(function(height,i){
+    if(cursor%pageHeight+height>pageHeight-8){
+      cursor=(Math.floor(cursor/pageHeight)+1)*pageHeight; breaks.push(i);
+    }
+    cursor+=height;
+  });
+  var endingBreak=cursor%pageHeight+endingHeight>pageHeight-8;
+  if(endingBreak) cursor=(Math.floor(cursor/pageHeight)+1)*pageHeight;
+  cursor+=endingHeight;
+  return {breaks:breaks,endingBreak:endingBreak,end:cursor};
+}
+function _prepareQuotePdfPagination(root){
+  var table=root&&root.querySelector('table[data-quote-layout="v1"]');
+  if(!table) return;
+  root.classList.add('quote-paginated');
+  var body=table.querySelector('.quote-lines-body');
+  var ending=table.querySelector('.quote-ending');
+  var notes=root.querySelector('.quote-notes');
+  var marker=root.querySelector('.quote-notes-marker');
+  var rows=Array.from(body.children), pageHeight=1031;
+  rows.concat([ending]).forEach(function(row){row.style.breakBefore='';row.style.pageBreakBefore='';});
+  notes.classList.remove('quote-notes-next'); marker.hidden=true;
+  var top=root.getBoundingClientRect().top;
+  var start=table.getBoundingClientRect().top-top+table.tHead.getBoundingClientRect().height;
+  var plan=null, selected=5;
+  // Keep readable type; reduce only vertical cell whitespace for a short footer.
+  var pads=[5,4,3,2];
+  for(var j=0;j<pads.length;j++){
+    root.style.setProperty('--quote-row-pad',pads[j]+'px');
+    var heights=rows.map(function(row){return row.getBoundingClientRect().height;});
+    var tailHeight=ending.getBoundingClientRect().height;
+    plan=_quotePagePlan(start,heights,tailHeight,pageHeight);selected=pads[j];
+    var notesHeight=notes.getBoundingClientRect().height+8;
+    if(plan.end%pageHeight+notesHeight<=pageHeight-8) break;
+    // Long remarks use a dedicated page, rather than compressing all details.
+    if(notesHeight>pageHeight*.25) break;
+  }
+  root.style.setProperty('--quote-row-pad',selected+'px');
+  var notesHeight=notes.getBoundingClientRect().height+8;
+  if(plan.end%pageHeight+notesHeight>pageHeight-8){
+    marker.hidden=false;notes.classList.add('quote-notes-next');
+    plan=_quotePagePlan(start,rows.map(function(row){return row.getBoundingClientRect().height;}),ending.getBoundingClientRect().height,pageHeight);
+  }
+  plan.breaks.forEach(function(i){rows[i].style.breakBefore='page';rows[i].style.pageBreakBefore='always';});
+  if(plan.endingBreak){ending.style.breakBefore='page';ending.style.pageBreakBefore='always';}
 }
 function generateQuotePdf(){
   if(!quoteLines.length){ alert('明細を1件以上追加してください'); return; }
@@ -5456,6 +5518,7 @@ function generateQuotePdf(){
   document.getElementById('pdf-preview').style.display='block';
   // 保存用にデータを保持（HTMLは保存せず表示時に再生成する）
   _lastQuoteData=q;
+  _prepareQuotePdfPagination(document.getElementById('pdf-content'));
 }
 
 // 保存文書（見積書・請求書・出荷証明書）の固有ID生成。
@@ -5592,6 +5655,7 @@ function openSavedQuote(idx){
   _pdfDocType='quote';
   closeModal('modalQuote');
   document.getElementById('pdf-preview').style.display='block';
+  _prepareQuotePdfPagination(document.getElementById('pdf-content'));
 }
 function editSavedQuote(idx){
   var list=_loadSavedQuotes();
@@ -7509,6 +7573,7 @@ function closePdfPreview(){
   document.title='マツオ情報ポータル';
 }
 function doPrintPdf(){
+  _prepareQuotePdfPagination(document.getElementById('pdf-content'));
   window.focus();
   setTimeout(function(){ window.print(); }, 150);
 }
@@ -7539,7 +7604,7 @@ function _pdfWorkerOpts(fname){
     html2canvas:{scale:2,useCORS:true,scrollX:0,scrollY:0,
       onclone:function(doc){ var d=doc.getElementById('pdf-content'); if(d){ d.style.margin='0'; d.style.maxWidth='none'; } }},
     jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
-    pagebreak:{mode:['css','legacy'],avoid:['tr']}
+    pagebreak:{mode:['css','legacy'],avoid:['tr','.quote-ending','.quote-notes']}
   };
 }
 function _pdfFileName(){
@@ -7552,6 +7617,7 @@ async function doDownloadPdf(){
   try{
     await _loadHtml2pdf();
     var el=document.getElementById('pdf-content');
+    _prepareQuotePdfPagination(el);
     await html2pdf().set(_pdfWorkerOpts(_pdfFileName())).from(el).save();
     if(btn) btn.textContent='✅ 保存完了';
     setTimeout(function(){ if(btn){ btn.textContent=orig; btn.disabled=false; } },2000);
@@ -7573,6 +7639,7 @@ async function uploadPdfToCloud(){
   try{
     await _loadHtml2pdf();
     var fname=_pdfFileName();
+    _prepareQuotePdfPagination(el);
     var blob=await html2pdf().set(_pdfWorkerOpts(fname)).from(el).outputPdf('blob');
     var b64=await new Promise(function(resolve,reject){
       var fr=new FileReader();
