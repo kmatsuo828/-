@@ -1953,6 +1953,14 @@ function supaFetch(path, method, body, extra){
   });
 }
 
+// ─── HTMLエスケープ ───────────────────────────────────────────────
+// DB・入力欄・AIの読み取り・URLから来た文字列を HTML に入れるときに使う（数値・コード内の固定文字列には不要）
+function esc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+// onclick="f(...)" のような属性の中のJSへ値を文字列として渡すとき用（引用符つきのJS文字列を、属性用にエスケープして返す）
+function escJs(s){ return esc(JSON.stringify(String(s==null?'':s))); }
+
 // ─── Globals ──────────────────────────────────────────────────────
 let data = {products:[]};
 let historyCache = [];
@@ -1967,7 +1975,7 @@ function initPdfScreen(){
   var cur=sel.value||'all';
   var cats=[...new Set(data.products.map(p=>(p.category||'').trim()).filter(Boolean))].sort();
   sel.innerHTML='<option value="all">全ジャンル</option>'
-    +cats.map(c=>'<option value="'+c+'"'+(c===cur?' selected':'')+'>'+c+'</option>').join('');
+    +cats.map(c=>'<option value="'+esc(c)+'"'+(c===cur?' selected':'')+'>'+esc(c)+'</option>').join('');
   onPdfCatChange();
 }
 function onPdfCatChange(){
@@ -2064,7 +2072,7 @@ function makerLogoHtml(maker, size){
       +' alt="" style="width:'+size+'px;height:'+size+'px;object-fit:contain;vertical-align:middle;border-radius:2px;flex-shrink:0;"'
       +' onerror="this.style.display=\'none\'">';
   }
-  return '<span style="display:inline-flex;align-items:center;justify-content:center;width:'+size+'px;height:'+size+'px;background:'+color+';border-radius:50%;font-size:'+(size<=16?8:10)+'px;font-weight:700;color:#fff;flex-shrink:0;">'+initial+'</span>';
+  return '<span style="display:inline-flex;align-items:center;justify-content:center;width:'+size+'px;height:'+size+'px;background:'+color+';border-radius:50%;font-size:'+(size<=16?8:10)+'px;font-weight:700;color:#fff;flex-shrink:0;">'+esc(initial)+'</span>';
 }
 
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
@@ -2443,7 +2451,7 @@ function renderCustomerManageList(){
   el.innerHTML=custMgmtList.map(function(c,i){
     var cnt=0; data.products.forEach(function(p){(p.reserves||[]).forEach(function(r){if((r.customer||r.name||'')===c)cnt++;});});
     return '<div style="display:flex;align-items:center;gap:6px;background:var(--surface);border-radius:9px;padding:8px;margin-bottom:6px;box-shadow:0 1px 2px var(--shadow);">'
-      +'<input type="text" class="form-input" id="cust-edit-'+i+'" value="'+(c||'').replace(/"/g,'&quot;')+'" style="flex:1;font-size:13px;padding:7px 8px;">'
+      +'<input type="text" class="form-input" id="cust-edit-'+i+'" value="'+esc(c)+'" style="flex:1;font-size:13px;padding:7px 8px;">'
       +(cnt>0?'<span style="font-size:10px;color:var(--ink3);white-space:nowrap;">取置'+cnt+'</span>':'')
       +'<button class="btn btn-blue" style="flex:none;padding:7px 11px;font-size:12px;" type="button" onclick="renameCustomer('+i+')">保存</button>'
       +'<button class="btn btn-danger" style="flex:none;padding:7px 11px;font-size:12px;" type="button" onclick="deleteCustomerByName('+i+')">削除</button>'
@@ -2659,7 +2667,7 @@ async function runAutoCategoryAI(products){
     document.getElementById('autoCatActions').style.display='block';
   }catch(e){
     document.getElementById('autoCatStatus').className='ai-status error';
-    document.getElementById('autoCatStatus').innerHTML='❌ AI解析に失敗しました: '+e.message;
+    document.getElementById('autoCatStatus').innerHTML='❌ AI解析に失敗しました: '+esc(e.message);
   }
 }
 function renderAutoCategoryItems(){
@@ -2667,16 +2675,16 @@ function renderAutoCategoryItems(){
   document.getElementById('autoCatBody').innerHTML=autoCatItems.map(function(item,i){
     var changed=item.category&&item.category!==item.currentCategory;
     var opts='<option value="">─ 未設定 ─</option>'+allCats.map(function(c){
-      return '<option value="'+c+'"'+(c===item.category?' selected':'')+'>'+c+'</option>';
+      return '<option value="'+esc(c)+'"'+(c===item.category?' selected':'')+'>'+esc(c)+'</option>';
     }).join('');
     var currentLabel=item.currentCategory
-      ?'<span style="font-size:10px;background:var(--surface2);color:var(--ink2);padding:2px 6px;border-radius:4px;">現在: '+item.currentCategory+'</span>'
+      ?'<span style="font-size:10px;background:var(--surface2);color:var(--ink2);padding:2px 6px;border-radius:4px;">現在: '+esc(item.currentCategory)+'</span>'
       :'<span style="font-size:10px;color:var(--ink3);">未分類</span>';
     var aiLabel=changed?'<span style="font-size:10px;color:var(--blue);margin-left:4px;">→ AI提案</span>':'';
     return '<div class="ai-item" id="acat-item-'+i+'">'
       +'<div class="ai-item-header"><div style="flex:1;min-width:0;">'
-      +'<div class="ai-item-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+item.name+'</div>'
-      +'<div class="ai-item-maker">'+item.maker+'</div>'
+      +'<div class="ai-item-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(item.name)+'</div>'
+      +'<div class="ai-item-maker">'+esc(item.maker)+'</div>'
       +'</div>'
       +'<label style="display:flex;align-items:center;gap:5px;cursor:pointer;margin-left:8px;">'
       +'<input type="checkbox" id="acat-check-'+i+'" '+(changed?'checked':'')+'style="width:18px;height:18px;">'
@@ -2753,19 +2761,19 @@ async function runMakerUnifyAI(makers){
     document.getElementById('makerUnifyActions').style.display='block';
   }catch(e){
     document.getElementById('makerUnifyStatus').className='ai-status error';
-    document.getElementById('makerUnifyStatus').innerHTML='❌ AI解析に失敗しました: '+e.message;
+    document.getElementById('makerUnifyStatus').innerHTML='❌ AI解析に失敗しました: '+esc(e.message);
   }
 }
 function renderMakerUnifyGroups(){
   document.getElementById('makerUnifyBody').innerHTML=makerUnifyGroups.map(function(g,i){
     var counts=g.variants.map(function(v){
       var c=data.products.filter(function(p){return (p.maker||'')===v;}).length;
-      return '<span style="display:inline-block;background:var(--surface2);border-radius:5px;padding:2px 8px;margin:2px 3px 2px 0;font-size:12px;">'+v+' <span style="color:var(--ink3);">('+c+')</span></span>';
+      return '<span style="display:inline-block;background:var(--surface2);border-radius:5px;padding:2px 8px;margin:2px 3px 2px 0;font-size:12px;">'+esc(v)+' <span style="color:var(--ink3);">('+c+')</span></span>';
     }).join('');
     return '<div class="ai-item" style="margin-bottom:8px;">'
       +'<div class="ai-item-header"><div style="flex:1;">'
       +'<div style="font-size:11px;color:var(--ink3);margin-bottom:3px;">統一後のメーカー名</div>'
-      +'<input type="text" id="munify-name-'+i+'" value="'+(g.canonical||'').replace(/"/g,'&quot;')+'" class="form-input" style="font-size:14px;font-weight:700;padding:6px 8px;">'
+      +'<input type="text" id="munify-name-'+i+'" value="'+esc(g.canonical)+'" class="form-input" style="font-size:14px;font-weight:700;padding:6px 8px;">'
       +'</div>'
       +'<label style="display:flex;align-items:center;gap:5px;cursor:pointer;margin-left:8px;"><input type="checkbox" id="munify-check-'+i+'" checked style="width:18px;height:18px;"></label>'
       +'</div>'
@@ -2813,7 +2821,7 @@ function openMakerAssign(){
     return {pid:p.id, name:p.name, cat:p.category||'', note:p.note||'', maker:''};
   });
   // 入力補助: 既存メーカーの候補
-  document.getElementById('maMakerList').innerHTML=getAllMakers().map(function(m){return '<option value="'+m.replace(/"/g,'&quot;')+'">';}).join('');
+  document.getElementById('maMakerList').innerHTML=getAllMakers().map(function(m){return '<option value="'+esc(m)+'">';}).join('');
   document.getElementById('makerAssignStatus').style.display='none';
   document.getElementById('maStartBtn').style.display=makerAssignItems.length?'block':'none';
   renderMakerAssignItems();
@@ -2831,10 +2839,10 @@ function renderMakerAssignItems(){
       +'<div style="display:flex;gap:8px;align-items:center;">'
       +'<label style="display:flex;align-items:center;flex:0 0 auto;"><input type="checkbox" id="ma-check-'+i+'" checked style="width:18px;height:18px;"></label>'
       +'<div style="flex:1;min-width:0;">'
-      +'<div style="font-size:13px;font-weight:700;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+it.name+'</div>'
-      +(it.cat?'<div style="font-size:10px;color:var(--ink3);">'+it.cat+'</div>':'')
+      +'<div style="font-size:13px;font-weight:700;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(it.name)+'</div>'
+      +(it.cat?'<div style="font-size:10px;color:var(--ink3);">'+esc(it.cat)+'</div>':'')
       +'</div>'
-      +'<input type="text" id="ma-maker-'+i+'" list="maMakerList" value="'+(it.maker||'').replace(/"/g,'&quot;')+'" placeholder="メーカー名" autocomplete="off" class="form-input" style="flex:0 0 150px;font-size:13px;padding:7px 8px;">'
+      +'<input type="text" id="ma-maker-'+i+'" list="maMakerList" value="'+esc(it.maker)+'" placeholder="メーカー名" autocomplete="off" class="form-input" style="flex:0 0 150px;font-size:13px;padding:7px 8px;">'
       +'</div>'
       +'</div>';
   }).join('');
@@ -2886,7 +2894,7 @@ async function startMakerAssignAI(){
     statusEl.innerHTML='✅ '+filled+'件のメーカーを推定しました（'+(makerAssignItems.length-filled)+'件は判定不能・手入力してください）。内容を確認して保存してください。';
   }catch(e){
     statusEl.className='ai-status error';
-    statusEl.innerHTML='❌ AI判定に失敗しました: '+e.message;
+    statusEl.innerHTML='❌ AI判定に失敗しました: '+esc(e.message);
   }finally{
     _aiStatusCb=null;
   }
@@ -3009,7 +3017,7 @@ async function startYearDetect(){
     renderYearDetectItems();
     document.getElementById('yearDetectActions').style.display='block';
   }catch(e){
-    statusEl.className='ai-status error'; statusEl.innerHTML='❌ 判定に失敗しました: '+e.message;
+    statusEl.className='ai-status error'; statusEl.innerHTML='❌ 判定に失敗しました: '+esc(e.message);
     document.getElementById('ydStartBtn').style.display='block';
   }
 }
@@ -3021,15 +3029,15 @@ function renderYearDetectItems(){
       var cats=getRoomACYearCats();
       var allOpts=cats.slice();
       if(it.proposed && allOpts.indexOf(it.proposed)<0) allOpts.unshift(it.proposed);
-      var opts=['<option value="">（分類しない）</option>'].concat(allOpts.map(function(c){return '<option value="'+c+'"'+(c===it.proposed?' selected':'')+'>'+c+'</option>';}));
+      var opts=['<option value="">（分類しない）</option>'].concat(allOpts.map(function(c){return '<option value="'+esc(c)+'"'+(c===it.proposed?' selected':'')+'>'+esc(c)+'</option>';}));
       inputHtml='<select id="yd-val-'+i+'" class="form-select" style="margin-top:6px;font-size:13px;">'+opts.join('')+'</select>';
     }else{
-      inputHtml='<input type="text" id="yd-val-'+i+'" class="form-input" value="'+(it.proposed||'').replace(/"/g,'&quot;')+'" placeholder="シリーズ名（例: FZ, AXV, X）" style="margin-top:6px;font-size:13px;">';
+      inputHtml='<input type="text" id="yd-val-'+i+'" class="form-input" value="'+esc(it.proposed)+'" placeholder="シリーズ名（例: FZ, AXV, X）" style="margin-top:6px;font-size:13px;">';
     }
     return '<div class="ai-item" style="margin-bottom:6px;">'
       +'<div class="ai-item-header"><div style="flex:1;">'
-      +'<div style="font-size:13px;font-weight:700;font-family:\'JetBrains Mono\',monospace;">'+it.name+'</div>'
-      +'<div style="font-size:10px;color:var(--ink3);">'+it.maker+' ・ <span style="color:'+confColor+';">確信度: '+it.confidence+'</span></div>'
+      +'<div style="font-size:13px;font-weight:700;font-family:\'JetBrains Mono\',monospace;">'+esc(it.name)+'</div>'
+      +'<div style="font-size:10px;color:var(--ink3);">'+esc(it.maker)+' ・ <span style="color:'+confColor+';">確信度: '+esc(it.confidence)+'</span></div>'
       +'</div>'
       +'<label style="display:flex;align-items:center;gap:5px;margin-left:8px;"><input type="checkbox" id="yd-check-'+i+'" '+(it.proposed?'checked':'')+' style="width:18px;height:18px;"></label>'
       +'</div>'
@@ -3084,8 +3092,8 @@ function _bpPopulateFilters(){
   ['bpai','bpfill'].forEach(function(pre){
     var mkSel=document.getElementById(pre+'-filter-maker');
     var ctSel=document.getElementById(pre+'-filter-cat');
-    if(mkSel){ var mv=mkSel.value; mkSel.innerHTML='<option value="">全メーカー</option>'+makers.map(function(m){return '<option value="'+m+'">'+m+'</option>';}).join(''); mkSel.value=mv; }
-    if(ctSel){ var cv=ctSel.value; ctSel.innerHTML='<option value="">全ジャンル</option>'+cats.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join(''); ctSel.value=cv; }
+    if(mkSel){ var mv=mkSel.value; mkSel.innerHTML='<option value="">全メーカー</option>'+makers.map(function(m){return '<option value="'+esc(m)+'">'+esc(m)+'</option>';}).join(''); mkSel.value=mv; }
+    if(ctSel){ var cv=ctSel.value; ctSel.innerHTML='<option value="">全ジャンル</option>'+cats.map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join(''); ctSel.value=cv; }
   });
 }
 function _bpFilterTargets(prefix, list){
@@ -3184,7 +3192,7 @@ async function handleBPriceFile(event){
   }catch(e){
     _aiStatusCb=null;
     statusEl.className='ai-status error';
-    statusEl.innerHTML='❌ '+e.message
+    statusEl.innerHTML='❌ '+esc(e.message)
       +'<br><button class="btn btn-secondary" style="margin-top:8px;padding:8px 16px;font-size:13px;" onclick="document.getElementById(\'bpCameraInput\').click()">📷 もう一度試す（カメラ）</button>'
       +' <button class="btn btn-secondary" style="margin-top:8px;padding:8px 16px;font-size:13px;" onclick="document.getElementById(\'bpFileInput\').click()">📁 もう一度試す（ファイル）</button>';
   }
@@ -3292,7 +3300,7 @@ async function startBPriceFill(){
     }
     renderBPriceItems();
     document.getElementById('bpriceActions').style.display='block';
-  }catch(e){ st.className='ai-status error'; st.innerHTML='❌ 補完に失敗しました: '+e.message; }
+  }catch(e){ st.className='ai-status error'; st.innerHTML='❌ 補完に失敗しました: '+esc(e.message); }
 }
 
 // ─── レビュー表示・保存 ──────────────────────────────────────
@@ -3303,12 +3311,12 @@ function renderBPriceItems(){
     var statusHtml=item.matched
       ?'<div style="font-size:11px;color:var(--green);margin-bottom:4px;">✅ 登録済み商品と一致 — 価格を更新します</div>'
       :'<div style="font-size:11px;color:var(--accent2);margin-bottom:4px;">📝 未登録商品 — チェックすると<b>新規追加</b>されます</div>';
-    var srcHtml='<div style="font-size:10px;color:var(--ink3);margin-top:3px;">📌 '+item.source+'</div>';
+    var srcHtml='<div style="font-size:10px;color:var(--ink3);margin-top:3px;">📌 '+esc(item.source)+'</div>';
     var diffRows=Object.keys(item.changes).map(function(f){
       var c=item.changes[f];
       var isPrice=['teika','cost','sell'].indexOf(f)>=0;
-      var oldStr=isPrice?(c.old>0?'¥'+c.old.toLocaleString():'―'):(c.old||'―');
-      var newStr=isPrice?(c.new>0?'¥'+c.new.toLocaleString():'―'):(c.new||'―');
+      var oldStr=isPrice?(c.old>0?'¥'+c.old.toLocaleString():'―'):esc(c.old||'―');
+      var newStr=isPrice?(c.new>0?'¥'+c.new.toLocaleString():'―'):esc(c.new||'―');
       return '<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0;">'
         +'<span style="color:var(--ink3);min-width:68px;font-size:11px;">'+PRICE_FIELD_LABELS[f]+'</span>'
         +'<span style="color:var(--ink3);">'+oldStr+'</span>'
@@ -3319,8 +3327,8 @@ function renderBPriceItems(){
     var chk=item.matched?'checked':'';
     return '<div class="ai-item" id="bpr-item-'+i+'" style="margin-bottom:7px;">'
       +'<div class="ai-item-header"><div style="flex:1;min-width:0;">'
-      +'<div class="ai-item-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+item.name+'</div>'
-      +'<div class="ai-item-maker">'+item.maker+'</div>'
+      +'<div class="ai-item-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(item.name)+'</div>'
+      +'<div class="ai-item-maker">'+esc(item.maker)+'</div>'
       +'</div>'
       +'<label style="display:flex;align-items:center;gap:5px;cursor:pointer;margin-left:8px;">'
       +'<input type="checkbox" id="bpr-check-'+i+'" '+chk+' style="width:22px;height:22px;cursor:pointer;">'
@@ -3531,9 +3539,9 @@ async function openPriceRules(){
   document.getElementById('pr-target-nosell').classList.toggle('active',prTarget==='nosell');
   document.getElementById('pr-target-all').classList.toggle('active',prTarget==='all');
   // 入力補助: メーカー・ジャンルの候補
-  document.getElementById('prMakerList').innerHTML=getMakers().map(function(m){return '<option value="'+m.replace(/"/g,'&quot;')+'">';}).join('');
+  document.getElementById('prMakerList').innerHTML=getMakers().map(function(m){return '<option value="'+esc(m)+'">';}).join('');
   var cats=[...new Set(data.products.map(function(p){return (p.category||'').trim();}).filter(Boolean))].sort();
-  document.getElementById('prCatList').innerHTML=cats.map(function(c){return '<option value="'+c.replace(/"/g,'&quot;')+'">';}).join('');
+  document.getElementById('prCatList').innerHTML=cats.map(function(c){return '<option value="'+esc(c)+'">';}).join('');
   if(!prRules) await loadPriceRules();
   _prRenderSyncNote(false);
   renderPriceRules();
@@ -3550,10 +3558,10 @@ function renderPriceRules(){
   el.innerHTML=prRules.map(function(r,i){
     return '<div class="ai-item pr-rule" data-idx="'+i+'">'
       +'<div class="pr-row">'
-      +'<div class="pr-f" style="flex:1.2;"><div class="ql-lbl">メーカー</div><input type="text" list="prMakerList" class="form-input pr-in ql-input-sm" data-f="maker" value="'+(r.maker||'').replace(/"/g,'&quot;')+'" placeholder="（全メーカー）"></div>'
-      +'<div class="pr-f" style="flex:1;"><div class="ql-lbl">ジャンル</div><input type="text" list="prCatList" class="form-input pr-in ql-input-sm" data-f="cat" value="'+(r.cat||'').replace(/"/g,'&quot;')+'" placeholder="（全ジャンル）"></div>'
-      +'<div class="pr-f" style="flex:0 0 64px;"><div class="ql-lbl">シリーズ</div><input type="text" class="form-input pr-in ql-input-sm" data-f="series" value="'+(r.series||'').replace(/"/g,'&quot;')+'" placeholder="―"></div>'
-      +'<div class="pr-f" style="flex:1;"><div class="ql-lbl">品番の先頭（カンマ区切り可）</div><input type="text" class="form-input pr-in ql-input-sm" data-f="prefix" value="'+(r.prefix||'').replace(/"/g,'&quot;')+'" placeholder="例: V-,VD-"></div>'
+      +'<div class="pr-f" style="flex:1.2;"><div class="ql-lbl">メーカー</div><input type="text" list="prMakerList" class="form-input pr-in ql-input-sm" data-f="maker" value="'+esc(r.maker)+'" placeholder="（全メーカー）"></div>'
+      +'<div class="pr-f" style="flex:1;"><div class="ql-lbl">ジャンル</div><input type="text" list="prCatList" class="form-input pr-in ql-input-sm" data-f="cat" value="'+esc(r.cat)+'" placeholder="（全ジャンル）"></div>'
+      +'<div class="pr-f" style="flex:0 0 64px;"><div class="ql-lbl">シリーズ</div><input type="text" class="form-input pr-in ql-input-sm" data-f="series" value="'+esc(r.series)+'" placeholder="―"></div>'
+      +'<div class="pr-f" style="flex:1;"><div class="ql-lbl">品番の先頭（カンマ区切り可）</div><input type="text" class="form-input pr-in ql-input-sm" data-f="prefix" value="'+esc(r.prefix)+'" placeholder="例: V-,VD-"></div>'
       +'<button type="button" class="ql-del" onclick="removePriceRule('+i+')" title="このルールを削除">×</button>'
       +'</div>'
       +'<div class="pr-row">'
@@ -3569,7 +3577,7 @@ function renderPriceRules(){
       +'<div class="pr-f" style="flex:0 0 120px;"><div class="ql-lbl">端数処理</div><select class="form-select pr-in ql-input-sm" data-f="round">'
       +Object.keys(PR_ROUND_LABELS).map(function(k){return '<option value="'+k+'"'+((r.round||'round1')===k?' selected':'')+'>'+PR_ROUND_LABELS[k]+'</option>';}).join('')
       +'</select></div>'
-      +'<div class="pr-f" style="flex:1;min-width:120px;"><div class="ql-lbl">メモ</div><input type="text" class="form-input pr-in ql-input-sm" data-f="memo" value="'+(r.memo||'').replace(/"/g,'&quot;')+'" placeholder="用途など"></div>'
+      +'<div class="pr-f" style="flex:1;min-width:120px;"><div class="ql-lbl">メモ</div><input type="text" class="form-input pr-in ql-input-sm" data-f="memo" value="'+esc(r.memo)+'" placeholder="用途など"></div>'
       +'</div>'
       +'</div>';
   }).join('');
@@ -3632,8 +3640,8 @@ function renderPrPreview(){
       : (it.rule.base==='cost'?'仕入':'定価')+'×'+it.rule.pct+'%')+'・'+(PR_ROUND_LABELS[it.rule.round]||'');
     return '<div style="display:flex;align-items:center;gap:6px;padding:6px 4px;border-bottom:1px solid var(--border);">'
       +'<label style="display:flex;align-items:center;gap:5px;flex:0 0 auto;"><input type="checkbox" id="pr-check-'+i+'" checked style="width:16px;height:16px;"></label>'
-      +'<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:700;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+it.name+'</div>'
-      +'<div style="font-size:10px;color:var(--ink3);">'+(it.cat?it.cat+' ・ ':'')+it.maker+' ｜ '+ruleStr+(it.rule.memo?' ｜ '+it.rule.memo:'')+'</div></div>'
+      +'<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:700;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(it.name)+'</div>'
+      +'<div style="font-size:10px;color:var(--ink3);">'+(it.cat?esc(it.cat)+' ・ ':'')+esc(it.maker)+' ｜ '+ruleStr+(it.rule.memo?' ｜ '+esc(it.rule.memo):'')+'</div></div>'
       +'<div style="text-align:right;font-size:12px;">'
       +'<div style="font-weight:700;color:var(--green);">¥'+it.newSell.toLocaleString()+'</div>'
       +'<div style="font-size:10px;color:var(--ink3);">'+diffStr+'</div>'
@@ -3781,8 +3789,8 @@ function renderSrRateDetail(){
     +keys.map(function(k){
       var val=(store[k]!=null)?store[k]:'';
       return '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--surface);border-radius:8px;margin-bottom:4px;">'
-        +'<span style="flex:1;font-size:12px;overflow:hidden;">'+labelOf[k]+' <span style="color:var(--ink3);">('+cntOf[k]+'件)</span></span>'
-        +'<input type="number" data-srkey="'+k.replace(/"/g,'&quot;')+'" class="srr-input form-input" value="'+val+'" placeholder="―" min="1" max="300" style="width:64px;text-align:center;font-size:14px;font-weight:700;" oninput="renderSrPreview()">'
+        +'<span style="flex:1;font-size:12px;overflow:hidden;">'+esc(labelOf[k])+' <span style="color:var(--ink3);">('+cntOf[k]+'件)</span></span>'
+        +'<input type="number" data-srkey="'+esc(k)+'" class="srr-input form-input" value="'+val+'" placeholder="―" min="1" max="300" style="width:64px;text-align:center;font-size:14px;font-weight:700;" oninput="renderSrPreview()">'
         +'<span style="font-size:13px;color:var(--ink2);">%</span></div>';
     }).join('');
 }
@@ -3844,8 +3852,8 @@ function renderSrPreview(){
     var diffStr=it.oldSell>0?(diff>0?'<span style="color:var(--accent);">+¥'+diff.toLocaleString()+'</span>':diff<0?'<span style="color:var(--blue);">-¥'+(Math.abs(diff)).toLocaleString()+'</span>':'変化なし'):'新規設定';
     return '<div style="display:flex;align-items:center;gap:6px;padding:6px 4px;border-bottom:1px solid var(--border);">'
       +'<label style="display:flex;align-items:center;gap:5px;flex:0 0 auto;"><input type="checkbox" id="sr-check-'+i+'" checked style="width:16px;height:16px;"></label>'
-      +'<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:700;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+it.name+'</div>'
-      +'<div style="font-size:10px;color:var(--ink3);">'+(it.cat?it.cat+' ・ ':'')+it.maker+(it.rate?'  '+it.rate+'%':'')+'</div></div>'
+      +'<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:700;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(it.name)+'</div>'
+      +'<div style="font-size:10px;color:var(--ink3);">'+(it.cat?esc(it.cat)+' ・ ':'')+esc(it.maker)+(it.rate?'  '+it.rate+'%':'')+'</div></div>'
       +'<div style="text-align:right;font-size:12px;">'
       +'<div style="font-weight:700;color:var(--green);">¥'+it.newSell.toLocaleString()+'</div>'
       +'<div style="font-size:10px;color:var(--ink3);">'+diffStr+'</div>'
@@ -3992,12 +4000,12 @@ function renderWhDetailList(){
     var rqty=(p.reserves||[]).filter(function(r){return r.wh===wh;}).reduce(function(s,r){return s+(r.qty||0);},0);
     var freeQty=getFreeQty(p,wh);
     var rsv=rqty>0?'<span style="font-size:10px;background:#fff8e8;color:var(--accent2);padding:1px 6px;border-radius:10px;font-weight:700;margin-left:4px;">取置 '+rqty+'台</span>':'';
-    var tags=(p.category?'<span style="font-size:10px;background:#eef4fb;color:var(--blue);padding:1px 5px;border-radius:3px;margin-right:3px;">'+p.category+'</span>':'')+(p.maker?'<span style="font-size:10px;color:var(--ink3);">'+p.maker+'</span>':'');
-    return '<div class="wh-detail-item" onclick="closeModal(\'modalWhDetail\');openOperation(\''+p.id+'\')">'
+    var tags=(p.category?'<span style="font-size:10px;background:#eef4fb;color:var(--blue);padding:1px 5px;border-radius:3px;margin-right:3px;">'+esc(p.category)+'</span>':'')+(p.maker?'<span style="font-size:10px;color:var(--ink3);">'+esc(p.maker)+'</span>':'');
+    return '<div class="wh-detail-item" onclick="closeModal(\'modalWhDetail\');openOperation('+escJs(p.id)+')">'
       +'<div style="flex:1;min-width:0;">'
-      +'<div class="wh-detail-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+p.name+rsv+'</div>'
+      +'<div class="wh-detail-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(p.name)+rsv+'</div>'
       +'<div class="wh-detail-meta">'+tags+'</div>'
-      +(p.note?'<div style="font-size:10px;color:var(--ink3);margin-top:2px;">📝 '+p.note+'</div>':'')
+      +(p.note?'<div style="font-size:10px;color:var(--ink3);margin-top:2px;">📝 '+esc(p.note)+'</div>':'')
       +'</div>'
       +'<div class="wh-detail-qty" style="margin-left:12px;">'+freeQty+'<span style="font-size:11px;color:var(--ink3);font-weight:400;font-family:\'Noto Sans JP\',sans-serif;"> 台</span></div>'
       +'</div>';
@@ -4010,7 +4018,7 @@ function renderMakerFilter(){
   ['filterMaker','priceMakerFilter'].forEach(id=>{
     const sel=document.getElementById(id);if(!sel)return;
     const cur=sel.value;
-    sel.innerHTML='<option value="all">全メーカー</option>'+makers.map(m=>`<option value="${m}"${m===cur?' selected':''}>${m}</option>`).join('');
+    sel.innerHTML='<option value="all">全メーカー</option>'+makers.map(m=>`<option value="${esc(m)}"${m===cur?' selected':''}>${esc(m)}</option>`).join('');
   });
   renderCategoryFilter();
   renderYearFilter();
@@ -4022,7 +4030,7 @@ function refreshProductNameList(){
   var dl=document.getElementById('productNameList');if(!dl)return;
   var names=data.products.map(function(p){return p.name;}).filter(Boolean).sort();
   dl.innerHTML=data.products.map(function(p){
-    return '<option value="'+(p.name||'').replace(/"/g,'&quot;')+'">'+(p.maker||'')+(p.category?(' / '+p.category):'')+'</option>';
+    return '<option value="'+esc(p.name)+'">'+esc(p.maker||'')+(p.category?(' / '+esc(p.category)):'')+'</option>';
   }).join('');
 }
 
@@ -4032,7 +4040,7 @@ function renderCategoryFilter(){
   const cats=getAllCategories();
   const hasUncat=data.products.some(p=>!(p.category||'').trim());
   let html='<option value="all">全ジャンル</option>';
-  html+=cats.map(c=>`<option value="${c}"${c===cur?' selected':''}>${c}</option>`).join('');
+  html+=cats.map(c=>`<option value="${esc(c)}"${c===cur?' selected':''}>${esc(c)}</option>`).join('');
   if(hasUncat) html+=`<option value="__none__"${cur==='__none__'?' selected':''}>未分類</option>`;
   sel.innerHTML=html;
 }
@@ -4077,12 +4085,12 @@ function renderList(){
     const rCount=(p.reserves||[]).reduce((s,r)=>s+(r.qty||0),0);
     const rHtml=rCount>0?`<div><span class="reserve-badge">🔒 取り置き ${rCount}台</span></div>`:'';
     const sellBadge=p.sell>0?`<span class="sell-badge" style="font-size:11px;color:var(--green);font-weight:700;margin-top:3px;display:inline-block;font-family:'JetBrains Mono',monospace;">売値 ¥${Number(p.sell).toLocaleString()}</span>`:'';
-    const tags=`${p.category?`<span class="cat-badge">${p.category}</span>`:''}${p.maker?`<span class="maker-badge">${makerLogoHtml(p.maker,14)}${p.maker}</span>`:''}`;
-    return`<div class="product-card" onclick="openOperation('${p.id}')">
+    const tags=`${p.category?`<span class="cat-badge">${esc(p.category)}</span>`:''}${p.maker?`<span class="maker-badge">${makerLogoHtml(p.maker,14)}${esc(p.maker)}</span>`:''}`;
+    return`<div class="product-card" onclick="openOperation(${escJs(p.id)})">
       ${tags?`<div>${tags}</div>`:''}
-      <div class="pc-top"><div class="pc-name">${p.name}</div><div class="pc-total">${total}<span> 台</span></div></div>
+      <div class="pc-top"><div class="pc-name">${esc(p.name)}</div><div class="pc-total">${total}<span> 台</span></div></div>
       <div class="pc-warehouses">${badges||'<span style="font-size:12px;color:var(--ink3)">在庫なし</span>'}</div>
-      ${rHtml}${sellBadge}${p.note?`<div style="font-size:11px;color:var(--ink3);margin-top:4px;">📝 ${p.note}</div>`:''}
+      ${rHtml}${sellBadge}${p.note?`<div style="font-size:11px;color:var(--ink3);margin-top:4px;">📝 ${esc(p.note)}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -4111,7 +4119,7 @@ function renderPriceCatFilter(){
   var sel=document.getElementById('priceCatFilter');if(!sel)return;
   var cur=sel.value;
   var cats=getAllCategories();
-  var html='<option value="all">全ジャンル</option>'+cats.map(function(c){return '<option value="'+c+'"'+(c===cur?' selected':'')+'>'+c+'</option>';}).join('');
+  var html='<option value="all">全ジャンル</option>'+cats.map(function(c){return '<option value="'+esc(c)+'"'+(c===cur?' selected':'')+'>'+esc(c)+'</option>';}).join('');
   sel.innerHTML=html;
   onPriceCatChange();
 }
@@ -4129,7 +4137,7 @@ function renderPriceSeriesFilter(){
   if(!isRoom){sel.value='all';return;}
   var cur=sel.value;
   var seriesList=[...new Set(data.products.filter(function(p){return hasSeriesSupport(p.category)&&(p.series||'').trim();}).map(function(p){return p.series.trim();}))].sort();
-  var html='<option value="all">全シリーズ</option>'+seriesList.map(function(s){return '<option value="'+s+'"'+(s===cur?' selected':'')+'>'+s+'</option>';}).join('');
+  var html='<option value="all">全シリーズ</option>'+seriesList.map(function(s){return '<option value="'+esc(s)+'"'+(s===cur?' selected':'')+'>'+esc(s)+'</option>';}).join('');
   if(data.products.some(function(p){return hasSeriesSupport(p.category)&&!(p.series||'').trim();})){
     html+='<option value="__none__"'+(cur==='__none__'?' selected':'')+'>シリーズ未設定</option>';
   }
@@ -4168,17 +4176,17 @@ function renderPriceList(){
         ${sellRate!=null?`<span class="rate-badge" style="background:#e8f4ec;color:var(--green);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">売値掛率 ${sellRate}%</span>`:''}
         ${(costRate!=null&&sellRate!=null)?`<span class="rate-badge" style="background:#fff8e8;color:var(--accent2);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">差 +${sellRate-costRate}%</span>`:''}
       </div>` : '';
-    const seriesBadge=(isRoom&&(p.series||'').trim())?`<span style="background:#fdf0ec;color:var(--accent);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;margin-left:6px;">📡 ${p.series}</span>`:'';
+    const seriesBadge=(isRoom&&(p.series||'').trim())?`<span style="background:#fdf0ec;color:var(--accent);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;margin-left:6px;">📡 ${esc(p.series)}</span>`:'';
     const teikaStatus=isRoom&&!teika?`<span style="font-size:11px;color:var(--ink3);margin-left:4px;">(オープン価格)</span>`:'';
     return`<div class="price-card">
       <div class="price-card-header">
         <div>
           <div style="display:flex;align-items:center;flex-wrap:wrap;">
-            <div class="price-card-name">${p.name}</div>${seriesBadge}${teikaStatus}
+            <div class="price-card-name">${esc(p.name)}</div>${seriesBadge}${teikaStatus}
           </div>
-          <div class="price-card-maker" style="display:flex;align-items:center;gap:4px;">${makerLogoHtml(p.maker||'',14)} ${p.maker||'―'} ${p.category?'・ '+p.category:''}</div>
+          <div class="price-card-maker" style="display:flex;align-items:center;gap:4px;">${makerLogoHtml(p.maker||'',14)} ${esc(p.maker||'―')} ${p.category?'・ '+esc(p.category):''}</div>
         </div>
-        <div style="text-align:right;">${mpHtml}<button onclick="editPriceProduct('${p.id}')" style="display:block;margin-top:4px;background:var(--surface2);border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;color:var(--ink2);">✏️ 編集</button></div>
+        <div style="text-align:right;">${mpHtml}<button onclick="editPriceProduct(${escJs(p.id)})" style="display:block;margin-top:4px;background:var(--surface2);border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;color:var(--ink2);">✏️ 編集</button></div>
       </div>
       ${hasPrice?`<div class="price-row" style="grid-template-columns:${priceColStyle};">
         ${teika?`<div class="price-box"><div class="price-box-label">税別定価</div><div class="price-box-val" style="color:var(--ink2);font-size:15px;">${fmt(teika)}</div></div>`:''}
@@ -4187,7 +4195,7 @@ function renderPriceList(){
         ${diff!==null?`<div class="price-box"><div class="price-box-label">粗利</div><div class="price-box-val margin">${fmt(diff)}</div></div>`:''}
       </div>`:'<div class="no-price">価格未設定 — 編集から入力できます</div>'}
       ${ratesHtml}
-      ${p.note?`<div style="font-size:11px;color:var(--ink3);margin-top:8px;">📝 ${p.note}</div>`:''}
+      ${p.note?`<div style="font-size:11px;color:var(--ink3);margin-top:8px;">📝 ${esc(p.note)}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -4282,7 +4290,7 @@ function populateMakerDropdown(currentVal){
   const makers=getAllMakers();
   const q=(currentVal||'').toLowerCase();
   const filtered=q?makers.filter(m=>m.toLowerCase().includes(q)):makers;
-  dd.innerHTML=filtered.map(m=>`<div class="maker-dropdown-item${m===currentVal?' selected':''}" onclick="selectMaker('${m}')">${m}</div>`).join('');
+  dd.innerHTML=filtered.map(m=>`<div class="maker-dropdown-item${m===currentVal?' selected':''}" onclick="selectMaker(${escJs(m)})">${esc(m)}</div>`).join('');
 }
 
 function openMakerDropdown(){
@@ -4320,7 +4328,7 @@ function populateCategoryDropdown(currentVal){
   const cats=getAllCategories();
   const q=(currentVal||'').toLowerCase();
   const filtered=q?cats.filter(c=>c.toLowerCase().includes(q)):cats;
-  dd.innerHTML=filtered.map(c=>`<div class="maker-dropdown-item${c===currentVal?' selected':''}" onclick="selectCategory('${c.replace(/'/g,"\\'")}')">${c}</div>`).join('');
+  dd.innerHTML=filtered.map(c=>`<div class="maker-dropdown-item${c===currentVal?' selected':''}" onclick="selectCategory(${escJs(c)})">${esc(c)}</div>`).join('');
 }
 function openCategoryDropdown(){populateCategoryDropdown(document.getElementById('inp-category').value);document.getElementById('categoryDropdown').classList.add('open');}
 function toggleCategoryDropdown(){const dd=document.getElementById('categoryDropdown');if(dd.classList.contains('open')){dd.classList.remove('open');}else{populateCategoryDropdown(document.getElementById('inp-category').value);dd.classList.add('open');}}
@@ -4343,7 +4351,7 @@ function populateSeriesDropdown(currentVal){
   var q=(currentVal||'').toLowerCase();
   var filtered=q?list.filter(function(c){return c.toLowerCase().includes(q);}):list;
   if(!filtered.length){ dd.innerHTML='<div class="maker-dropdown-item" style="color:var(--ink3);cursor:default;">登録済みシリーズなし</div>'; return; }
-  dd.innerHTML=filtered.map(function(c){return '<div class="maker-dropdown-item'+(c===currentVal?' selected':'')+'" onclick="selectSeries(\''+c.replace(/'/g,"\\'")+'\')">' +c+'</div>';}).join('');
+  dd.innerHTML=filtered.map(function(c){return '<div class="maker-dropdown-item'+(c===currentVal?' selected':'')+'" onclick="selectSeries('+escJs(c)+')">'+esc(c)+'</div>';}).join('');
 }
 function openSeriesDropdown(){populateSeriesDropdown(document.getElementById('inp-series').value);document.getElementById('seriesDropdown').classList.add('open');}
 function toggleSeriesDropdown(){var dd=document.getElementById('seriesDropdown');if(dd.classList.contains('open')){dd.classList.remove('open');}else{populateSeriesDropdown(document.getElementById('inp-series').value);dd.classList.add('open');}}
@@ -4405,7 +4413,7 @@ function populateYearModelDropdown(currentVal){
   var list=getAllYearModels();
   var q=(currentVal||'').toLowerCase();
   var filtered=q?list.filter(function(c){return c.toLowerCase().includes(q);}):list;
-  dd.innerHTML=filtered.map(function(c){return '<div class="maker-dropdown-item'+(c===currentVal?' selected':'')+'" onclick="selectYearModel(\''+c.replace(/'/g,"\\'")+'\')">'+c+'</div>';}).join('');
+  dd.innerHTML=filtered.map(function(c){return '<div class="maker-dropdown-item'+(c===currentVal?' selected':'')+'" onclick="selectYearModel('+escJs(c)+')">'+esc(c)+'</div>';}).join('');
 }
 function openYearModelDropdown(){}
 function toggleYearModelDropdown(){}
@@ -4421,7 +4429,7 @@ function populateCustomerDropdown(inputId, ddId){
   const list=getAllCustomers();
   const filtered=q?list.filter(c=>c.toLowerCase().includes(q)):list;
   dd.innerHTML=filtered.length
-    ?filtered.map(c=>`<div class="maker-dropdown-item${c===cur?' selected':''}" onclick="selectCustomer('${inputId}','${ddId}','${c.replace(/'/g,"\\'")}')">${c}</div>`).join('')
+    ?filtered.map(c=>`<div class="maker-dropdown-item${c===cur?' selected':''}" onclick="selectCustomer('${inputId}','${ddId}',${escJs(c)})">${esc(c)}</div>`).join('')
     :'<div class="maker-dropdown-item" style="color:var(--ink3);cursor:default;">登録済みの得意先はまだありません</div>';
 }
 function openCustomerDropdown(i,d){populateCustomerDropdown(i,d);document.getElementById(d).classList.add('open');}
@@ -4471,8 +4479,8 @@ function populateProductDropdown(key){
   const shown=prods.slice(0,PRODUCT_DD_MAX);
   let localHtml=shown.map(p=>{
     const stock=getTotalFreeQty?getTotalFreeQty(p):0;
-    const sub=`${p.maker||'メーカー未設定'}・在庫${stock}台`;
-    return `<div class="maker-dropdown-item${p.id===selectedId?' selected':''}" onclick="selectProduct('${key}','${p.id}')">${p.name}<span style="display:block;font-size:11px;color:var(--ink3);">${sub}</span></div>`;
+    const sub=`${esc(p.maker||'メーカー未設定')}・在庫${stock}台`;
+    return `<div class="maker-dropdown-item${p.id===selectedId?' selected':''}" onclick="selectProduct('${key}',${escJs(p.id)})">${esc(p.name)}<span style="display:block;font-size:11px;color:var(--ink3);">${sub}</span></div>`;
   }).join('');
   if(total>PRODUCT_DD_MAX){
     localHtml+=`<div class="maker-dropdown-item" style="color:var(--ink3);cursor:default;">他${total-PRODUCT_DD_MAX}件 — 入力で絞り込んでください</div>`;
@@ -4538,8 +4546,8 @@ async function searchMasterForProductDropdown(key, qRaw){
         var v=_msParse(r);
         var priceStr=v.teika>0?('定価¥'+v.teika.toLocaleString()):'';
         return '<div class="maker-dropdown-item" onclick="selectFromMasterIntoInventory(\''+key+'\','+i+')">'
-          +(v.maker?v.maker+' ':'')+v.name
-          +'<span style="display:block;font-size:11px;color:var(--ink3);">'+(v.hinmei||'')+(priceStr?'　'+priceStr:'')+'　＋登録して選択</span></div>';
+          +(v.maker?esc(v.maker)+' ':'')+esc(v.name)
+          +'<span style="display:block;font-size:11px;color:var(--ink3);">'+esc(v.hinmei||'')+(priceStr?'　'+priceStr:'')+'　＋登録して選択</span></div>';
       }).join('');
   }catch(e){
     mEl.innerHTML='<div class="maker-dropdown-item" style="color:var(--accent);cursor:default;">検索エラー</div>';
@@ -4557,7 +4565,7 @@ async function selectFromMasterIntoInventory(key, idx){
     if(!p) return;
     selectProduct(key, p.id);
   }catch(e){
-    if(mEl) mEl.innerHTML='<div class="maker-dropdown-item" style="color:var(--accent);cursor:default;">登録エラー: '+e.message+'</div>';
+    if(mEl) mEl.innerHTML='<div class="maker-dropdown-item" style="color:var(--accent);cursor:default;">登録エラー: '+esc(e.message)+'</div>';
   }
 }
 
@@ -4605,8 +4613,8 @@ async function searchTeika(){
     statusEl.style.display='none';
     if(parsed.found&&parsed.teika){
       const teika=Math.round(parsed.teika);
-      const srcHtml=parsed.source?'<div class="ai-price-result-src">'+parsed.source+'</div>':'';
-      const noteHtml=parsed.note?'<div style="font-size:11px;color:var(--ink3);margin-top:4px;">'+parsed.note+'</div>':'';
+      const srcHtml=parsed.source?'<div class="ai-price-result-src">'+esc(parsed.source)+'</div>':'';
+      const noteHtml=parsed.note?'<div style="font-size:11px;color:var(--ink3);margin-top:4px;">'+esc(parsed.note)+'</div>':'';
       resultEl.innerHTML='<div class="ai-price-result">'
         +'<div style="font-size:11px;color:var(--ink3);margin-bottom:2px;">税別定価（希望小売価格）</div>'
         +'<div class="ai-price-result-val">\u00a5'+teika.toLocaleString()+'</div>'
@@ -4617,13 +4625,13 @@ async function searchTeika(){
         +'<button class="btn btn-secondary" style="padding:10px 14px;font-size:13px;border-radius:8px;" onclick="document.getElementById(\'aiPriceBox\').style.display=\'none\'">✕</button>'
         +'</div>';
     }else{
-      const noteMsg=parsed.note?' — '+parsed.note:'';
+      const noteMsg=parsed.note?' — '+esc(parsed.note):'';
       resultEl.innerHTML='<div class="ai-price-error">⚠️ 定価が見つかりませんでした'+noteMsg+'</div>'
         +'<button class="btn btn-secondary" style="padding:8px 14px;font-size:12px;border-radius:8px;margin-top:4px;" onclick="document.getElementById(\'aiPriceBox\').style.display=\'none\'">閉じる</button>';
     }
   }catch(e){
     statusEl.style.display='none';
-    resultEl.innerHTML='<div class="ai-price-error">❌ 検索に失敗しました: '+e.message+'</div>'
+    resultEl.innerHTML='<div class="ai-price-error">❌ 検索に失敗しました: '+esc(e.message)+'</div>'
       +'<button class="btn btn-secondary" style="padding:8px 14px;font-size:12px;border-radius:8px;margin-top:4px;" onclick="document.getElementById(\'aiPriceBox\').style.display=\'none\'">閉じる</button>';
   }finally{
     document.getElementById('btnSearchTeika').disabled=false;
@@ -4654,7 +4662,7 @@ function editPriceProduct(id){
 function openOperation(id){
   currentProductId=id;
   const p=data.products.find(x=>x.id===id);if(!p)return;
-  var titleHtml=(p.maker?'<span style="display:inline-flex;align-items:center;gap:5px;">'+makerLogoHtml(p.maker,18)+p.maker+'</span> ':'')+p.name;
+  var titleHtml=(p.maker?'<span style="display:inline-flex;align-items:center;gap:5px;">'+makerLogoHtml(p.maker,18)+esc(p.maker)+'</span> ':'')+esc(p.name);
   document.getElementById('modalOpTitle').innerHTML=titleHtml;
   // 情報表示：売値・取り置き詳細
   var infoHtml='';
@@ -4675,7 +4683,7 @@ function openOperation(id){
       +'<div style="font-size:12px;font-weight:700;color:var(--accent2);margin-bottom:5px;">🔒 取り置き '+reserves.length+'件 / 計'+rTotal+'台</div>'
       +reserves.map(function(r){
         return '<div style="font-size:12px;color:var(--ink2);padding:2px 0;display:flex;justify-content:space-between;gap:8px;">'
-          +'<span><strong>'+(r.customer||r.name||'未記入')+'</strong> <span style="color:var(--ink3);">'+WH_LABELS[r.wh]+'</span></span>'
+          +'<span><strong>'+esc(r.customer||r.name||'未記入')+'</strong> <span style="color:var(--ink3);">'+WH_LABELS[r.wh]+'</span></span>'
           +'<span style="font-family:\'JetBrains Mono\',monospace;font-weight:700;">'+r.qty+'台</span></div>';
       }).join('')
       +'</div>';
@@ -4710,11 +4718,11 @@ function openOpForm(type){
     const reserves=p.reserves||[];
     const rList=reserves.length>0?`<div class="reserve-info"><div class="reserve-info-title">🔒 現在の取り置き</div>
       ${reserves.map((r,i)=>`<div class="reserve-info-item" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:4px 0;">
-        <strong>${r.customer||r.name||'未記入'}</strong>（${WH_LABELS[r.wh]}）
+        <strong>${esc(r.customer||r.name||'未記入')}</strong>（${WH_LABELS[r.wh]}）
         <input type="number" id="opRsvQty${i}" value="${r.qty}" min="1" style="width:52px;border:1.5px solid var(--border);border-radius:5px;padding:2px 5px;font-size:13px;text-align:center;font-family:'JetBrains Mono',monospace;">台
-        <button onclick="saveReserveQty('${p.id}',${i},document.getElementById('opRsvQty${i}').value)" style="background:var(--blue);color:#fff;border:none;border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;">変更</button>
-        <button onclick="shipReserveById('${p.id}',${i})" style="background:var(--blue);color:#fff;border:none;border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;">出荷確定</button>
-        <button onclick="cancelReserveById('${p.id}',${i})" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;">解除</button>
+        <button onclick="saveReserveQty(${escJs(p.id)},${i},document.getElementById('opRsvQty${i}').value)" style="background:var(--blue);color:#fff;border:none;border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;">変更</button>
+        <button onclick="shipReserveById(${escJs(p.id)},${i})" style="background:var(--blue);color:#fff;border:none;border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;">出荷確定</button>
+        <button onclick="cancelReserveById(${escJs(p.id)},${i})" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;">解除</button>
       </div>`).join('')}
       </div>`:'';
     formEl.innerHTML=`<div class="form-group"><label class="form-label">得意先（取り置き先）</label>
@@ -4762,7 +4770,7 @@ function setNyukoMode(mode){
 function initNyuko(){
   const makers=getMakers();
   const sel=document.getElementById('nyuko-maker');
-  sel.innerHTML='<option value="">── メーカーを選択 ──</option>'+makers.map(m=>`<option value="${m}">${m}</option>`).join('');
+  sel.innerHTML='<option value="">── メーカーを選択 ──</option>'+makers.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
   document.getElementById('nyuko-product').value='';
   var npi0=document.getElementById('nyuko-product-input'); if(npi0) npi0.value='';
   document.getElementById('nyuko-stock-info').style.display='none';
@@ -4848,7 +4856,7 @@ ${existingList}
   }catch(e){
     _aiStatusCb=null;
     document.getElementById('aiStatus').className='ai-status error';
-    document.getElementById('aiStatus').innerHTML='❌ '+e.message
+    document.getElementById('aiStatus').innerHTML='❌ '+esc(e.message)
       +'<br><button class="btn btn-secondary" style="margin-top:8px;padding:8px 16px;font-size:13px;" onclick="document.getElementById(\'aiFileInput\').click()">📷 もう一度試す</button>';
   }
 }
@@ -4866,8 +4874,8 @@ function renderAiItems(){
     return`<div class="ai-item" id="ai-item-${i}">
       <div class="ai-item-header">
         <div>
-          <div class="ai-item-maker"><input type="text" style="background:transparent;border:none;outline:none;font-size:11px;color:var(--ink3);width:100%;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;" id="ai-maker-${i}" value="${item.maker||''}" placeholder="メーカー名"></div>
-          <div class="ai-item-name"><input type="text" style="background:transparent;border:none;outline:none;font-size:13px;font-weight:700;width:100%;font-family:'JetBrains Mono',monospace;" id="ai-name-${i}" value="${item.name||''}" placeholder="型番" list="productNameList" autocomplete="off"></div>
+          <div class="ai-item-maker"><input type="text" style="background:transparent;border:none;outline:none;font-size:11px;color:var(--ink3);width:100%;font-family:'MS Gothic','MS PGothic','Noto Sans JP',sans-serif;" id="ai-maker-${i}" value="${esc(item.maker||'')}" placeholder="メーカー名"></div>
+          <div class="ai-item-name"><input type="text" style="background:transparent;border:none;outline:none;font-size:13px;font-weight:700;width:100%;font-family:'JetBrains Mono',monospace;" id="ai-name-${i}" value="${esc(item.name||'')}" placeholder="型番" list="productNameList" autocomplete="off"></div>
         </div>
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
           <input type="checkbox" id="ai-check-${i}" checked style="width:18px;height:18px;cursor:pointer;">
@@ -4877,12 +4885,12 @@ function renderAiItems(){
       <div style="display:flex;gap:8px;align-items:center;">
         <select class="form-select" id="ai-wh-${i}" style="flex:1;padding:7px 8px;font-size:13px;">${whOpts}</select>
         <div style="display:flex;align-items:center;gap:4px;">
-          <input type="number" class="form-input" id="ai-qty-${i}" value="${item.qty||1}" min="1" style="width:70px;padding:7px 8px;font-size:14px;text-align:center;">
+          <input type="number" class="form-input" id="ai-qty-${i}" value="${esc(item.qty||1)}" min="1" style="width:70px;padding:7px 8px;font-size:14px;text-align:center;">
           <span style="font-size:13px;color:var(--ink3);">台</span>
         </div>
       </div>
       ${matchNote}
-      ${item.note?`<div style="font-size:11px;color:var(--ink3);margin-top:4px;">📝 ${item.note}</div>`:''}
+      ${item.note?`<div style="font-size:11px;color:var(--ink3);margin-top:4px;">📝 ${esc(item.note)}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -4899,7 +4907,7 @@ function setShukkaMode(mode){
 function initShukka(){
   const makers=getMakers();
   const sel=document.getElementById('shukka-maker');
-  sel.innerHTML='<option value="">── メーカーを選択 ──</option>'+makers.map(m=>`<option value="${m}">${m}</option>`).join('');
+  sel.innerHTML='<option value="">── メーカーを選択 ──</option>'+makers.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
   document.getElementById('shukka-product').value='';
   var spi0=document.getElementById('shukka-product-input'); if(spi0) spi0.value='';
   document.getElementById('shukka-stock-info').style.display='none';
@@ -4987,7 +4995,7 @@ ${existingList}
     document.getElementById('shukkaAiResult').style.display='block';
   }catch(e){
     statusEl.className='ai-status error';
-    statusEl.innerHTML='❌ '+e.message;
+    statusEl.innerHTML='❌ '+esc(e.message);
   }
 }
 
@@ -5035,12 +5043,12 @@ function dupWarningHtml(similar, useFn, idx){
   if(useFn){
     body=similar.map(function(s){
       return `<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:5px;">
-        <div><span style="font-family:'JetBrains Mono',monospace;font-weight:700;">${s.p.name}</span><span style="color:var(--ink3);"> (${s.p.maker||'―'})</span></div>
-        <button type="button" onclick="${useFn}(${idx},'${s.p.id}')" style="border:none;background:var(--blue);color:#fff;border-radius:5px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">この品番を使う</button>
+        <div><span style="font-family:'JetBrains Mono',monospace;font-weight:700;">${esc(s.p.name)}</span><span style="color:var(--ink3);"> (${esc(s.p.maker||'―')})</span></div>
+        <button type="button" onclick="${useFn}(${idx},${escJs(s.p.id)})" style="border:none;background:var(--blue);color:#fff;border-radius:5px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">この品番を使う</button>
       </div>`;
     }).join('');
   }else{
-    body=similar.map(function(s){return `<span style="font-family:'JetBrains Mono',monospace;font-weight:700;">${s.p.name}</span><span style="color:var(--ink3);"> (${s.p.maker||'―'}) ${s.reason}</span>`;}).join('<br>');
+    body=similar.map(function(s){return `<span style="font-family:'JetBrains Mono',monospace;font-weight:700;">${esc(s.p.name)}</span><span style="color:var(--ink3);"> (${esc(s.p.maker||'―')}) ${s.reason}</span>`;}).join('<br>');
   }
   return `<div style="font-size:11px;background:#fff8e8;border:1px solid #f5d080;border-radius:6px;padding:6px 8px;margin-top:5px;">
     ⚠️ 似た品番が既に登録されています。重複でないか確認してください:<br>${body}
@@ -5058,8 +5066,8 @@ function renderAiShukkaItems(){
     if(!matched){
       return`<div class="ai-item" id="sh-item-${i}" style="border-color:var(--accent);">
         <div class="ai-item-header"><div>
-          <div class="ai-item-name" style="color:var(--accent);">${item.name||'(型番不明)'}</div>
-          <div class="ai-item-maker">${item.maker||''}</div>
+          <div class="ai-item-name" style="color:var(--accent);">${esc(item.name||'(型番不明)')}</div>
+          <div class="ai-item-maker">${esc(item.maker||'')}</div>
         </div></div>
         <div style="font-size:12px;color:var(--accent);margin-top:4px;">⚠️ 未登録の商品です。先に入荷登録が必要なため出荷できません。</div>
       </div>`;
@@ -5075,24 +5083,24 @@ function renderAiShukkaItems(){
     return`<div class="ai-item" id="sh-item-${i}">
       <div class="ai-item-header">
         <div>
-          <div class="ai-item-name">${matched.name}</div>
-          <div class="ai-item-maker">${(matched.category?matched.category+' ・ ':'')}${matched.maker||''}</div>
+          <div class="ai-item-name">${esc(matched.name)}</div>
+          <div class="ai-item-maker">${(matched.category?esc(matched.category)+' ・ ':'')}${esc(matched.maker||'')}</div>
         </div>
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
           <input type="checkbox" id="sh-check-${i}" checked style="width:18px;height:18px;cursor:pointer;">
           <span style="font-size:12px;color:var(--ink2);">出荷</span>
         </label>
       </div>
-      <input type="hidden" id="sh-pid-${i}" value="${matched.id}">
+      <input type="hidden" id="sh-pid-${i}" value="${esc(matched.id)}">
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
         <select class="form-select" id="sh-wh-${i}" style="flex:1;padding:7px 8px;font-size:13px;">${wOpts}</select>
         <div style="display:flex;align-items:center;gap:4px;">
-          <input type="number" class="form-input" id="sh-qty-${i}" value="${item.qty||1}" min="1" style="width:70px;padding:7px 8px;font-size:14px;text-align:center;">
+          <input type="number" class="form-input" id="sh-qty-${i}" value="${esc(item.qty||1)}" min="1" style="width:70px;padding:7px 8px;font-size:14px;text-align:center;">
           <span style="font-size:13px;color:var(--ink3);">台</span>
         </div>
       </div>
-      <input type="text" class="form-input" id="sh-cust-${i}" value="${(item.customer||'').replace(/"/g,'&quot;')}" placeholder="納品先・得意先（任意）" style="padding:8px 10px;font-size:13px;">
-      ${item.note?`<div style="font-size:11px;color:var(--ink3);margin-top:4px;">📝 ${item.note}</div>`:''}
+      <input type="text" class="form-input" id="sh-cust-${i}" value="${esc(item.customer)}" placeholder="納品先・得意先（任意）" style="padding:8px 10px;font-size:13px;">
+      ${item.note?`<div style="font-size:11px;color:var(--ink3);margin-top:4px;">📝 ${esc(item.note)}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -5180,7 +5188,7 @@ function generatePdf(){
   const groupByCat=pdfCatFilter==='all'&&pdfType!=='reserve'
     &&(document.getElementById('pdfGroupByCat')||{checked:false}).checked;
   const whTitle=pdfWhFilters.has('all')?'全倉庫':whCols.map(w=>WH_LABELS[w]).join('・');
-  const catTitle=pdfCatFilter==='all'?'':' ／ '+pdfCatFilter;
+  const catTitle=pdfCatFilter==='all'?'':' ／ '+esc(pdfCatFilter);
   const typeTitle=pdfType==='reserve'?'取り置き一覧':'在庫一覧';
 
   // 行HTML生成（共通）
@@ -5188,8 +5196,8 @@ function generatePdf(){
     const cells=whCols.map(w=>`<td>${p[w]||0}</td>`).join('');
     const total=whCols.reduce((s,w)=>s+(p[w]||0),0);
     const totCell=whCols.length>1?`<td><strong>${total}</strong></td>`:'';
-    const rText=(p.reserves||[]).length>0?`<br><small style="color:#c84b2f">🔒 ${p.reserves.map(r=>`${r.customer||r.name||'未記入'}(${WH_LABELS[r.wh]}/${r.qty}台)`).join(', ')}</small>`:'';
-    return`<tr><td style="text-align:left;font-size:11px;color:#888;">${p.maker||'―'}</td><td class="item-name">${p.name}${rText}</td>${cells}${totCell}</tr>`;
+    const rText=(p.reserves||[]).length>0?`<br><small style="color:#c84b2f">🔒 ${p.reserves.map(r=>`${esc(r.customer||r.name||'未記入')}(${WH_LABELS[r.wh]}/${r.qty}台)`).join(', ')}</small>`:'';
+    return`<tr><td style="text-align:left;font-size:11px;color:#888;">${esc(p.maker||'―')}</td><td class="item-name">${esc(p.name)}${rText}</td>${cells}${totCell}</tr>`;
   }
 
   let rows='';
@@ -5198,7 +5206,7 @@ function generatePdf(){
     cats.forEach(cat=>{
       const catProds=products.filter(p=>(p.category||'未分類').trim()===cat);
       const colspan=whCols.length+(whCols.length>1?3:2);
-      rows+=`<tr><td colspan="${colspan}" style="background:#1565c0;color:#fff;font-weight:700;font-size:12px;padding:6px 8px;">📂 ${cat}（${catProds.length}件）</td></tr>`;
+      rows+=`<tr><td colspan="${colspan}" style="background:#1565c0;color:#fff;font-weight:700;font-size:12px;padding:6px 8px;">📂 ${esc(cat)}（${catProds.length}件）</td></tr>`;
       rows+=catProds.map(makeRow).join('');
     });
   }else{
@@ -5247,14 +5255,14 @@ async function doMasterSearch(target){
       if(priceUnlocked && r.cost>0) priceStr += (priceStr?' ｜ ':'')+'仕入 ¥'+Number(r.cost).toLocaleString();
       return '<div onclick="addLineFromMaster(\''+target+'\','+i+')" style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 9px;margin-bottom:4px;cursor:pointer;">'
         +'<div style="flex:1;min-width:0;">'
-        +'<div style="font-size:12px;font-weight:700;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(r.name||'')+'</div>'
-        +'<div style="font-size:10px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(r.hinmei||'')+(priceStr?' ｜ '+priceStr:'')+'</div>'
+        +'<div style="font-size:12px;font-weight:700;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(r.name||'')+'</div>'
+        +'<div style="font-size:10px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(r.hinmei||'')+(priceStr?' ｜ '+priceStr:'')+'</div>'
         +'</div>'
         +'<span style="flex:none;background:var(--blue);color:#fff;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;">＋追加</span>'
         +'</div>';
     }).join('');
   }catch(e){
-    box.innerHTML='<div style="font-size:11px;color:var(--accent);padding:6px;">検索エラー: '+e.message+'</div>';
+    box.innerHTML='<div style="font-size:11px;color:var(--accent);padding:6px;">検索エラー: '+esc(e.message)+'</div>';
   }
 }
 // マスタの商品名に埋め込まれた定価表記（例: \38,800-）を抽出し、メーカー・品番を分離する
@@ -5319,8 +5327,8 @@ function openQuote(){
 function initQuoteAddSearch(){
   var makers=getMakers();
   var cats=getAllCategories();
-  document.getElementById('quote-add-maker').innerHTML='<option value="">全メーカー</option>'+makers.map(function(m){return '<option value="'+m+'">'+m+'</option>';}).join('');
-  document.getElementById('quote-add-cat').innerHTML='<option value="">全ジャンル</option>'+cats.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');
+  document.getElementById('quote-add-maker').innerHTML='<option value="">全メーカー</option>'+makers.map(function(m){return '<option value="'+esc(m)+'">'+esc(m)+'</option>';}).join('');
+  document.getElementById('quote-add-cat').innerHTML='<option value="">全ジャンル</option>'+cats.map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join('');
   var q=document.getElementById('quote-add-q'); if(q) q.value='';
   renderQuoteAddResults();
 }
@@ -5353,12 +5361,12 @@ function renderQuoteAddResults(){
   var shown=list.slice(0,LIMIT);
   box.innerHTML=shown.map(function(p){
     var total=WH_KEYS.reduce(function(s,w){return s+(p[w]||0);},0);
-    var sub=[(p.maker||''),(p.category||'')].filter(Boolean).join(' ｜ ');
+    var sub=[esc(p.maker||''),esc(p.category||'')].filter(Boolean).join(' ｜ ');
     var priceStr=p.sell>0?'売値 ¥'+Number(p.sell).toLocaleString():'';
     var info=[sub,priceStr,'在庫'+total].filter(Boolean).join(' ｜ ');
-    return '<div onclick="addQuoteLineByPid(\''+p.id+'\')" style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 9px;margin-bottom:4px;cursor:pointer;">'
+    return '<div onclick="addQuoteLineByPid('+escJs(p.id)+')" style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 9px;margin-bottom:4px;cursor:pointer;">'
       +'<div style="flex:1;min-width:0;">'
-      +'<div style="font-size:12px;font-weight:700;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+p.name+'</div>'
+      +'<div style="font-size:12px;font-weight:700;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(p.name)+'</div>'
       +'<div style="font-size:10px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+info+'</div>'
       +'</div>'
       +'<span style="flex:none;background:var(--blue);color:#fff;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;">＋追加</span>'
@@ -5472,7 +5480,7 @@ async function handleQuotePhoto(event){
     statusEl.innerHTML='✅ '+items.length+'件の明細を追加しました。内容を確認してください。';
   }catch(e){
     statusEl.className='ai-status error';
-    statusEl.innerHTML='❌ '+e.message;
+    statusEl.innerHTML='❌ '+esc(e.message);
   }finally{
     _aiStatusCb=null;
   }
@@ -5541,21 +5549,21 @@ function renderQuoteLines(){
     var canUp=_quoteSwapTarget(i,-1)>=0, canDn=_quoteSwapTarget(i,1)>=0;
     return '<div class="ai-item ql-item">'
       +'<div class="ql-head">'
-      +'<input type="text" id="q-maker-'+i+'" value="'+(L.maker||'').replace(/"/g,'&quot;')+'" placeholder="メーカー" class="form-input ql-input-sm" style="width:90px;" oninput="_quoteRecalc('+i+')">'
-      +'<input type="text" id="q-name-'+i+'" value="'+(L.name||'').replace(/"/g,'&quot;')+'" placeholder="品番" list="productNameList" class="form-input ql-input-name" oninput="_quoteRecalc('+i+')" onblur="_quoteLineBlur('+i+')">'
+      +'<input type="text" id="q-maker-'+i+'" value="'+esc(L.maker)+'" placeholder="メーカー" class="form-input ql-input-sm" style="width:90px;" oninput="_quoteRecalc('+i+')">'
+      +'<input type="text" id="q-name-'+i+'" value="'+esc(L.name)+'" placeholder="品番" list="productNameList" class="form-input ql-input-name" oninput="_quoteRecalc('+i+')" onblur="_quoteLineBlur('+i+')">'
       +'<button type="button" onclick="moveQuoteLine('+i+',-1)" class="ql-move" title="上へ（同じメーカー内）"'+(canUp?'':' disabled')+'>▲</button>'
       +'<button type="button" onclick="moveQuoteLine('+i+',1)" class="ql-move" title="下へ（同じメーカー内）"'+(canDn?'':' disabled')+'>▼</button>'
       +'<button onclick="removeQuoteLine('+i+')" class="ql-del">×</button>'
       +'</div>'
-      +'<input type="text" id="q-hinmei-'+i+'" value="'+(L.hinmei||'').replace(/"/g,'&quot;')+'" placeholder="品名・仕様" class="form-input ql-input-sm ql-hinmei" oninput="_quoteRecalc('+i+')">'
+      +'<input type="text" id="q-hinmei-'+i+'" value="'+esc(L.hinmei)+'" placeholder="品名・仕様" class="form-input ql-input-sm ql-hinmei" oninput="_quoteRecalc('+i+')">'
       +'<div class="ql-nums">'
-      +'<div style="flex:0 0 50px;"><div class="ql-lbl">数量</div><input type="number" id="q-qty-'+i+'" value="'+L.qty+'" min="1" class="form-input ql-num" style="text-align:center;" oninput="_quoteRecalc('+i+')"></div>'
-      +'<div style="flex:1;"><div class="ql-lbl">定価</div><input type="number" id="q-teika-'+i+'" value="'+L.teika+'" min="0" class="form-input ql-num" style="text-align:right;" oninput="_quoteRecalc('+i+')"></div>'
-      +'<div style="flex:1;"><div class="ql-lbl" style="color:var(--green);">単価(売値)</div><input type="number" id="q-tanka-'+i+'" value="'+L.tanka+'" min="0" class="form-input ql-num" style="text-align:right;" oninput="_quoteRecalc('+i+')"></div>'
+      +'<div style="flex:0 0 50px;"><div class="ql-lbl">数量</div><input type="number" id="q-qty-'+i+'" value="'+esc(L.qty)+'" min="1" class="form-input ql-num" style="text-align:center;" oninput="_quoteRecalc('+i+')"></div>'
+      +'<div style="flex:1;"><div class="ql-lbl">定価</div><input type="number" id="q-teika-'+i+'" value="'+esc(L.teika)+'" min="0" class="form-input ql-num" style="text-align:right;" oninput="_quoteRecalc('+i+')"></div>'
+      +'<div style="flex:1;"><div class="ql-lbl" style="color:var(--green);">単価(売値)</div><input type="number" id="q-tanka-'+i+'" value="'+esc(L.tanka)+'" min="0" class="form-input ql-num" style="text-align:right;" oninput="_quoteRecalc('+i+')"></div>'
       +'<div style="flex:1;text-align:right;"><div class="ql-lbl">金額</div><div id="q-amt-'+i+'" class="ql-amt">'+fmt(amt)+'</div></div>'
       +'</div>'
       +'<div class="ql-bikou">'
-      +'<input type="text" id="q-bikou-'+i+'" value="'+(L.bikou||'').replace(/"/g,'&quot;')+'" placeholder="備考・記号（任意）" class="form-input ql-input-sm" style="flex:1;" oninput="_quoteRecalc('+i+')">'
+      +'<input type="text" id="q-bikou-'+i+'" value="'+esc(L.bikou)+'" placeholder="備考・記号（任意）" class="form-input ql-input-sm" style="flex:1;" oninput="_quoteRecalc('+i+')">'
       +'<button type="button" onclick="insertQuoteStock('+i+')" class="ql-stock-btn">🏢 マツオ在庫</button>'
       +'</div>'
       +'</div>';
@@ -5601,9 +5609,9 @@ function getQuotePdfFilename(subject, dateVal){
 // 見積データ（title/customer/staff/date/lines/footerNote）からPDF用HTMLを生成。
 // HTMLはここで毎回再生成するため、localStorageには保存しない（容量節約）。
 function buildQuoteHtml(q){
-  var title=q.title||'', cust=q.customer||'', staff=q.staff||'';
+  var title=esc(q.title||''), cust=esc(q.customer||''), staff=esc(q.staff||'');
   var dateVal=q.date||'';
-  var dispDate=dateVal?dateVal.replace(/-/g,'/'):'';
+  var dispDate=dateVal?esc(dateVal.replace(/-/g,'/')):'';
   var lines=q.lines||[];
   var showTeika=(q.showTeika===false)?false:true;
   var showRate=(q.showRate===false)?false:true;
@@ -5620,20 +5628,20 @@ function buildQuoteHtml(q){
   var no=0, rowsHtml='';
   groups.forEach(function(g,gi){
     var color=QUOTE_MAKER_COLORS[gi%QUOTE_MAKER_COLORS.length];
-    rowsHtml+='<tr><td colspan="'+colCount+'" style="background:'+color+';font-weight:700;text-align:left;padding:6px 8px;border-bottom:1px solid #ccc;"><span style="display:inline-flex;align-items:center;gap:6px;">'+makerLogoHtml(g.maker,16)+'【'+g.maker+'】</span></td></tr>';
+    rowsHtml+='<tr><td colspan="'+colCount+'" style="background:'+color+';font-weight:700;text-align:left;padding:6px 8px;border-bottom:1px solid #ccc;"><span style="display:inline-flex;align-items:center;gap:6px;">'+makerLogoHtml(g.maker,16)+'【'+esc(g.maker)+'】</span></td></tr>';
     g.lines.forEach(function(L){
       no++;
       var amt=L.qty*L.tanka;
       rowsHtml+='<tr style="background:'+color+'66;">'
         +'<td>'+no+'</td>'
-        +'<td class="q-code">'+(L.name||'')+'</td>'
-        +'<td style="text-align:left;">'+(L.hinmei||'')+'</td>'
-        +'<td>'+L.qty+'</td>'
+        +'<td class="q-code">'+esc(L.name||'')+'</td>'
+        +'<td style="text-align:left;">'+esc(L.hinmei||'')+'</td>'
+        +'<td>'+esc(L.qty)+'</td>'
         +(showTeika?'<td style="text-align:right;">'+(L.teika>0?Number(L.teika).toLocaleString():'')+'</td>':'')
-        +(showRate?'<td>'+(L.rate>0?L.rate+'%':'')+'</td>':'')
+        +(showRate?'<td>'+(L.rate>0?esc(L.rate)+'%':'')+'</td>':'')
         +'<td style="text-align:right;">'+(L.tanka>0?Number(L.tanka).toLocaleString():'')+'</td>'
         +'<td style="text-align:right;font-weight:700;">'+(amt>0?Number(amt).toLocaleString():'')+'</td>'
-        +'<td style="text-align:left;font-size:10px;">'+(L.bikou||'')+'</td>'
+        +'<td style="text-align:left;font-size:10px;">'+esc(L.bikou||'')+'</td>'
         +'</tr>';
     });
   });
@@ -5863,8 +5871,8 @@ function renderSavedQuotes(){
     var cust=doc.customer||'（宛先なし）';
     return '<div style="display:flex;align-items:center;gap:5px;padding:8px 10px;background:var(--surface);border-radius:8px;margin-bottom:4px;box-shadow:0 1px 3px var(--shadow);">'
       +'<div style="flex:1;min-width:0;">'
-      +'<div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(doc.title||'（件名なし）')+'</div>'
-      +'<div style="font-size:11px;color:var(--ink3);">'+cust+' ｜ '+d+' ｜ ¥'+(doc.total||0).toLocaleString()+'</div>'
+      +'<div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(doc.title||'（件名なし）')+'</div>'
+      +'<div style="font-size:11px;color:var(--ink3);">'+esc(cust)+' ｜ '+esc(d)+' ｜ ¥'+(doc.total||0).toLocaleString()+'</div>'
       +'</div>'
       +'<button onclick="editSavedQuote('+i+')" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">✏️編集</button>'
       +'<button onclick="openSavedQuote('+i+')" style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">📄表示</button>'
@@ -6010,7 +6018,7 @@ function openInvoice(){
   document.getElementById('invoice-date').value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');
   // メーカー選択肢
   var makers=getMakers();
-  document.getElementById('invoice-add-maker').innerHTML='<option value="">── メーカー選択 ──</option>'+makers.map(function(m){return '<option value="'+m+'">'+m+'</option>';}).join('');
+  document.getElementById('invoice-add-maker').innerHTML='<option value="">── メーカー選択 ──</option>'+makers.map(function(m){return '<option value="'+esc(m)+'">'+esc(m)+'</option>';}).join('');
   document.getElementById('invoice-add-product').innerHTML='<option value="">── 品番選択 ──</option>';
   renderInvoiceLines();
   openModal('modalInvoice');
@@ -6018,7 +6026,7 @@ function openInvoice(){
 function updateInvoiceProductOptions(){
   var mk=document.getElementById('invoice-add-maker').value;
   var prods=data.products.filter(function(p){return (p.maker||'')===mk;});
-  document.getElementById('invoice-add-product').innerHTML='<option value="">── 品番選択 ──</option>'+prods.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>';}).join('');
+  document.getElementById('invoice-add-product').innerHTML='<option value="">── 品番選択 ──</option>'+prods.map(function(p){return '<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>';}).join('');
 }
 function addInvoiceLine(){
   var pid=document.getElementById('invoice-add-product').value;
@@ -6073,7 +6081,7 @@ async function handleInvoicePhoto(event){
     statusEl.innerHTML='✅ '+items.length+'件の明細を追加しました。内容を確認してください。';
   }catch(e){
     statusEl.className='ai-status error';
-    statusEl.innerHTML='❌ '+e.message;
+    statusEl.innerHTML='❌ '+esc(e.message);
   }finally{
     _aiStatusCb=null;
   }
@@ -6104,20 +6112,20 @@ function renderInvoiceLines(){
     var amt=L.qty*L.tanka;
     return '<div class="ai-item ql-item">'
       +'<div class="ql-head">'
-      +'<input type="text" id="inv-name-'+i+'" value="'+(L.name||'').replace(/"/g,'&quot;')+'" placeholder="商品名" list="productNameList" class="form-input ql-input-name" oninput="_invoiceRecalc('+i+')" onblur="_invoiceLineBlur('+i+')">'
+      +'<input type="text" id="inv-name-'+i+'" value="'+esc(L.name)+'" placeholder="商品名" list="productNameList" class="form-input ql-input-name" oninput="_invoiceRecalc('+i+')" onblur="_invoiceLineBlur('+i+')">'
       +'<button type="button" onclick="moveInvoiceLine('+i+',-1)" class="ql-move" title="上へ"'+(i>0?'':' disabled')+'>▲</button>'
       +'<button type="button" onclick="moveInvoiceLine('+i+',1)" class="ql-move" title="下へ"'+(i<invoiceLines.length-1?'':' disabled')+'>▼</button>'
       +'<button onclick="removeInvoiceLine('+i+')" class="ql-del">×</button>'
       +'</div>'
-      +'<input type="text" id="inv-hinmei-'+i+'" value="'+(L.hinmei||'').replace(/"/g,'&quot;')+'" placeholder="品名・仕様" class="form-input ql-input-sm ql-hinmei" oninput="_invoiceRecalc('+i+')">'
+      +'<input type="text" id="inv-hinmei-'+i+'" value="'+esc(L.hinmei)+'" placeholder="品名・仕様" class="form-input ql-input-sm ql-hinmei" oninput="_invoiceRecalc('+i+')">'
       +'<div class="ql-nums">'
-      +'<div style="flex:0 0 44px;"><div class="ql-lbl">数量</div><input type="number" id="inv-qty-'+i+'" value="'+L.qty+'" min="1" class="form-input ql-num" style="text-align:center;" oninput="_invoiceRecalc('+i+')"></div>'
-      +'<div style="flex:0 0 44px;"><div class="ql-lbl">単位</div><input type="text" id="inv-unit-'+i+'" value="'+(L.unit||'').replace(/"/g,'&quot;')+'" class="form-input ql-num" style="text-align:center;" oninput="_invoiceRecalc('+i+')"></div>'
-      +'<div style="flex:1;"><div class="ql-lbl" style="color:var(--green);">単価</div><input type="number" id="inv-tanka-'+i+'" value="'+L.tanka+'" min="0" class="form-input ql-num" style="text-align:right;" oninput="_invoiceRecalc('+i+')"></div>'
+      +'<div style="flex:0 0 44px;"><div class="ql-lbl">数量</div><input type="number" id="inv-qty-'+i+'" value="'+esc(L.qty)+'" min="1" class="form-input ql-num" style="text-align:center;" oninput="_invoiceRecalc('+i+')"></div>'
+      +'<div style="flex:0 0 44px;"><div class="ql-lbl">単位</div><input type="text" id="inv-unit-'+i+'" value="'+esc(L.unit)+'" class="form-input ql-num" style="text-align:center;" oninput="_invoiceRecalc('+i+')"></div>'
+      +'<div style="flex:1;"><div class="ql-lbl" style="color:var(--green);">単価</div><input type="number" id="inv-tanka-'+i+'" value="'+esc(L.tanka)+'" min="0" class="form-input ql-num" style="text-align:right;" oninput="_invoiceRecalc('+i+')"></div>'
       +'<div style="flex:1;text-align:right;"><div class="ql-lbl">金額</div><div id="inv-amt-'+i+'" class="ql-amt">'+fmt(amt)+'</div></div>'
       +'</div>'
       +'<div class="ql-bikou">'
-      +'<input type="text" id="inv-bikou-'+i+'" value="'+(L.bikou||'').replace(/"/g,'&quot;')+'" placeholder="摘要（任意）" class="form-input ql-input-sm" style="flex:1;" oninput="_invoiceRecalc('+i+')">'
+      +'<input type="text" id="inv-bikou-'+i+'" value="'+esc(L.bikou)+'" placeholder="摘要（任意）" class="form-input ql-input-sm" style="flex:1;" oninput="_invoiceRecalc('+i+')">'
       +'</div>'
       +'</div>';
   }).join('');
@@ -6153,9 +6161,9 @@ function getInvoicePdfFilename(subject, dateVal){
 }
 // 請求データからPDF用HTMLを生成（HTMLは保存せず表示時に再生成する）
 function buildInvoiceHtml(q){
-  var title=q.title||'', cust=q.customer||'', staff=q.staff||'', invNo=q.invNo||'';
+  var title=esc(q.title||''), cust=esc(q.customer||''), staff=esc(q.staff||''), invNo=esc(q.invNo||'');
   var dateVal=q.date||'';
-  var dispDate=dateVal?dateVal.replace(/-/g,'/'):'';
+  var dispDate=dateVal?esc(dateVal.replace(/-/g,'/')):'';
   var dueDateStr='';
   if(dateVal){
     var dueD=new Date(dateVal+'T00:00:00');
@@ -6170,12 +6178,12 @@ function buildInvoiceHtml(q){
     var amt=L.qty*L.tanka;
     rowsHtml+='<tr>'
       +'<td>'+(i+1)+'</td>'
-      +'<td style="text-align:left;"><span class="inv-code">'+(L.name||'')+'</span>'+(L.hinmei?'<br><span style="font-size:11px;">'+L.hinmei+'</span>':'')+'</td>'
-      +'<td>'+L.qty+'</td>'
-      +'<td>'+(L.unit||'')+'</td>'
+      +'<td style="text-align:left;"><span class="inv-code">'+esc(L.name||'')+'</span>'+(L.hinmei?'<br><span style="font-size:11px;">'+esc(L.hinmei)+'</span>':'')+'</td>'
+      +'<td>'+esc(L.qty)+'</td>'
+      +'<td>'+esc(L.unit||'')+'</td>'
       +'<td style="text-align:right;">'+(L.tanka>0?Number(L.tanka).toLocaleString():'')+'</td>'
       +'<td style="text-align:right;font-weight:700;">'+(amt>0?Number(amt).toLocaleString():'')+'</td>'
-      +'<td style="text-align:left;font-size:10px;">'+(L.bikou||'')+'</td>'
+      +'<td style="text-align:left;font-size:10px;">'+esc(L.bikou||'')+'</td>'
       +'</tr>';
   });
   var c=QUOTE_COMPANY;
@@ -6331,8 +6339,8 @@ function renderSavedInvoices(){
     var cust=doc.customer||'（宛先なし）';
     return '<div style="display:flex;align-items:center;gap:5px;padding:8px 10px;background:var(--surface);border-radius:8px;margin-bottom:4px;box-shadow:0 1px 3px var(--shadow);">'
       +'<div style="flex:1;min-width:0;">'
-      +'<div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(doc.title||'（件名なし）')+'</div>'
-      +'<div style="font-size:11px;color:var(--ink3);">'+cust+' ｜ '+d+' ｜ ¥'+(doc.total||0).toLocaleString()+'</div>'
+      +'<div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(doc.title||'（件名なし）')+'</div>'
+      +'<div style="font-size:11px;color:var(--ink3);">'+esc(cust)+' ｜ '+esc(d)+' ｜ ¥'+(doc.total||0).toLocaleString()+'</div>'
       +'</div>'
       +'<button onclick="editSavedInvoice('+i+')" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">✏️編集</button>'
       +'<button onclick="openSavedInvoice('+i+')" style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">📄表示</button>'
@@ -6365,7 +6373,7 @@ function editSavedInvoice(idx){
   var ifn=document.getElementById('invoice-footer-note');
   if(ifn) ifn.value=q.footerNote||'';
   var makers=getMakers();
-  document.getElementById('invoice-add-maker').innerHTML='<option value="">── メーカー選択 ──</option>'+makers.map(function(m){return '<option value="'+m+'">'+m+'</option>';}).join('');
+  document.getElementById('invoice-add-maker').innerHTML='<option value="">── メーカー選択 ──</option>'+makers.map(function(m){return '<option value="'+esc(m)+'">'+esc(m)+'</option>';}).join('');
   document.getElementById('invoice-add-product').innerHTML='<option value="">── 品番選択 ──</option>';
   // 編集中の文書ID（保存時の上書き先特定に使う。indexは一覧の並び替えでズレるため使わない）
   _editingInvoiceId=q.id;
@@ -6443,8 +6451,8 @@ function closeShipCertModal(){
 // ─── 明細追加: 登録商品の検索 ────────────────────────────────────
 function initCertAddSearch(){
   var makers=getMakers(), cats=getAllCategories();
-  document.getElementById('cert-add-maker').innerHTML='<option value="">全メーカー</option>'+makers.map(function(m){return '<option value="'+m+'">'+m+'</option>';}).join('');
-  document.getElementById('cert-add-cat').innerHTML='<option value="">全ジャンル</option>'+cats.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');
+  document.getElementById('cert-add-maker').innerHTML='<option value="">全メーカー</option>'+makers.map(function(m){return '<option value="'+esc(m)+'">'+esc(m)+'</option>';}).join('');
+  document.getElementById('cert-add-cat').innerHTML='<option value="">全ジャンル</option>'+cats.map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join('');
   var q=document.getElementById('cert-add-q'); if(q) q.value='';
   var mq=document.getElementById('cert-master-q'); if(mq) mq.value='';
   var mr=document.getElementById('cert-master-results'); if(mr) mr.innerHTML='';
@@ -6466,7 +6474,7 @@ function renderCertAddResults(){
   var list=certAddFilteredProducts();
   if(!list.length){ box.innerHTML='<div style="font-size:11px;color:var(--ink3);padding:6px;">該当する登録商品がありません</div>'; return; }
   box.innerHTML=list.map(function(p){
-    return '<div onclick="addCertLineByPid(\''+p.id+'\')" style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 9px;margin-bottom:4px;cursor:pointer;">'
+    return '<div onclick="addCertLineByPid('+escJs(p.id)+')" style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 9px;margin-bottom:4px;cursor:pointer;">'
       +'<div style="flex:1;min-width:0;">'
       +'<div style="font-size:12px;font-weight:700;font-family:\'JetBrains Mono\',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+_certEsc(p.name||'')+'</div>'
       +'<div style="font-size:10px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+_certEsc((p.maker||'')+(p.category?' ｜ '+p.category:''))+'</div>'
@@ -6522,16 +6530,16 @@ function renderCertLines(){
     return '<div class="cl-item">'
       +'<div class="cl-head">'
       +'<span style="font-size:11px;color:var(--ink3);width:22px;flex:none;text-align:right;">'+(i+1)+'</span>'
-      +'<input type="text" id="c-name-'+i+'" value="'+String(L.name||'').replace(/"/g,'&quot;')+'" placeholder="商品名1（メーカー・品番）" class="form-input" style="flex:1;min-width:0;font-size:13px;padding:7px 8px;">'
+      +'<input type="text" id="c-name-'+i+'" value="'+esc(L.name)+'" placeholder="商品名1（メーカー・品番）" class="form-input" style="flex:1;min-width:0;font-size:13px;padding:7px 8px;">'
       +'<button type="button" onclick="moveCertLine('+i+',-1)" class="cl-move" title="上へ"'+(i===0?' disabled':'')+'>▲</button>'
       +'<button type="button" onclick="moveCertLine('+i+',1)" class="cl-move" title="下へ"'+(i===certLines.length-1?' disabled':'')+'>▼</button>'
       +'<button type="button" onclick="removeCertLine('+i+')" class="cl-del">×</button>'
       +'</div>'
-      +'<input type="text" id="c-hinmei-'+i+'" value="'+String(L.hinmei||'').replace(/"/g,'&quot;')+'" placeholder="商品名2（品名・仕様）" class="form-input" style="width:100%;font-size:13px;padding:7px 8px;margin-bottom:5px;">'
+      +'<input type="text" id="c-hinmei-'+i+'" value="'+esc(L.hinmei)+'" placeholder="商品名2（品名・仕様）" class="form-input" style="width:100%;font-size:13px;padding:7px 8px;margin-bottom:5px;">'
       +'<div class="cl-nums">'
-      +'<div style="flex:0 0 70px;"><div class="cl-lbl">数量</div><input type="number" id="c-qty-'+i+'" value="'+(L.qty===''||L.qty==null?'':L.qty)+'" step="any" class="form-input" style="text-align:center;font-size:13px;padding:7px 4px;"></div>'
-      +'<div style="flex:0 0 64px;"><div class="cl-lbl">単位</div><input type="text" id="c-unit-'+i+'" value="'+String(L.unit||'').replace(/"/g,'&quot;')+'" class="form-input" style="text-align:center;font-size:13px;padding:7px 4px;"></div>'
-      +'<div style="flex:1;min-width:0;"><div class="cl-lbl">納品日</div><input type="date" id="c-ddate-'+i+'" value="'+(L.ddate||'')+'" class="form-input" style="font-size:12px;padding:7px 6px;"></div>'
+      +'<div style="flex:0 0 70px;"><div class="cl-lbl">数量</div><input type="number" id="c-qty-'+i+'" value="'+esc(L.qty===''||L.qty==null?'':L.qty)+'" step="any" class="form-input" style="text-align:center;font-size:13px;padding:7px 4px;"></div>'
+      +'<div style="flex:0 0 64px;"><div class="cl-lbl">単位</div><input type="text" id="c-unit-'+i+'" value="'+esc(L.unit)+'" class="form-input" style="text-align:center;font-size:13px;padding:7px 4px;"></div>'
+      +'<div style="flex:1;min-width:0;"><div class="cl-lbl">納品日</div><input type="date" id="c-ddate-'+i+'" value="'+esc(L.ddate||'')+'" class="form-input" style="font-size:12px;padding:7px 6px;"></div>'
       +'</div>'
       +'</div>';
   }).join('');
@@ -6715,7 +6723,7 @@ function renderSavedCerts(){
     return '<div style="display:flex;align-items:center;gap:5px;padding:8px 10px;background:var(--surface);border-radius:8px;margin-bottom:4px;box-shadow:0 1px 3px var(--shadow);">'
       +'<div style="flex:1;min-width:0;">'
       +'<div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+_certEsc(c.title||'（件名なし）')+'</div>'
-      +'<div style="font-size:11px;color:var(--ink3);">'+_certEsc(c.customer||'（宛名なし）')+' ｜ '+d+' ｜ No.'+_certEsc(c.no||'')+' ｜ '+((c.lines||[]).length)+'行</div>'
+      +'<div style="font-size:11px;color:var(--ink3);">'+_certEsc(c.customer||'（宛名なし）')+' ｜ '+esc(d)+' ｜ No.'+_certEsc(c.no||'')+' ｜ '+((c.lines||[]).length)+'行</div>'
       +'</div>'
       +'<button onclick="editSavedCert('+i+')" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">✏️編集</button>'
       +'<button onclick="openSavedCert('+i+')" style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">📄表示</button>'
@@ -6961,22 +6969,22 @@ function reserveRowsHtml(rows){
     var qtyId='rsvqty-'+i+'-'+p.id;
     return '<div class="rsv-card">'
       +'<div class="rsv-card-top"><div>'
-      +'<div class="rsv-card-name">'+p.name+'</div>'
-      +'<div class="rsv-card-maker">'+(p.category?p.category+' ・ ':'')+(p.maker||'メーカー未設定')+'</div>'
+      +'<div class="rsv-card-name">'+esc(p.name)+'</div>'
+      +'<div class="rsv-card-maker">'+(p.category?esc(p.category)+' ・ ':'')+esc(p.maker||'メーカー未設定')+'</div>'
       +'</div>'
       +'<div class="rsv-card-qty" style="display:flex;align-items:center;gap:4px;">'
-      +'<input type="number" id="'+qtyId+'" value="'+r.qty+'" min="1" style="width:56px;border:1.5px solid var(--border);border-radius:6px;padding:3px 6px;font-size:15px;font-family:\'JetBrains Mono\',monospace;font-weight:700;color:var(--accent2);text-align:center;">'
+      +'<input type="number" id="'+esc(qtyId)+'" value="'+esc(r.qty)+'" min="1" style="width:56px;border:1.5px solid var(--border);border-radius:6px;padding:3px 6px;font-size:15px;font-family:\'JetBrains Mono\',monospace;font-weight:700;color:var(--accent2);text-align:center;">'
       +'<span style="font-size:11px;color:var(--ink3);"> 台</span>'
-      +'<button onclick="saveReserveQty(\''+p.id+'\','+x.idx+',document.getElementById(\''+qtyId+'\').value)" style="background:var(--blue);color:#fff;border:none;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;font-family:\'Noto Sans JP\',sans-serif;">変更</button>'
+      +'<button onclick="saveReserveQty('+escJs(p.id)+','+x.idx+',document.getElementById('+escJs(qtyId)+').value)" style="background:var(--blue);color:#fff;border:none;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;font-family:\'Noto Sans JP\',sans-serif;">変更</button>'
       +'</div></div>'
-      +'<div class="rsv-card-meta"><span class="wh-badge '+r.wh+'"><span class="wh-dot"></span>'+WH_LABELS[r.wh]+'</span>'
-      +'<span>得意先: <span class="rsv-customer">'+(r.customer||r.name||'未記入')+'</span></span></div>'
+      +'<div class="rsv-card-meta"><span class="wh-badge '+esc(r.wh)+'"><span class="wh-dot"></span>'+esc(WH_LABELS[r.wh])+'</span>'
+      +'<span>得意先: <span class="rsv-customer">'+esc(r.customer||r.name||'未記入')+'</span></span></div>'
       +'<div class="rsv-actions" style="flex-direction:column;gap:5px;">'
-      +'<button class="btn btn-blue" style="width:100%;padding:9px;" onclick="shipReserveById(\''+p.id+'\','+x.idx+')">📤 出荷確定</button>'
+      +'<button class="btn btn-blue" style="width:100%;padding:9px;" onclick="shipReserveById('+escJs(p.id)+','+x.idx+')">📤 出荷確定</button>'
       +'<div style="display:flex;gap:5px;">'
-      +'<button class="btn btn-secondary" style="flex:1;padding:7px 4px;font-size:11px;" onclick="openMoveReserve(\''+p.id+'\','+x.idx+')">🔄 倉庫変更</button>'
-      +'<button class="btn btn-blue" style="flex:1;padding:7px 4px;font-size:11px;background:var(--ink2);" onclick="openChangeReserveCust(\''+p.id+'\','+x.idx+')">👤 得意先変更</button>'
-      +'<button class="btn btn-danger" style="flex:1;padding:7px 4px;font-size:11px;" onclick="cancelReserveById(\''+p.id+'\','+x.idx+')">↩ 解除</button>'
+      +'<button class="btn btn-secondary" style="flex:1;padding:7px 4px;font-size:11px;" onclick="openMoveReserve('+escJs(p.id)+','+x.idx+')">🔄 倉庫変更</button>'
+      +'<button class="btn btn-blue" style="flex:1;padding:7px 4px;font-size:11px;background:var(--ink2);" onclick="openChangeReserveCust('+escJs(p.id)+','+x.idx+')">👤 得意先変更</button>'
+      +'<button class="btn btn-danger" style="flex:1;padding:7px 4px;font-size:11px;" onclick="cancelReserveById('+escJs(p.id)+','+x.idx+')">↩ 解除</button>'
       +'</div>'
       +'</div></div>';
   }).join('');
@@ -7005,7 +7013,7 @@ function setToriokiMode(mode){
 function initTorioki(){
   const makers=getMakers();
   const sel=document.getElementById('tr-maker');
-  sel.innerHTML='<option value="">── メーカーを選択 ──</option>'+makers.map(function(m){return`<option value="${m}">${m}</option>`;}).join('');
+  sel.innerHTML='<option value="">── メーカーを選択 ──</option>'+makers.map(function(m){return`<option value="${esc(m)}">${esc(m)}</option>`;}).join('');
   document.getElementById('tr-product').value='';
   var tpi0=document.getElementById('tr-product-input'); if(tpi0) tpi0.value='';
   document.getElementById('tr-stock-info').style.display='none';
@@ -7098,7 +7106,7 @@ ${existingList}
     renderToriokiAiItems();
     statusEl.style.display='none';
     document.getElementById('trAiResult').style.display='block';
-  }catch(e){statusEl.className='ai-status error';statusEl.innerHTML='❌ '+e.message;}
+  }catch(e){statusEl.className='ai-status error';statusEl.innerHTML='❌ '+esc(e.message);}
 }
 function renderToriokiAiItems(){
   const el=document.getElementById('trAiItems');
@@ -7112,34 +7120,34 @@ function renderToriokiAiItems(){
         <input type="hidden" id="tri-isnew-${i}" value="1"><input type="hidden" id="tri-pid-${i}" value="">
         ${dupWarningHtml(similar,'useExistingForTorioki',i)}
         <div class="ai-item-header"><div style="flex:1;">
-          <input type="text" class="form-input" id="tri-newmaker-${i}" value="${(item.maker||'').replace(/"/g,'&quot;')}" placeholder="メーカー" style="font-size:11px;padding:4px 6px;margin-bottom:3px;">
-          <input type="text" class="form-input" id="tri-newname-${i}" value="${(item.name||'').replace(/"/g,'&quot;')}" placeholder="型番（必須）" list="productNameList" autocomplete="off" style="font-size:13px;font-weight:700;padding:4px 6px;">
+          <input type="text" class="form-input" id="tri-newmaker-${i}" value="${esc(item.maker)}" placeholder="メーカー" style="font-size:11px;padding:4px 6px;margin-bottom:3px;">
+          <input type="text" class="form-input" id="tri-newname-${i}" value="${esc(item.name)}" placeholder="型番（必須）" list="productNameList" autocomplete="off" style="font-size:13px;font-weight:700;padding:4px 6px;">
         </div>
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-left:8px;"><input type="checkbox" id="tri-check-${i}" checked style="width:18px;height:18px;"><span style="font-size:11px;">登録＆取置</span></label>
         </div>
         <input type="text" class="form-input" id="tri-newcat-${i}" value="" placeholder="ジャンル（任意）" style="font-size:11px;padding:4px 6px;margin-bottom:6px;margin-top:3px;">
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
           <select class="form-select" id="tri-wh-${i}" style="flex:1;padding:7px 8px;font-size:13px;">${whOpts}</select>
-          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="form-input" id="tri-qty-${i}" value="${item.qty||1}" min="1" style="width:70px;padding:7px 8px;font-size:14px;text-align:center;"><span style="font-size:13px;color:var(--ink3);">台</span></div>
+          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="form-input" id="tri-qty-${i}" value="${esc(item.qty||1)}" min="1" style="width:70px;padding:7px 8px;font-size:14px;text-align:center;"><span style="font-size:13px;color:var(--ink3);">台</span></div>
         </div>
-        <input type="text" class="form-input" id="tri-cust-${i}" value="${(item.customer||'').replace(/"/g,'&quot;')}" placeholder="得意先（任意）" style="padding:8px 10px;font-size:13px;">
+        <input type="text" class="form-input" id="tri-cust-${i}" value="${esc(item.customer)}" placeholder="得意先（任意）" style="padding:8px 10px;font-size:13px;">
       </div>`;
     }
     const similar=findSimilarProducts(item.name);
     let wOpts=''; WH_KEYS.forEach(function(w){const st=matched[w]||0;const sel=(item.warehouse===w)?' selected':'';wOpts+=`<option value="${w}"${sel}>${WH_LABELS[w]}（在庫${st}台）</option>`;});
     return `<div class="ai-item" id="tri-item-${i}">
-      <input type="hidden" id="tri-isnew-${i}" value="0"><input type="hidden" id="tri-pid-${i}" value="${matched.id}">
+      <input type="hidden" id="tri-isnew-${i}" value="0"><input type="hidden" id="tri-pid-${i}" value="${esc(matched.id)}">
       <div class="ai-item-header"><div>
-        <div class="ai-item-name">${matched.name}</div>
-        <div class="ai-item-maker">${(matched.category?matched.category+' ・ ':'')}${matched.maker||''}</div>
+        <div class="ai-item-name">${esc(matched.name)}</div>
+        <div class="ai-item-maker">${(matched.category?esc(matched.category)+' ・ ':'')}${esc(matched.maker||'')}</div>
       </div>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="tri-check-${i}" checked style="width:18px;height:18px;"><span style="font-size:12px;color:var(--ink2);">登録</span></label>
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
         <select class="form-select" id="tri-wh-${i}" style="flex:1;padding:7px 8px;font-size:13px;">${wOpts}</select>
-        <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="form-input" id="tri-qty-${i}" value="${item.qty||1}" min="1" style="width:70px;padding:7px 8px;font-size:14px;text-align:center;"><span style="font-size:13px;color:var(--ink3);">台</span></div>
+        <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="form-input" id="tri-qty-${i}" value="${esc(item.qty||1)}" min="1" style="width:70px;padding:7px 8px;font-size:14px;text-align:center;"><span style="font-size:13px;color:var(--ink3);">台</span></div>
       </div>
-      <input type="text" class="form-input" id="tri-cust-${i}" value="${(item.customer||'').replace(/"/g,'&quot;')}" placeholder="得意先（任意）" style="padding:8px 10px;font-size:13px;">
+      <input type="text" class="form-input" id="tri-cust-${i}" value="${esc(item.customer)}" placeholder="得意先（任意）" style="padding:8px 10px;font-size:13px;">
       ${dupWarningHtml(similar)}
     </div>`;
   }).join('');
@@ -7255,7 +7263,7 @@ ${existingList}
     renderAiReserveItems();
     statusEl.style.display='none';
     document.getElementById('rsvAiResult').style.display='block';
-  }catch(e){statusEl.className='ai-status error';statusEl.innerHTML='❌ '+e.message;}
+  }catch(e){statusEl.className='ai-status error';statusEl.innerHTML='❌ '+esc(e.message);}
 }
 function renderAiReserveItems(){
   const el=document.getElementById('rsvAiItems');
@@ -7272,8 +7280,8 @@ function renderAiReserveItems(){
         ${dupWarningHtml(similar,'useExistingForReserve',i)}
         <div class="ai-item-header">
           <div style="flex:1;">
-            <input type="text" class="form-input" id="rsv-newmaker-${i}" value="${(item.maker||'').replace(/"/g,'&quot;')}" placeholder="メーカー" style="font-size:11px;padding:4px 6px;margin-bottom:3px;">
-            <input type="text" class="form-input" id="rsv-newname-${i}" value="${(item.name||'').replace(/"/g,'&quot;')}" placeholder="型番（必須）" list="productNameList" autocomplete="off" style="font-size:13px;font-weight:700;padding:4px 6px;">
+            <input type="text" class="form-input" id="rsv-newmaker-${i}" value="${esc(item.maker)}" placeholder="メーカー" style="font-size:11px;padding:4px 6px;margin-bottom:3px;">
+            <input type="text" class="form-input" id="rsv-newname-${i}" value="${esc(item.name)}" placeholder="型番（必須）" list="productNameList" autocomplete="off" style="font-size:13px;font-weight:700;padding:4px 6px;">
           </div>
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-left:8px;">
             <input type="checkbox" id="rsv-check-${i}" checked style="width:18px;height:18px;">
@@ -7283,9 +7291,9 @@ function renderAiReserveItems(){
         <input type="text" class="form-input" id="rsv-newcat-${i}" value="" placeholder="ジャンル（任意）" style="font-size:11px;padding:4px 6px;margin-bottom:6px;margin-top:3px;">
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
           <select class="form-select" id="rsv-wh-${i}" style="flex:1;padding:7px 8px;font-size:13px;">${whOpts}</select>
-          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="form-input" id="rsv-qty-${i}" value="${item.qty||1}" min="1" style="width:70px;padding:7px 8px;font-size:14px;text-align:center;"><span style="font-size:13px;color:var(--ink3);">台</span></div>
+          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="form-input" id="rsv-qty-${i}" value="${esc(item.qty||1)}" min="1" style="width:70px;padding:7px 8px;font-size:14px;text-align:center;"><span style="font-size:13px;color:var(--ink3);">台</span></div>
         </div>
-        <input type="text" class="form-input" id="rsv-cust-${i}" value="${(item.customer||'').replace(/"/g,'&quot;')}" placeholder="得意先（任意）" style="padding:8px 10px;font-size:13px;">
+        <input type="text" class="form-input" id="rsv-cust-${i}" value="${esc(item.customer)}" placeholder="得意先（任意）" style="padding:8px 10px;font-size:13px;">
       </div>`;
     }
     // 既存商品 + 類似品番チェック
@@ -7294,17 +7302,17 @@ function renderAiReserveItems(){
     return `<div class="ai-item" id="rsv-item-${i}">
       <input type="hidden" id="rsv-isnew-${i}" value="0">
       <div class="ai-item-header"><div>
-        <div class="ai-item-name">${matched.name}</div>
-        <div class="ai-item-maker">${(matched.category?matched.category+' ・ ':'')}${matched.maker||''}</div>
+        <div class="ai-item-name">${esc(matched.name)}</div>
+        <div class="ai-item-maker">${(matched.category?esc(matched.category)+' ・ ':'')}${esc(matched.maker||'')}</div>
       </div>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="rsv-check-${i}" checked style="width:18px;height:18px;"><span style="font-size:12px;color:var(--ink2);">登録</span></label>
       </div>
-      <input type="hidden" id="rsv-pid-${i}" value="${matched.id}">
+      <input type="hidden" id="rsv-pid-${i}" value="${esc(matched.id)}">
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
         <select class="form-select" id="rsv-wh-${i}" style="flex:1;padding:7px 8px;font-size:13px;">${wOpts}</select>
-        <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="form-input" id="rsv-qty-${i}" value="${item.qty||1}" min="1" style="width:70px;padding:7px 8px;font-size:14px;text-align:center;"><span style="font-size:13px;color:var(--ink3);">台</span></div>
+        <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="form-input" id="rsv-qty-${i}" value="${esc(item.qty||1)}" min="1" style="width:70px;padding:7px 8px;font-size:14px;text-align:center;"><span style="font-size:13px;color:var(--ink3);">台</span></div>
       </div>
-      <input type="text" class="form-input" id="rsv-cust-${i}" value="${(item.customer||'').replace(/"/g,'&quot;')}" placeholder="得意先（任意）" style="padding:8px 10px;font-size:13px;">
+      <input type="text" class="form-input" id="rsv-cust-${i}" value="${esc(item.customer)}" placeholder="得意先（任意）" style="padding:8px 10px;font-size:13px;">
       ${dupWarningHtml(similar)}
     </div>`;
   }).join('');
@@ -7428,7 +7436,7 @@ async function handleBulkPhoto(event){
     renderBulkItems();
     statusEl.style.display='none';
     document.getElementById('bulkResult').style.display='block';
-  }catch(e){statusEl.className='ai-status error';statusEl.innerHTML='❌ '+e.message;}
+  }catch(e){statusEl.className='ai-status error';statusEl.innerHTML='❌ '+esc(e.message);}
 }
 function renderBulkItems(){
   const el=document.getElementById('bulkItems');
@@ -7439,22 +7447,22 @@ function renderBulkItems(){
   _buildBulkMakerDropdown();
   el.innerHTML=bulkItems.map(function(it,i){
     var exists=data.products.find(function(p){return p.name.toLowerCase().trim()===(it.name||'').toLowerCase().trim();});
-    var whInputs=WH_KEYS.map(function(w){return `<div style="text-align:center;"><div style="font-size:9px;color:var(--ink3);">${WH_LABELS[w].replace('倉庫','')}</div><input type="number" id="bulk-${w}-${i}" value="${it[w]||0}" min="0" class="form-input" style="width:46px;padding:5px 2px;font-size:12px;text-align:center;"></div>`;}).join('');
+    var whInputs=WH_KEYS.map(function(w){return `<div style="text-align:center;"><div style="font-size:9px;color:var(--ink3);">${WH_LABELS[w].replace('倉庫','')}</div><input type="number" id="bulk-${w}-${i}" value="${esc(it[w]||0)}" min="0" class="form-input" style="width:46px;padding:5px 2px;font-size:12px;text-align:center;"></div>`;}).join('');
     var whBlock = bulkStockMode ? `<div style="display:flex;gap:4px;justify-content:space-between;">${whInputs}</div>` : '';
     var priceBlock = bulkPriceMode ? `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:6px;">
-      <div><div style="font-size:9px;color:var(--ink3);margin-bottom:2px;">定価(税別)</div><input type="number" id="bulk-teika-${i}" value="${it.teika||0}" min="0" class="form-input" style="padding:5px 4px;font-size:12px;text-align:right;"></div>
-      <div><div style="font-size:9px;color:var(--blue);margin-bottom:2px;">仕入値</div><input type="number" id="bulk-cost-${i}" value="${it.cost||0}" min="0" class="form-input" style="padding:5px 4px;font-size:12px;text-align:right;"></div>
-      <div><div style="font-size:9px;color:var(--green);margin-bottom:2px;">売値</div><input type="number" id="bulk-sell-${i}" value="${it.sell||0}" min="0" class="form-input" style="padding:5px 4px;font-size:12px;text-align:right;"></div>
+      <div><div style="font-size:9px;color:var(--ink3);margin-bottom:2px;">定価(税別)</div><input type="number" id="bulk-teika-${i}" value="${esc(it.teika||0)}" min="0" class="form-input" style="padding:5px 4px;font-size:12px;text-align:right;"></div>
+      <div><div style="font-size:9px;color:var(--blue);margin-bottom:2px;">仕入値</div><input type="number" id="bulk-cost-${i}" value="${esc(it.cost||0)}" min="0" class="form-input" style="padding:5px 4px;font-size:12px;text-align:right;"></div>
+      <div><div style="font-size:9px;color:var(--green);margin-bottom:2px;">売値</div><input type="number" id="bulk-sell-${i}" value="${esc(it.sell||0)}" min="0" class="form-input" style="padding:5px 4px;font-size:12px;text-align:right;"></div>
     </div>` : '';
     return `<div class="ai-item" id="bulk-item-${i}"${exists?' style="border-color:var(--accent2);"':''}>
       <div class="ai-item-header">
         <div style="flex:1;">
-          <input type="text" id="bulk-maker-${i}" value="${(it.maker||'').replace(/"/g,'&quot;')}" placeholder="メーカー" class="form-input" style="font-size:11px;padding:4px 6px;margin-bottom:3px;">
-          <input type="text" id="bulk-name-${i}" value="${(it.name||'').replace(/"/g,'&quot;')}" placeholder="型番" list="productNameList" autocomplete="off" class="form-input" style="font-size:13px;font-weight:700;padding:4px 6px;">
+          <input type="text" id="bulk-maker-${i}" value="${esc(it.maker)}" placeholder="メーカー" class="form-input" style="font-size:11px;padding:4px 6px;margin-bottom:3px;">
+          <input type="text" id="bulk-name-${i}" value="${esc(it.name)}" placeholder="型番" list="productNameList" autocomplete="off" class="form-input" style="font-size:13px;font-weight:700;padding:4px 6px;">
         </div>
         <label style="display:flex;align-items:center;gap:5px;cursor:pointer;margin-left:8px;"><input type="checkbox" id="bulk-check-${i}" ${exists?'':'checked'} style="width:18px;height:18px;"><span style="font-size:11px;color:var(--ink2);">登録</span></label>
       </div>
-      <input type="text" id="bulk-cat-${i}" value="${(it.category||'').replace(/"/g,'&quot;')}" placeholder="ジャンル" class="form-input" style="font-size:11px;padding:4px 6px;margin-bottom:6px;">
+      <input type="text" id="bulk-cat-${i}" value="${esc(it.category)}" placeholder="ジャンル" class="form-input" style="font-size:11px;padding:4px 6px;margin-bottom:6px;">
       ${whBlock}${priceBlock}
       ${exists?'<div style="font-size:11px;color:var(--accent2);margin-top:5px;">⚠️ 同じ型番が登録済み（チェックを入れると在庫を上書き更新）</div>':''}
     </div>`;
@@ -7467,7 +7475,7 @@ function _buildBulkMakerDropdown(){
   var mkSet={}; getMakers().forEach(function(m){mkSet[m]=1;});
   bulkItems.forEach(function(it){if(it.maker)mkSet[it.maker]=1;});
   var makers=Object.keys(mkSet).sort();
-  dd.innerHTML=makers.map(function(m){return '<div class="maker-dropdown-item" onclick="selectBulkMakerAll(\''+m.replace(/'/g,"\\'")+'\')">'+m+'</div>';}).join('');
+  dd.innerHTML=makers.map(function(m){return '<div class="maker-dropdown-item" onclick="selectBulkMakerAll('+escJs(m)+')">'+esc(m)+'</div>';}).join('');
 }
 function openBulkMakerDropdown(){
   var dd=document.getElementById('bulkMakerAllDD');
@@ -7725,8 +7733,8 @@ function renderHistory(){
     var d=new Date(item.time);
     var t=(d.getMonth()+1)+'/'+(d.getDate())+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
     return '<div class="history-item">'
-      +'<div class="hist-icon '+item.type+'">'+(icons[item.type]||'&#128204;')+'</div>'
-      +'<div class="hist-body"><div class="hist-name">'+item.name+'</div><div class="hist-detail">'+item.detail+'</div></div>'
+      +'<div class="hist-icon '+esc(item.type)+'">'+(icons[item.type]||'&#128204;')+'</div>'
+      +'<div class="hist-body"><div class="hist-name">'+esc(item.name)+'</div><div class="hist-detail">'+esc(item.detail)+'</div></div>'
       +'<div class="hist-time">'+t+'</div>'
       +'</div>';
   }).join('');
@@ -8012,7 +8020,7 @@ document.addEventListener('DOMContentLoaded', async function(){
     _docSyncPull('saved_quotes'); _docSyncPull('saved_invoices'); _docSyncPull('saved_shipcerts');
   }catch(e){
     var el=document.getElementById('productList');
-    if(el) el.innerHTML='<div class="empty-state">\u63a5\u7d9a\u30a8\u30e9\u30fc: '+e.message+'</div>';
+    if(el) el.innerHTML='<div class="empty-state">\u63a5\u7d9a\u30a8\u30e9\u30fc: '+esc(e.message)+'</div>';
     console.error(e);
   }finally{
     showLoading(false);
