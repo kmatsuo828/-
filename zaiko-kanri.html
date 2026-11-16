@@ -2081,7 +2081,8 @@ async function loadProducts(){
   });
 }
 
-async function upsertProduct(p){
+// opts.omit: 送らない列の名前の配列（上書きしたくない列を除く用）
+async function upsertProduct(p, opts){
   var row = {
     id:p.id, maker:p.maker||'', name:p.name,
     ni:p.ni||0, ho:p.ho||0, go:p.go||0, roku:p.roku||0, jisha:p.jisha||0,
@@ -2091,9 +2092,77 @@ async function upsertProduct(p){
   if(HAS_CATEGORY) row.category = p.category||'';
   if(HAS_YEARMODEL) row.yearmodel = p.yearmodel||'';
   if(HAS_SERIES) row.series = p.series||'';
+  if(opts && opts.omit) opts.omit.forEach(function(k){ delete row[k]; });
   return supaFetch('products?on_conflict=id','POST',row,{
     'Prefer':'resolution=merge-duplicates,return=minimal'
   });
+}
+
+// ─── 在庫の増減（行の丸ごと上書きをしない） ──────────────────────────
+// change = {delta:{倉庫キー:増減数, ...}, reserveAdd:取り置き1件(任意)}
+// (a) 最新の行をDBから読み直す → (b) 最新の値に増減・取り置き追加を当てる
+// → (c) 変わった列だけをPATCH → (d) 成功してから画面側 data.products を更新する
+// 戻り値：{ok:true} ／ {ok:false, stale:true, wh, current}（最新の在庫では足りない）
+//        ／ {ok:false, error:Error}（読み込み・保存の失敗）
+async function adjustStock(id, change){
+  change = change||{};
+  var delta = change.delta||{};
+  try{
+    var rows = await supaFetch('products?id=eq.'+encodeURIComponent(id)+'&select=*');
+    var latest = rows && rows[0];
+    if(!latest) return {ok:false, error:new Error('商品がDBに見つかりません')};
+    var body = {};
+    var keys = Object.keys(delta);
+    for(var i=0;i<keys.length;i++){
+      var wh = keys[i], d = Number(delta[wh])||0;
+      if(!d) continue;
+      var base = Number(latest[wh])||0;
+      if(base+d<0) return {ok:false, stale:true, wh:wh, current:base};
+      body[wh] = base+d;
+    }
+    if(change.reserveAdd){
+      body.reserves = (latest.reserves||[]).concat([change.reserveAdd]);
+    }
+    if(Object.keys(body).length){
+      await supaFetch('products?id=eq.'+encodeURIComponent(id),'PATCH',body,{'Prefer':'return=minimal'});
+    }
+    var p = data.products.find(function(x){return x.id===id;});
+    if(p){
+      WH_KEYS.forEach(function(w){ p[w] = (w in body) ? body[w] : (Number(latest[w])||0); });
+      p.reserves = body.reserves || latest.reserves || [];
+    }
+    return {ok:true};
+  }catch(e){
+    return {ok:false, error:e};
+  }
+}
+// adjustStock の結果を画面に出す。失敗なら loadProducts で読み直す。成功なら true
+async function stockResultReport(res){
+  if(res.ok) return true;
+  if(res.stale) alert('ほかの端末で在庫が変わりました（現在'+res.current+'台）');
+  else alert('保存エラー: '+(res.error&&res.error.message||res.error));
+  try{ await loadProducts(); }catch(e){}
+  renderSummary();renderList();
+  return false;
+}
+// 在庫の更新が済んだあとの履歴の追加。失敗しても例外にせず、在庫は更新済みであることを知らせる
+async function stockHistory(type, name, detail){
+  try{
+    await supaFetch('history','POST',
+      {type:type, name:name, detail:detail, time:new Date().toISOString()},
+      {'Prefer':'return=minimal'});
+  }catch(e){
+    alert('在庫は更新済み・履歴の記録に失敗しました');
+    return false;
+  }
+  try{ await loadHistoryDB(); }catch(e){ /* 履歴一覧の読み直しの失敗は無視 */ }
+  return true;
+}
+// 出荷数がフリー在庫（取り置き分を除いた在庫）を超えるときの確認。進めてよければ true
+function confirmShipIntoReserve(p, wh, qty){
+  var free = getFreeQty(p, wh);
+  if(qty<=free) return true;
+  return confirm('取り置き分を'+(qty-free)+'台含みます。出荷しますか？');
 }
 
 // ─── 手動入力・AI読み取りで初めて出てきた商品名を商品データへ自動登録 ─────
@@ -4172,6 +4241,8 @@ function openAddModal(){
   openModal('modalProduct');
 }
 
+// 商品の編集画面を開いたときの在庫の値（保存時に、利用者が変えた列だけを送るために使う）
+var _editStockSnap=null;
 function openProductEdit(){
   closeModal('modalOperation');
   const p=data.products.find(x=>x.id===currentProductId);if(!p)return;
@@ -4180,6 +4251,7 @@ function openProductEdit(){
   document.getElementById('inp-category').value=p.category||'';
   document.getElementById('inp-name').value=p.name;
   WH_KEYS.forEach(w=>document.getElementById('inp-'+w).value=p[w]||0);
+  _editStockSnap={id:p.id,v:WH_KEYS.reduce((o,w)=>{o[w]=p[w]||0;return o;},{})};
   document.getElementById('inp-teika').value=p.teika||'';
   document.getElementById('inp-cost').value=p.cost||'';
   document.getElementById('inp-sell').value=p.sell||'';
@@ -5041,10 +5113,11 @@ async function registerAiShukkaItems(){
       var p=data.products.find(function(x){return x.id===pid;});
       if(!p||!wh||qty<=0){skipped++;continue;}
       if((p[wh]||0)<qty){ errors.push(p.name+'（'+WH_LABELS[wh]+'在庫'+(p[wh]||0)+'台<出荷'+qty+'台）'); skipped++; continue; }
-      p[wh]=(p[wh]||0)-qty;
-      await upsertProduct(p);
+      if(!confirmShipIntoReserve(p,wh,qty)){ skipped++; continue; }
+      var resP = await adjustStock(p.id,{delta:(function(){var d={};d[wh]=-qty;return d;})()});
+      if(!(await stockResultReport(resP))){ skipped++; continue; }
       if(cust) await addCustomerIfNew(cust);
-      await addHistoryDB('shuko',p.name,'[AI出荷] '+WH_LABELS[wh]+'から'+qty+'台出荷'+(cust?' \u2192 '+cust:''));
+      await stockHistory('shuko',p.name,'[AI出荷] '+WH_LABELS[wh]+'から'+qty+'台出荷'+(cust?' \u2192 '+cust:''));
       done++;
     }
     renderSummary();renderList();
@@ -6709,8 +6782,16 @@ async function saveProduct(){
     if(editId){
       var idx = data.products.findIndex(function(p){return p.id===editId;});
       if(idx>=0){
-        data.products[idx]=Object.assign({},data.products[idx],{maker:maker,category:category,name:name},qty,{teika:teika,cost:cost,sell:sell,note:note,yearmodel:yearmodel,series:series});
-        await upsertProduct(data.products[idx]);
+        // 在庫の列は、編集画面を開いたときから利用者が変えた列だけを送る。取り置き（reserves）は送らない。
+        // （他の端末で動いた在庫を、画面に残っていた古い値で上書きしないため）
+        var snap=(_editStockSnap&&_editStockSnap.id===editId)?_editStockSnap.v:data.products[idx];
+        var changedQty={}, omitCols=['reserves'];
+        WH_KEYS.forEach(function(w){
+          if(qty[w]!==(Number(snap[w])||0)) changedQty[w]=qty[w]; else omitCols.push(w);
+        });
+        var edited=Object.assign({},data.products[idx],{maker:maker,category:category,name:name},changedQty,{teika:teika,cost:cost,sell:sell,note:note,yearmodel:yearmodel,series:series});
+        await upsertProduct(edited,{omit:omitCols});
+        data.products[idx]=edited;
         await addHistoryDB('henshu',name,'\u5546\u54c1\u60c5\u5831\u3092\u66f4\u65b0');
       }
     }else{
@@ -6756,35 +6837,37 @@ async function execOp(type){
   try{
     if(type==='nyuko'){
       var wh = document.getElementById('op-wh').value;
-      p[wh]=(p[wh]||0)+qty;
-      await upsertProduct(p);
-      await addHistoryDB('nyuko',p.name,WH_LABELS[wh]+'\u306b'+qty+'\u53f0\u5165\u8377');
+      var res1 = await adjustStock(p.id,{delta:(function(){var d={};d[wh]=qty;return d;})()});
+      if(!(await stockResultReport(res1))) return;
+      await stockHistory('nyuko',p.name,WH_LABELS[wh]+'\u306b'+qty+'\u53f0\u5165\u8377');
     }else if(type==='shuko'){
       var wh = document.getElementById('op-wh').value;
       var dest = ((document.getElementById('op-dest')||{}).value||'').trim();
       if((p[wh]||0)<qty){alert('\u5728\u5eab\u304c\u4e0d\u8db3\u3057\u3066\u3044\u307e\u3059');return;}
-      p[wh]=(p[wh]||0)-qty;
-      await upsertProduct(p);
-      await addHistoryDB('shuko',p.name,WH_LABELS[wh]+'\u304b\u3089'+qty+'\u53f0\u51fa\u8377'+(dest?' \u2192 '+dest:''));
+      if(!confirmShipIntoReserve(p,wh,qty)) return;
+      var res2 = await adjustStock(p.id,{delta:(function(){var d={};d[wh]=-qty;return d;})()});
+      if(!(await stockResultReport(res2))) return;
+      await stockHistory('shuko',p.name,WH_LABELS[wh]+'\u304b\u3089'+qty+'\u53f0\u51fa\u8377'+(dest?' \u2192 '+dest:''));
     }else if(type==='idou'){
       var from = document.getElementById('op-from').value;
       var to   = document.getElementById('op-to').value;
       if(from===to){alert('\u79fb\u52d5\u5143\u3068\u79fb\u52d5\u5148\u304c\u540c\u3058\u3067\u3059');return;}
       if((p[from]||0)<qty){alert('\u79fb\u52d5\u5143\u306e\u5728\u5eab\u304c\u4e0d\u8db3\u3057\u3066\u3044\u307e\u3059');return;}
-      p[from]=(p[from]||0)-qty; p[to]=(p[to]||0)+qty;
-      await upsertProduct(p);
-      await addHistoryDB('idou',p.name,WH_LABELS[from]+'\u2192'+WH_LABELS[to]+' '+qty+'\u53f0\u79fb\u52d5');
+      var res3 = await adjustStock(p.id,{delta:(function(){var d={};d[from]=-qty;d[to]=qty;return d;})()});
+      if(!(await stockResultReport(res3))) return;
+      await stockHistory('idou',p.name,WH_LABELS[from]+'\u2192'+WH_LABELS[to]+' '+qty+'\u53f0\u79fb\u52d5');
     }else if(type==='torioki'){
       var wh = document.getElementById('op-wh').value;
       var customer = ((document.getElementById('op-customer')||{}).value||'').trim()||'\u672a\u8a18\u5165';
       var deduct = ((document.getElementById('op-deduct')||{value:'1'}).value)==='1';
       if(deduct && (p[wh]||0)<qty){alert('\u5728\u5eab\u304c\u4e0d\u8db3\u3057\u3066\u3044\u307e\u3059');return;}
-      if(!p.reserves) p.reserves=[];
-      p.reserves.push({id:uid(),customer:customer,wh:wh,qty:qty,deducted:deduct,date:new Date().toISOString()});
-      if(deduct) p[wh]=(p[wh]||0)-qty;
-      await upsertProduct(p);
+      var res4 = await adjustStock(p.id,{
+        delta:(function(){var d={};if(deduct) d[wh]=-qty;return d;})(),
+        reserveAdd:{id:uid(),customer:customer,wh:wh,qty:qty,deducted:deduct,date:new Date().toISOString()}
+      });
+      if(!(await stockResultReport(res4))) return;
       await addCustomerIfNew(customer);
-      await addHistoryDB('torioki',p.name,customer+'\u5206\u3092'+WH_LABELS[wh]+'\u3067'+qty+'\u53f0\u53d6\u308a\u7f6e\u304d'+(deduct?'\uff08\u5728\u5eab\u5f15\u304d\uff09':'\uff08\u5728\u5eab\u305d\u306e\u307e\u307e\uff09'));
+      await stockHistory('torioki',p.name,customer+'\u5206\u3092'+WH_LABELS[wh]+'\u3067'+qty+'\u53f0\u53d6\u308a\u7f6e\u304d'+(deduct?'\uff08\u5728\u5eab\u5f15\u304d\uff09':'\uff08\u5728\u5eab\u305d\u306e\u307e\u307e\uff09'));
     }
     closeModal('modalOperation');
     renderSummary();renderList();
@@ -7513,9 +7596,9 @@ async function execNyuko(mode){
       var memo= document.getElementById('nyuko-memo-select').value.trim();
       if(qty<=0){alert('\u6570\u91cf\u3092\u6b63\u3057\u304f\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044');return;}
       var p = data.products.find(function(x){return x.id===id;});if(!p) return;
-      p[wh]=(p[wh]||0)+qty;
-      await upsertProduct(p);
-      await addHistoryDB('nyuko',p.name,'['+(p.maker||'')+'] '+WH_LABELS[wh]+'\u306b'+qty+'\u53f0\u5165\u8377'+(memo?' ('+memo+')':''));
+      var resN1 = await adjustStock(p.id,{delta:(function(){var d={};d[wh]=qty;return d;})()});
+      if(!(await stockResultReport(resN1))) return;
+      await stockHistory('nyuko',p.name,'['+(p.maker||'')+'] '+WH_LABELS[wh]+'\u306b'+qty+'\u53f0\u5165\u8377'+(memo?' ('+memo+')':''));
       renderSummary();renderList();
       document.getElementById('nyuko-product').value='';
       document.getElementById('nyuko-product-input').value='';
@@ -7539,9 +7622,9 @@ async function execNyuko(mode){
       });
       if(existing){
         if(confirm('\u300c'+maker+' '+name+'\u300d\u306f\u3059\u3067\u306b\u767b\u9332\u3055\u308c\u3066\u3044\u307e\u3059\u3002\u5728\u5eab\u3092\u8ffd\u52a0\u3057\u307e\u3059\u304b\uff1f')){
-          existing[wh]=(existing[wh]||0)+qty;
-          await upsertProduct(existing);
-          await addHistoryDB('nyuko',existing.name,'['+maker+'] '+WH_LABELS[wh]+'\u306b'+qty+'\u53f0\u5165\u8377\uff08\u65e2\u5b58\uff09');
+          var resN2 = await adjustStock(existing.id,{delta:(function(){var d={};d[wh]=qty;return d;})()});
+          if(!(await stockResultReport(resN2))) return;
+          await stockHistory('nyuko',existing.name,'['+maker+'] '+WH_LABELS[wh]+'\u306b'+qty+'\u53f0\u5165\u8377\uff08\u65e2\u5b58\uff09');
         }
       }else{
         // 新規登録前に類似品番を確認
@@ -7578,12 +7661,13 @@ async function execShukka(){
   if(qty<=0){alert('\u6570\u91cf\u3092\u6b63\u3057\u304f\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044');return;}
   var p = data.products.find(function(x){return x.id===id;});if(!p) return;
   if((p[wh]||0)<qty){alert(WH_LABELS[wh]+'\u306e\u5728\u5eab\u304c\u4e0d\u8db3\u3057\u3066\u3044\u307e\u3059\uff08\u73fe\u5728: '+(p[wh]||0)+'\u53f0\uff09');return;}
+  if(!confirmShipIntoReserve(p,wh,qty)) return;
   showLoading(true);
   try{
-    p[wh]=(p[wh]||0)-qty;
-    await upsertProduct(p);
+    var resS =await adjustStock(p.id,{delta:(function(){var d={};d[wh]=-qty;return d;})()});
+    if(!(await stockResultReport(resS))) return;
     if(dest) await addCustomerIfNew(dest);
-    await addHistoryDB('shuko',p.name,'['+(p.maker||'')+'] '+WH_LABELS[wh]+'\u304b\u3089'+qty+'\u53f0\u51fa\u8377'+(dest?' \u2192 '+dest:''));
+    await stockHistory('shuko',p.name,'['+(p.maker||'')+'] '+WH_LABELS[wh]+'\u304b\u3089'+qty+'\u53f0\u51fa\u8377'+(dest?' \u2192 '+dest:''));
     renderSummary();renderList();
     document.getElementById('shukka-product').value='';
     document.getElementById('shukka-product-input').value='';
@@ -7610,9 +7694,9 @@ async function registerAiItems(){
       if(!name||!wh||qty<=0){skipped++;continue;}
       var existing = data.products.find(function(p){return p.name.toLowerCase()===name.toLowerCase();});
       if(existing){
-        existing[wh]=(existing[wh]||0)+qty;
-        await upsertProduct(existing);
-        await addHistoryDB('nyuko',existing.name,'[AI\u8aad\u53d6] '+WH_LABELS[wh]+'\u306b'+qty+'\u53f0\u5165\u8377');
+        var resA = await adjustStock(existing.id,{delta:(function(){var d={};d[wh]=qty;return d;})()});
+        if(!(await stockResultReport(resA))) return;
+        await stockHistory('nyuko',existing.name,'[AI\u8aad\u53d6] '+WH_LABELS[wh]+'\u306b'+qty+'\u53f0\u5165\u8377');
       }else{
         var qo={};WH_KEYS.forEach(function(w){qo[w]=0;}); qo[wh]=qty;
         var newP=Object.assign({id:uid(),maker:maker,name:name},qo,{teika:0,cost:0,sell:0,note:'',reserves:[]});
