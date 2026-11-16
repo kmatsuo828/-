@@ -1601,7 +1601,7 @@ body.font-xl #priceMakerFilter{width:124px;}
       </div>
       <input type="text" class="form-input" id="quote-add-q" placeholder="🔍 品番・品名・キーワードで検索" autocomplete="off" oninput="renderQuoteAddResults()" style="font-size:14px;margin-bottom:6px;">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
-        <input type="number" class="form-input" id="quote-add-qty" value="1" min="1" style="width:80px;text-align:center;">
+        <input type="number" class="form-input" id="quote-add-qty" value="1" min="1" step="any" style="width:80px;text-align:center;">
         <span style="font-size:13px;color:var(--ink3);">数量（「＋追加」タップ時に適用）</span>
       </div>
       <div id="quote-add-results" style="max-height:220px;overflow-y:auto;margin-bottom:4px;"></div>
@@ -5374,8 +5374,14 @@ function renderQuoteAddResults(){
   }).join('')
   +(list.length>LIMIT?'<div style="font-size:11px;color:var(--ink3);padding:6px;text-align:center;">他 '+(list.length-LIMIT)+' 件 — キーワードでさらに絞り込めます</div>':'');
 }
+// 見積の数量の読み方は必ずこの関数に揃える（流し込み・手入力・写真読取・再計算・PDF前の読取）。
+// Number で読み、数でない・0以下は 1。小数はそのまま持つ。
+function _quoteQty(v){
+  var n=Number(v);
+  return (isFinite(n)&&n>0)?n:1;
+}
 function addQuoteLineByPid(pid){
-  var qty=parseInt(document.getElementById('quote-add-qty').value)||1;
+  var qty=_quoteQty(document.getElementById('quote-add-qty').value);
   var p=data.products.find(function(x){return x.id===pid;});
   if(!p) return;
   var teika=p.teika||0, tanka=p.sell||0;
@@ -5407,7 +5413,7 @@ function importQuoteData(q){
   if(qst) qst.checked=(q.showTeika===false)?false:true;
   var qsr=document.getElementById('quote-show-rate');
   if(qsr) qsr.checked=(q.showRate===false)?false:true;
-  // 数量は Number で読む。0以下・数でない行は取り込まず errors に入れる（小数はそのまま持つ）
+  // 数量は Number で読む。0以下・数でない行があれば errors に入れ、明細は1行も取り込まず ok:false で返す（小数はそのまま持つ）
   var errors=[];
   var syncLines=[];
   quoteLines=[];
@@ -5431,6 +5437,15 @@ function importQuoteData(q){
     // 商品マスタとの照合には、見積側に書かれたメーカーをそのまま使う（未指定の「その他」は空として扱う）
     syncLines.push({maker:line.maker,matchMaker:(L.maker||'').toString().trim(),name:line.name,teika:teika,tanka:tanka});
   });
+  if(errors.length){
+    // 1行でも落ちる入力なら、一部だけ入った見積を残さない（明細0行・商品マスタへは反映しない）
+    quoteLines=[];
+    renderQuoteLines();
+    ++_quoteSyncSeq;
+    _quoteSyncPromise=Promise.resolve(_emptyQuoteSyncResult());
+    _clearQuoteSyncNotice();
+    return {ok:false,lines:0,sub:0,tax:0,total:0,errors:errors};
+  }
   renderQuoteLines();
   var sub=quoteLines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
   var tax=Math.floor(sub*0.1);
@@ -5473,7 +5488,7 @@ async function handleQuotePhoto(event){
       var tanka=(it.tanka&&it.tanka>0)?it.tanka:(p?(p.sell||0):0);
       if(!p) p=await ensureProductExists(it.name, it.maker, '', tanka);
       var rate=(teika>0&&tanka>0)?Math.round(tanka/teika*100):0;
-      quoteLines.push({pid:p?p.id:null,maker:it.maker||(p?p.maker:'')||'その他',name:it.name||'',hinmei:it.hinmei||'',qty:parseInt(it.qty)||1,teika:teika,rate:rate,tanka:tanka,bikou:''});
+      quoteLines.push({pid:p?p.id:null,maker:it.maker||(p?p.maker:'')||'その他',name:it.name||'',hinmei:it.hinmei||'',qty:_quoteQty(it.qty),teika:teika,rate:rate,tanka:tanka,bikou:''});
     }
     renderQuoteLines();
     statusEl.className='ai-status';
@@ -5524,7 +5539,7 @@ function _quoteRecalc(i){
   var teika=parseFloat((document.getElementById('q-teika-'+i)||{value:0}).value)||0;
   var tanka=parseFloat((document.getElementById('q-tanka-'+i)||{value:0}).value)||0;
   quoteLines[i].teika=teika; quoteLines[i].tanka=tanka;
-  quoteLines[i].qty=parseInt((document.getElementById('q-qty-'+i)||{value:1}).value)||1;
+  quoteLines[i].qty=_quoteQty((document.getElementById('q-qty-'+i)||{value:1}).value);
   quoteLines[i].name=(document.getElementById('q-name-'+i)||{value:''}).value;
   quoteLines[i].hinmei=(document.getElementById('q-hinmei-'+i)||{value:''}).value;
   quoteLines[i].maker=(document.getElementById('q-maker-'+i)||{value:''}).value||'その他';
@@ -5557,7 +5572,7 @@ function renderQuoteLines(){
       +'</div>'
       +'<input type="text" id="q-hinmei-'+i+'" value="'+esc(L.hinmei)+'" placeholder="品名・仕様" class="form-input ql-input-sm ql-hinmei" oninput="_quoteRecalc('+i+')">'
       +'<div class="ql-nums">'
-      +'<div style="flex:0 0 50px;"><div class="ql-lbl">数量</div><input type="number" id="q-qty-'+i+'" value="'+esc(L.qty)+'" min="1" class="form-input ql-num" style="text-align:center;" oninput="_quoteRecalc('+i+')"></div>'
+      +'<div style="flex:0 0 50px;"><div class="ql-lbl">数量</div><input type="number" id="q-qty-'+i+'" value="'+esc(L.qty)+'" min="1" step="any" class="form-input ql-num" style="text-align:center;" oninput="_quoteRecalc('+i+')"></div>'
       +'<div style="flex:1;"><div class="ql-lbl">定価</div><input type="number" id="q-teika-'+i+'" value="'+esc(L.teika)+'" min="0" class="form-input ql-num" style="text-align:right;" oninput="_quoteRecalc('+i+')"></div>'
       +'<div style="flex:1;"><div class="ql-lbl" style="color:var(--green);">単価(売値)</div><input type="number" id="q-tanka-'+i+'" value="'+esc(L.tanka)+'" min="0" class="form-input ql-num" style="text-align:right;" oninput="_quoteRecalc('+i+')"></div>'
       +'<div style="flex:1;text-align:right;"><div class="ql-lbl">金額</div><div id="q-amt-'+i+'" class="ql-amt">'+fmt(amt)+'</div></div>'
@@ -5806,7 +5821,7 @@ function _collectQuoteFormData(){
     el=document.getElementById('q-name-'+i); if(el) quoteLines[i].name=el.value;
     el=document.getElementById('q-maker-'+i); if(el) quoteLines[i].maker=el.value||'その他';
     el=document.getElementById('q-hinmei-'+i); if(el) quoteLines[i].hinmei=el.value;
-    el=document.getElementById('q-qty-'+i); if(el) quoteLines[i].qty=parseInt(el.value)||1;
+    el=document.getElementById('q-qty-'+i); if(el) quoteLines[i].qty=_quoteQty(el.value);
     el=document.getElementById('q-teika-'+i); if(el) quoteLines[i].teika=parseFloat(el.value)||0;
     el=document.getElementById('q-tanka-'+i); if(el) quoteLines[i].tanka=parseFloat(el.value)||0;
     el=document.getElementById('q-bikou-'+i); if(el) quoteLines[i].bikou=el.value;
