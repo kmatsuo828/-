@@ -1625,6 +1625,7 @@ body.font-xl #priceMakerFilter{width:124px;}
 
     <div id="quote-lines"></div>
     <div id="quote-total" style="margin-bottom:10px;"></div>
+    <div id="quote-sync-notice"></div>
 
     <div class="form-group" style="margin-bottom:10px;">
       <label class="form-label" style="display:flex;align-items:center;gap:6px;cursor:pointer;">
@@ -2105,35 +2106,159 @@ async function ensureProductExists(name, maker, category, sell, teika){
   var newP = Object.assign({id:uid(),maker:(maker||'').trim(),category:(category||'').trim(),name:name},qo,
     {teika:teika||0,cost:0,sell:sell||0,note:'',reserves:[]});
   data.products.push(newP);
-  try{ await upsertProduct(newP); }catch(e){ /* non-fatal: keep local */ }
+  try{ await upsertProduct(newP); }catch(e){ newP._saveFailed=true; /* non-fatal: keep local */ }
   return newP;
 }
 
 // ─── 定価が変わった既存商品の定価更新（見積作成時の自動更新用・2026-07-23追加）
 // 定価が変われば連動する仕入値・売値も古い値のままでは整合しなくなるためcost/sellは0クリアする
 async function updateProductTeikaResetPricing(id, newTeika){
-  var p = data.products.find(function(x){return x.id===id;});
-  if(p){ p.teika=newTeika; p.cost=0; p.sell=0; }
-  return supaFetch('products?id=eq.'+encodeURIComponent(id),'PATCH',
+  var res = await supaFetch('products?id=eq.'+encodeURIComponent(id),'PATCH',
     {teika:newTeika, cost:0, sell:0},
     {'Prefer':'return=minimal'});
+  // 保存に成功してから画面側の値を更新する（失敗時に画面とDBがずれないように）
+  var p = data.products.find(function(x){return x.id===id;});
+  if(p){ p.teika=newTeika; p.cost=0; p.sell=0; }
+  return res;
 }
 
 // ─── 見積明細から商品データへ自動登録・定価更新（工事明細＝品番なし行は対象外・2026-07-23追加）
 // importQuoteData実行後にバックグラウンドで実行し、見積表示・PDF作成をブロックしない（fire-and-forget）
+// 戻り値：{changed:[], created:[], skipped:[], counts:{changed,created,skipped}}
+//   changed＝定価を更新した品番／created＝新規登録した品番／skipped＝反映しなかった品番（reason付き）
+function _emptyQuoteSyncResult(){
+  return {changed:[],created:[],skipped:[],counts:{changed:0,created:0,skipped:0}};
+}
+function _quoteSyncMakerNorm(s){
+  return String(s==null?'':s).normalize('NFKC').trim().toLowerCase();
+}
+// 名前が一致し、かつメーカーが一致するか、どちらかのメーカーが空のときだけ同じ品番とみなす
+function _quoteSyncMatch(name, maker){
+  var n=name.toLowerCase().trim();
+  var n2=n.replace(/[-\s]/g,'');
+  var cands=data.products.filter(function(p){
+    return p.name.toLowerCase().replace(/[-\s]/g,'')===n2;
+  });
+  var mk=_quoteSyncMakerNorm(maker);
+  var ok=cands.filter(function(p){
+    var pm=_quoteSyncMakerNorm(p.maker);
+    return !mk || !pm || mk===pm;
+  });
+  var hit=ok.find(function(p){return p.name.toLowerCase().trim()===n;})||ok[0]||null;
+  return {existing:hit, nameHits:cands};
+}
 async function _syncQuoteLinesToProducts(lines){
+  var result=_emptyQuoteSyncResult();
+  var wroteHistory=false;
+  var skippedKeys={};
+  function skip(L, name, reason, other){
+    var key=name+'|'+(L.matchMaker||'')+'|'+reason+'|'+(other||'');
+    if(skippedKeys[key]) return;
+    skippedKeys[key]=true;
+    result.skipped.push({name:name,maker:L.matchMaker||'',reason:reason,otherMaker:other||''});
+  }
   for(const L of (lines||[])){
     var name=(L.name||'').trim();
     if(!name) continue; // 品番なし＝工事・一式明細のため登録対象外
     try{
-      var existing=findProductByName(name);
+      var m=_quoteSyncMatch(name, L.matchMaker);
+      var existing=m.existing;
       if(!existing){
-        await ensureProductExists(name, L.maker, '', L.tanka, L.teika);
+        if(m.nameHits.length){
+          // 名前は同じでメーカーが違う：既存の行を書き換えず、新規登録もしない
+          skip(L, name, 'maker_mismatch', m.nameHits[0].maker||'');
+          continue;
+        }
+        var np=await ensureProductExists(name, L.maker, '', L.tanka, L.teika);
+        if(np && np._saveFailed){
+          skip(L, name, 'create_failed');
+        }else if(np){
+          result.created.push({name:name,maker:np.maker||'',teika:Number(np.teika)||0});
+        }
       }else if(L.teika>0 && Number(existing.teika)!==Number(L.teika)){
-        await updateProductTeikaResetPricing(existing.id, L.teika);
+        var oldTeika=Number(existing.teika)||0;
+        var oldCost=Number(existing.cost)||0, oldSell=Number(existing.sell)||0;
+        var detail='見積流し込みによる定価の自動更新 ['+(existing.maker||'')+'] '
+          +'定価 '+oldTeika+'→'+Number(L.teika)+' / 旧仕入値 '+oldCost+' / 旧売値 '+oldSell;
+        // 先に履歴へ書き、成功したときだけ定価を更新する
+        try{
+          await supaFetch('history','POST',
+            {type:'henshu', name:existing.name, detail:detail, time:new Date().toISOString()},
+            {'Prefer':'return=minimal'});
+          wroteHistory=true;
+        }catch(e){
+          skip(L, name, 'history_failed');
+          continue;
+        }
+        try{
+          await updateProductTeikaResetPricing(existing.id, Number(L.teika));
+          result.changed.push({name:existing.name,maker:existing.maker||'',oldTeika:oldTeika,newTeika:Number(L.teika)});
+        }catch(e){
+          skip(L, name, 'update_failed');
+        }
       }
     }catch(e){ /* non-fatal: 見積作成自体には影響させない */ }
   }
+  if(wroteHistory){ try{ await loadHistoryDB(); }catch(e){} }
+  result.counts={changed:result.changed.length,created:result.created.length,skipped:result.skipped.length};
+  return result;
+}
+
+// ─── 見積の流し込みによる商品マスタ更新の結果（見積モーダルに表示／自動操作から読む）
+var _quoteSyncSeq=0;
+var _quoteSyncPromise=Promise.resolve(_emptyQuoteSyncResult());
+// 更新が終わったら解決するPromiseを返す。importQuoteDataを呼んだ後に待つと、その更新結果が読める
+function getQuoteMasterSyncResult(){ return _quoteSyncPromise; }
+function _clearQuoteSyncNotice(){
+  var el=document.getElementById('quote-sync-notice');
+  if(el) el.textContent='';
+}
+function _renderQuoteSyncNotice(res){
+  var el=document.getElementById('quote-sync-notice');
+  if(!el) return;
+  el.textContent='';
+  if(!res || (!res.counts.changed && !res.counts.created && !res.counts.skipped)) return;
+  var reasonText={
+    maker_mismatch:'メーカー違いのため未反映',
+    history_failed:'履歴の記録に失敗したため未反映',
+    update_failed:'更新に失敗したため未反映',
+    create_failed:'新規登録の保存に失敗（この画面上のみ）'
+  };
+  var head=(res.counts.changed||res.counts.created)
+    ? '商品マスタを更新しました：定価変更'+res.counts.changed+'件・新規登録'+res.counts.created+'件'
+    : '商品マスタは更新していません：定価変更'+res.counts.changed+'件・新規登録'+res.counts.created+'件';
+  if(res.counts.skipped) head+='・未反映'+res.counts.skipped+'件';
+  var btn=document.createElement('button');
+  btn.type='button';
+  btn.className='btn btn-full';
+  btn.style.cssText='font-size:12px;text-align:left;margin-bottom:6px;';
+  btn.textContent=head+' ▼';
+  var list=document.createElement('div');
+  list.style.cssText='display:none;font-size:12px;background:var(--surface);border-radius:8px;padding:8px 10px;margin-bottom:10px;';
+  function addRow(text){
+    var d=document.createElement('div');
+    d.style.cssText='padding:2px 0;';
+    d.textContent=text;
+    list.appendChild(d);
+  }
+  res.changed.forEach(function(c){
+    addRow(c.name+'（'+(c.maker||'メーカー未設定')+'）：定価 '+c.oldTeika+' → '+c.newTeika);
+  });
+  res.created.forEach(function(c){
+    addRow(c.name+'（'+(c.maker||'メーカー未設定')+'）：新規登録 定価 '+c.teika);
+  });
+  res.skipped.forEach(function(c){
+    var t=c.name+'（'+(c.maker||'メーカー未指定')+'）：'+(reasonText[c.reason]||c.reason);
+    if(c.reason==='maker_mismatch') t+='（既存のメーカー：'+(c.otherMaker||'未設定')+'）';
+    addRow(t);
+  });
+  btn.addEventListener('click',function(){
+    var open=list.style.display==='none';
+    list.style.display=open?'block':'none';
+    btn.textContent=head+(open?' ▲':' ▼');
+  });
+  el.appendChild(btn);
+  el.appendChild(list);
 }
 
 async function deleteProductDB(id){
@@ -5104,6 +5229,7 @@ let quoteLines=[]; // {pid,maker,name,hinmei,qty,teika,rate,tanka}
 function openQuote(){
   quoteLines=[];
   _editingQuoteId=null;
+  _clearQuoteSyncNotice();
   document.getElementById('quote-title').value='';
   document.getElementById('quote-customer').value='';
   var qfn=document.getElementById('quote-footer-note'); if(qfn) qfn.value='';
@@ -5200,18 +5326,41 @@ function importQuoteData(q){
   if(qst) qst.checked=(q.showTeika===false)?false:true;
   var qsr=document.getElementById('quote-show-rate');
   if(qsr) qsr.checked=(q.showRate===false)?false:true;
-  quoteLines=(q.lines||[]).map(function(L){
+  // 数量は Number で読む。0以下・数でない行は取り込まず errors に入れる（小数はそのまま持つ）
+  var errors=[];
+  var syncLines=[];
+  quoteLines=[];
+  (q.lines||[]).forEach(function(L,idx){
+    L=L||{};
+    var qty=Number(L.qty);
+    if(L.qty===undefined||L.qty===null||L.qty===''||!isFinite(qty)){
+      errors.push({row:idx+1,reason:'数量が数ではありません'});
+      return;
+    }
+    if(qty<=0){
+      errors.push({row:idx+1,reason:'数量が0以下です'});
+      return;
+    }
     var teika=Number(L.teika)||0, tanka=Number(L.tanka)||0;
-    return {pid:null,maker:(L.maker||'その他'),name:L.name||'',hinmei:L.hinmei||'',
-      qty:parseInt(L.qty)||1,teika:teika,
+    var line={pid:null,maker:(L.maker||'その他'),name:L.name||'',hinmei:L.hinmei||'',
+      qty:qty,teika:teika,
       rate:(teika>0&&tanka>0)?Math.round(tanka/teika*100):0,
       tanka:tanka,bikou:L.bikou||''};
+    quoteLines.push(line);
+    // 商品マスタとの照合には、見積側に書かれたメーカーをそのまま使う（未指定の「その他」は空として扱う）
+    syncLines.push({maker:line.maker,matchMaker:(L.maker||'').toString().trim(),name:line.name,teika:teika,tanka:tanka});
   });
   renderQuoteLines();
   var sub=quoteLines.reduce(function(s,L){return s+(L.qty*L.tanka);},0);
   var tax=Math.floor(sub*0.1);
-  _syncQuoteLinesToProducts(quoteLines).catch(function(){});
-  return {ok:true,lines:quoteLines.length,sub:sub,tax:tax,total:sub+tax};
+  var seq=++_quoteSyncSeq;
+  _quoteSyncPromise=_syncQuoteLinesToProducts(syncLines).catch(function(){
+    return _emptyQuoteSyncResult();
+  }).then(function(res){
+    if(seq===_quoteSyncSeq) _renderQuoteSyncNotice(res);
+    return res;
+  });
+  return {ok:true,lines:quoteLines.length,sub:sub,tax:tax,total:sub+tax,errors:errors};
 }
 // ─── 写真から見積明細を読み取り追加（AI） ─────────────────────────
 async function handleQuotePhoto(event){
