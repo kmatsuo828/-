@@ -1862,6 +1862,19 @@ const AI_MODEL = 'gemini-2.5-flash';
 // 3.8-flash / 4-hydrogen は無料枠で混雑（503・無応答）が続いたため後ろに置く。安定したら先頭へ上げる。
 const AI_MODELS = ['gemini-2.5-flash','gemini-3.5-flash-lite','gemini-3.8-flash','gemini-4-hydrogen'];
 const AI_TIMEOUT_MS = 60000;    // 1モデルの待ち時間の上限（混雑時に応答が返らないモデルがあるため）
+// 2026-11-21 松尾さん判断: Google検索つきのAI定価検索は 2.5 Flash の提供終了（2026-12-01）で終える。
+// 無料枠では Gemini 3 以降の検索が使えず（429）、課金はしない。読み取り（検索なし）はそのまま使う。
+const AI_SEARCH_END = new Date('2026-12-01T00:00:00+09:00');
+const AI_SEARCH_END_MSG = 'AI定価検索（Google検索つき）は 2026年12月1日で終了しました。定価はメーカーの価格表・ポータルで確認してください。';
+function aiSearchEnded(){ return Date.now() >= AI_SEARCH_END.getTime(); }
+function applyAiSearchEnd(){
+  if(!aiSearchEnded()) return;
+  ['btnSearchTeika','bpAiStartBtn'].forEach(function(id){
+    var b=document.getElementById(id); if(!b) return;
+    b.disabled=true; b.textContent='AI定価検索は終了'; b.title=AI_SEARCH_END_MSG;
+  });
+}
+document.addEventListener('DOMContentLoaded', applyAiSearchEnd);
 function aiSleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
 
 // リトライ中にステータスを更新するコールバック（各呼出し元でセットする）
@@ -3220,6 +3233,7 @@ async function handleBPriceFile(event){
 
 // ─── AI 一括定価検索 ─────────────────────────────────────────
 async function startBPriceAiSearch(){
+  if(aiSearchEnded()){ applyAiSearchEnd(); alert(AI_SEARCH_END_MSG); return; }
   var base=_bpFilterTargets('bpai', data.products);
   var targets=bpAiMode==='missing'
     ? base.filter(function(p){return !(p.teika>0);})
@@ -4592,6 +4606,7 @@ async function selectFromMasterIntoInventory(key, idx){
 // ═══ AI 定価検索 ═════════════════════════════════════════════════
 
 async function searchTeika(){
+  if(aiSearchEnded()){ applyAiSearchEnd(); alert(AI_SEARCH_END_MSG); return; }
   const maker=document.getElementById('inp-maker').value.trim();
   const name=document.getElementById('inp-name').value.trim();
   if(!name){alert('先に型番・商品名を入力してください');return;}
