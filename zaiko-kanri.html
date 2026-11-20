@@ -1855,8 +1855,13 @@ const PK='zaiko_pw_v1';
 // APIキーはサイトに埋め込まず、Supabase Edge Function (gemini-proxy) 経由で安全に呼び出す。
 const AI_PROXY_URL = SUPA_URL + '/functions/v1/gemini-proxy';
 const AI_MODEL = 'gemini-2.5-flash';
-// 混雑時に切り替える予備モデル（v1beta APIで動作確認済みのもののみ）
-const AI_MODELS = ['gemini-2.5-flash','gemini-2.0-flash','gemini-2.0-flash-lite'];
+// 混雑時に切り替える予備モデル（2026-11-21 プロキシ経由で応答を確認したもののみ）
+// gemini-2.0-flash / 2.0-flash-lite は 2026-06-01 に提供終了（404）のため外した。
+// gemini-2.5-flash は 2026-12-01 以降に提供終了予定（以降は 3.5-flash-lite へ自動転送）。
+// Google検索つき（tools:google_search）は無料枠では 2.5 系しか使えない（3以降は429）。
+// 3.8-flash / 4-hydrogen は無料枠で混雑（503・無応答）が続いたため後ろに置く。安定したら先頭へ上げる。
+const AI_MODELS = ['gemini-2.5-flash','gemini-3.5-flash-lite','gemini-3.8-flash','gemini-4-hydrogen'];
+const AI_TIMEOUT_MS = 60000;    // 1モデルの待ち時間の上限（混雑時に応答が返らないモデルがあるため）
 function aiSleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
 
 // リトライ中にステータスを更新するコールバック（各呼出し元でセットする）
@@ -1867,39 +1872,51 @@ async function callGemini(geminiBody){
   var maxAttempts = 9;          // 最大9回試行
   var lastErr = null;
   for(var attempt=0; attempt<maxAttempts; attempt++){
-    // 最初の2回は最上位モデル、以降は順番に予備モデルへ
-    var modelIdx = Math.min(attempt<2?0:Math.floor((attempt-2)/2)+1, AI_MODELS.length-1);
-    var model = AI_MODELS[modelIdx];
+    // 失敗したら1回ごとに次のモデルへ（一巡したら先頭から）
+    var model = AI_MODELS[attempt % AI_MODELS.length];
     // リトライ時はステータスを更新
     if(attempt>0){
       _aiStatus('🔄 AI再試行中 ('+attempt+'/'+(maxAttempts-1)+'回目・'+model+')…');
     }
     var resp;
+    var ctrl = (typeof AbortController==='function') ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, AI_TIMEOUT_MS) : null;
     try{
       resp = await fetch(AI_PROXY_URL, {
         method:'POST',
         headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY},
-        body: JSON.stringify({model:model, body:geminiBody})
+        body: JSON.stringify({model:model, body:geminiBody}),
+        signal: ctrl ? ctrl.signal : undefined
       });
     }catch(e){
-      lastErr = new Error('ネットワークエラー');
-      await aiSleep(1500*(attempt+1)); continue;
+      if(timer) clearTimeout(timer);
+      lastErr = new Error(e && e.name==='AbortError' ? 'AI応答待ちが時間切れ' : 'ネットワークエラー');
+      if(!(e && e.name==='AbortError')) await aiSleep(1500*(attempt+1));
+      continue;
     }
     if(resp.status===404){
+      if(timer) clearTimeout(timer);
       throw new Error('AI機能が未設定です。Supabaseに Edge Function「gemini-proxy」を作成してください。');
     }
-    var txt = await resp.text();
+    var txt;
+    try{ txt = await resp.text(); }
+    catch(e){ txt = ''; }
+    if(timer) clearTimeout(timer);
     var json;
     try{ json = txt ? JSON.parse(txt) : {}; }
     catch(e){ json = {}; lastErr = new Error('AI応答の解析に失敗'); }
-    if(resp.ok && !(json && json.error)) return json;  // 成功
+    if(resp.ok && json && !json.error && (json.candidates || json.promptFeedback)) return json;  // 成功（安全フィルタの判定は geminiText で扱う）
     var msg = (json && json.error && json.error.message) ? json.error.message : ('HTTP '+resp.status);
     lastErr = new Error(msg);
+    // プロキシはGoogle側のエラーもHTTP200で返すので、error.code も見る
+    var code = (json && json.error && json.error.code) || 0;
     var retryable = resp.status===503||resp.status===429||resp.status===500||resp.status===502
-      ||/high demand|overload|unavailable|try again|temporar|rate.?limit|quota|busy|not found|not support/i.test(msg);
+      ||code===503||code===429||code===500||code===404
+      ||!txt
+      ||/high demand|overload|unavailable|try again|temporar|rate.?limit|quota|busy|not found|not support|no longer available/i.test(msg);
     if(!retryable) throw new Error('AI処理エラーが発生しました。もう一度お試しください。');
-    // 混雑エラー: 指数的バックオフで待機（最大15秒）
-    var wait = Math.min(1500*(attempt+1), 15000);
+    // 次のモデルが空いていればすぐ通るので、待ち時間は短め（最大6秒）
+    var wait = Math.min(1000*(attempt+1), 6000);
     _aiStatus('⏳ AI混雑中。'+(Math.round(wait/1000))+'秒後に再試行 ('+(attempt+1)+'/'+(maxAttempts-1)+'回目)…');
     if(attempt < maxAttempts-1) await aiSleep(wait);
   }
@@ -1912,7 +1929,8 @@ function geminiText(resp){
       throw new Error('AIが安全フィルタで応答をブロックしました');
     }
     var parts = (resp.candidates && resp.candidates[0] && resp.candidates[0].content && resp.candidates[0].content.parts) || [];
-    return parts.map(function(p){return p.text||'';}).join('');
+    // Gemini 3 以降は思考の断片（thought:true）が混ざることがあるので除く
+    return parts.filter(function(p){return !p.thought;}).map(function(p){return p.text||'';}).join('');
   }catch(e){ throw e; }
 }
 const WH_LABELS={ni:'\u306b\u5009\u5eab',ho:'\u307b\u5009\u5eab',go:'5\u756a\u5009\u5eab',roku:'6\u756a\u5009\u5eab',jisha:'\u81ea\u793e\u5009\u5eab'};
