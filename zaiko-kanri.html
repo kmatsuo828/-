@@ -330,6 +330,9 @@ body.font-xl #priceMakerFilter{width:124px;}
 .quote-table td{font-size:11px;padding:5px 6px;border-bottom:1px solid #ddd;}
 /* 2026-11-20: 見積書も請求書と同じく明細を黒・太字にする（html2pdfの画像化で細い字が薄く出るため） */
 .quote-table[data-quote-layout] td{color:#000;font-weight:700;}
+/* 2026-11-21: 見積書はスマホで手動保存した時と同じ Noto Sans JP（ゴシック）で出す。
+   PCのChromeでは MS Gothic が先に当たり、明朝のような細い字になっていた */
+.pdf-doc:has(.quote-table){font-family:'Noto Sans JP','MS Gothic','MS PGothic',sans-serif;}
 .inv-table td{color:#000;font-weight:700;}
 .inv-table td:nth-child(2){white-space:nowrap;}
 .inv-table .inv-code{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:11px;}
@@ -7904,6 +7907,17 @@ function _pdfWorkerOpts(fname){
     pagebreak:{mode:['css','legacy'],avoid:['tr','.quote-ending','.quote-notes']}
   };
 }
+// Noto Sans JP は使う文字の分だけ後から読み込まれるため、画像化の前に読み込みを待つ
+// （待たないと一部の字だけ MS Gothic で描かれる）。5秒で諦めてそのまま進める。
+async function _ensurePdfFonts(el){
+  if(!document.fonts||!document.fonts.load) return;
+  var txt=(el&&el.textContent)||'';
+  var wait=Promise.all([
+    document.fonts.load('400 12px "Noto Sans JP"',txt),
+    document.fonts.load('700 12px "Noto Sans JP"',txt)
+  ]).then(function(){ return document.fonts.ready; }).catch(function(){});
+  await Promise.race([wait, aiSleep(5000)]);
+}
 function _pdfFileName(){
   return (document.title||'document').replace(/[\\/:*?"<>|]/g,'_')+'.pdf';
 }
@@ -7914,6 +7928,7 @@ async function doDownloadPdf(){
   try{
     await _loadHtml2pdf();
     var el=document.getElementById('pdf-content');
+    await _ensurePdfFonts(el);
     _prepareQuotePdfPagination(el);
     await html2pdf().set(_pdfWorkerOpts(_pdfFileName())).from(el).save();
     if(btn) btn.textContent='✅ 保存完了';
@@ -7936,6 +7951,7 @@ async function uploadPdfToCloud(){
   try{
     await _loadHtml2pdf();
     var fname=_pdfFileName();
+    await _ensurePdfFonts(el);
     _prepareQuotePdfPagination(el);
     var blob=await html2pdf().set(_pdfWorkerOpts(fname)).from(el).outputPdf('blob');
     var b64=await new Promise(function(resolve,reject){
