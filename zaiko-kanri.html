@@ -328,11 +328,6 @@ body.font-xl #priceMakerFilter{width:124px;}
 .cl-nums{display:flex;gap:6px;align-items:flex-end;}
 .cl-lbl{font-size:10px;color:var(--ink3);margin-bottom:2px;}
 .quote-table td{font-size:11px;padding:5px 6px;border-bottom:1px solid #ddd;}
-/* 2026-11-20: 見積書も請求書と同じく明細を黒・太字にする（html2pdfの画像化で細い字が薄く出るため） */
-.quote-table[data-quote-layout] td{color:#000;font-weight:700;}
-/* 2026-11-21: 見積書はスマホで手動保存した時と同じ Noto Sans JP（ゴシック）で出す。
-   PCのChromeでは MS Gothic が先に当たり、明朝のような細い字になっていた */
-.pdf-doc:has(.quote-table){font-family:'Noto Sans JP','MS Gothic','MS PGothic',sans-serif;}
 .inv-table td{color:#000;font-weight:700;}
 .inv-table td:nth-child(2){white-space:nowrap;}
 .inv-table .inv-code{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:11px;}
@@ -5732,12 +5727,12 @@ function buildQuoteHtml(q){
     +'</tr></thead><tbody class="quote-lines-body">'+rowsHtml+'</tbody><tbody class="quote-ending">'+lastRowHtml
     +'<tr><td class="quote-tail-cell" colspan="'+colCount+'"><div class="quote-summary" style="display:flex;justify-content:flex-end;margin-top:8px;">'
     +'<table style="font-size:13px;border-collapse:collapse;min-width:240px;">'
-    +'<tr><td style="padding:4px 12px;color:#000;">小計</td><td style="padding:4px 12px;text-align:right;">¥'+sub.toLocaleString()+'</td></tr>'
-    +'<tr><td style="padding:4px 12px;color:#000;">消費税(10%)</td><td style="padding:4px 12px;text-align:right;">¥'+tax.toLocaleString()+'</td></tr>'
+    +'<tr><td style="padding:4px 12px;color:#555;">小計</td><td style="padding:4px 12px;text-align:right;">¥'+sub.toLocaleString()+'</td></tr>'
+    +'<tr><td style="padding:4px 12px;color:#555;">消費税(10%)</td><td style="padding:4px 12px;text-align:right;">¥'+tax.toLocaleString()+'</td></tr>'
     +'<tr style="border-top:2px solid #1a1714;"><td style="padding:5px 12px;font-weight:700;">合計</td><td style="padding:5px 12px;text-align:right;font-weight:700;font-size:16px;">¥'+tot.toLocaleString()+'</td></tr>'
     +'</table></div><div class="quote-notes-marker" hidden>次ページに備考欄あり</div></td></tr></tbody></table>'
-    +'<div class="quote-notes" style="font-size:11px;color:#000;margin-top:8px;line-height:1.9;border-top:1px solid #ddd;padding-top:8px;">'
-    +'<div style="font-weight:700;color:#000;margin-bottom:3px;">備考</div>'+footerHtml+'</div>';
+    +'<div class="quote-notes" style="font-size:11px;color:#555;margin-top:8px;line-height:1.9;border-top:1px solid #ddd;padding-top:8px;">'
+    +'<div style="font-weight:700;color:#333;margin-bottom:3px;">備考</div>'+footerHtml+'</div>';
 }
 // Plan at the same A4 inner size as html2pdf (12 mm margins, CSS px rounded down).
 // The final detail row and all three total rows are one unbreakable unit.
@@ -7896,27 +7891,25 @@ function _loadHtml2pdf(){
 // .pdf-doc の中央寄せ margin-left を html2canvas が内部レイアウトに誤反映して
 // 左端が欠けるため、html2canvas のクローン文書側でマージンを 0 にして描画する
 // （2026-07-11 検証済み: onclone 方式で全列・宛先・備考まで欠けなし）
+// 2026-11-21: 見積書は手で印刷保存したPDF（MS Gothic・普通の太さ・文字は画像でない）に近づけるため、
+// 画像の倍率を上げる。倍率2では小さな字が粗く、細く崩れて見えていた。
+// キャンバスの高さ上限（約32,000px）を超えない範囲で最大4倍。見積書以外は従来どおり2倍。
+function _pdfCanvasScale(){
+  if(_pdfDocType!=='quote') return 2;
+  var el=document.getElementById('pdf-content');
+  var h=(el&&el.scrollHeight)||1000;
+  return Math.max(2, Math.min(4, Math.floor(32000/h*10)/10));
+}
 function _pdfWorkerOpts(fname){
   return {
     margin:12,
     filename:fname,
-    image:{type:'jpeg',quality:0.95},
-    html2canvas:{scale:2,useCORS:true,scrollX:0,scrollY:0,
+    image:{type:'jpeg',quality:(_pdfDocType==='quote'?0.98:0.95)},
+    html2canvas:{scale:_pdfCanvasScale(),useCORS:true,scrollX:0,scrollY:0,
       onclone:function(doc){ var d=doc.getElementById('pdf-content'); if(d){ d.style.margin='0'; d.style.maxWidth='none'; } }},
     jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
     pagebreak:{mode:['css','legacy'],avoid:['tr','.quote-ending','.quote-notes']}
   };
-}
-// Noto Sans JP は使う文字の分だけ後から読み込まれるため、画像化の前に読み込みを待つ
-// （待たないと一部の字だけ MS Gothic で描かれる）。5秒で諦めてそのまま進める。
-async function _ensurePdfFonts(el){
-  if(!document.fonts||!document.fonts.load) return;
-  var txt=(el&&el.textContent)||'';
-  var wait=Promise.all([
-    document.fonts.load('400 12px "Noto Sans JP"',txt),
-    document.fonts.load('700 12px "Noto Sans JP"',txt)
-  ]).then(function(){ return document.fonts.ready; }).catch(function(){});
-  await Promise.race([wait, aiSleep(5000)]);
 }
 function _pdfFileName(){
   return (document.title||'document').replace(/[\\/:*?"<>|]/g,'_')+'.pdf';
@@ -7928,7 +7921,6 @@ async function doDownloadPdf(){
   try{
     await _loadHtml2pdf();
     var el=document.getElementById('pdf-content');
-    await _ensurePdfFonts(el);
     _prepareQuotePdfPagination(el);
     await html2pdf().set(_pdfWorkerOpts(_pdfFileName())).from(el).save();
     if(btn) btn.textContent='✅ 保存完了';
@@ -7951,7 +7943,6 @@ async function uploadPdfToCloud(){
   try{
     await _loadHtml2pdf();
     var fname=_pdfFileName();
-    await _ensurePdfFonts(el);
     _prepareQuotePdfPagination(el);
     var blob=await html2pdf().set(_pdfWorkerOpts(fname)).from(el).outputPdf('blob');
     var b64=await new Promise(function(resolve,reject){
