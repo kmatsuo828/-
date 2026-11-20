@@ -328,6 +328,8 @@ body.font-xl #priceMakerFilter{width:124px;}
 .cl-nums{display:flex;gap:6px;align-items:flex-end;}
 .cl-lbl{font-size:10px;color:var(--ink3);margin-bottom:2px;}
 .quote-table td{font-size:11px;padding:5px 6px;border-bottom:1px solid #ddd;}
+/* 2026-11-20: 見積書も請求書と同じく明細を黒・太字にする（html2pdfの画像化で細い字が薄く出るため） */
+.quote-table[data-quote-layout] td{color:#000;font-weight:700;}
 .inv-table td{color:#000;font-weight:700;}
 .inv-table td:nth-child(2){white-space:nowrap;}
 .inv-table .inv-code{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:11px;}
@@ -5694,12 +5696,12 @@ function buildQuoteHtml(q){
     +'</tr></thead><tbody class="quote-lines-body">'+rowsHtml+'</tbody><tbody class="quote-ending">'+lastRowHtml
     +'<tr><td class="quote-tail-cell" colspan="'+colCount+'"><div class="quote-summary" style="display:flex;justify-content:flex-end;margin-top:8px;">'
     +'<table style="font-size:13px;border-collapse:collapse;min-width:240px;">'
-    +'<tr><td style="padding:4px 12px;color:#555;">小計</td><td style="padding:4px 12px;text-align:right;">¥'+sub.toLocaleString()+'</td></tr>'
-    +'<tr><td style="padding:4px 12px;color:#555;">消費税(10%)</td><td style="padding:4px 12px;text-align:right;">¥'+tax.toLocaleString()+'</td></tr>'
+    +'<tr><td style="padding:4px 12px;color:#000;">小計</td><td style="padding:4px 12px;text-align:right;">¥'+sub.toLocaleString()+'</td></tr>'
+    +'<tr><td style="padding:4px 12px;color:#000;">消費税(10%)</td><td style="padding:4px 12px;text-align:right;">¥'+tax.toLocaleString()+'</td></tr>'
     +'<tr style="border-top:2px solid #1a1714;"><td style="padding:5px 12px;font-weight:700;">合計</td><td style="padding:5px 12px;text-align:right;font-weight:700;font-size:16px;">¥'+tot.toLocaleString()+'</td></tr>'
     +'</table></div><div class="quote-notes-marker" hidden>次ページに備考欄あり</div></td></tr></tbody></table>'
-    +'<div class="quote-notes" style="font-size:11px;color:#555;margin-top:8px;line-height:1.9;border-top:1px solid #ddd;padding-top:8px;">'
-    +'<div style="font-weight:700;color:#333;margin-bottom:3px;">備考</div>'+footerHtml+'</div>';
+    +'<div class="quote-notes" style="font-size:11px;color:#000;margin-top:8px;line-height:1.9;border-top:1px solid #ddd;padding-top:8px;">'
+    +'<div style="font-weight:700;color:#000;margin-bottom:3px;">備考</div>'+footerHtml+'</div>';
 }
 // Plan at the same A4 inner size as html2pdf (12 mm margins, CSS px rounded down).
 // The final detail row and all three total rows are one unbreakable unit.
